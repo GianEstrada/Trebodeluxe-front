@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 
-const HomeScreen: NextPage = () => {
+const Catalogo: NextPage = () => {
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
@@ -74,8 +74,9 @@ const HomeScreen: NextPage = () => {
     }, 3000); // Cambia cada 3 segundos
 
     return () => clearInterval(interval);
-  }, [promoTexts.length]);
+  }, []); // Dependencias vacías para ejecutar solo una vez
 
+  // Función para cambiar manualmente el texto
   // Función para cambiar manualmente el texto
   const handleDotClick = (index: number) => {
     if (index !== currentTextIndex) {
@@ -103,8 +104,10 @@ const HomeScreen: NextPage = () => {
   };
 
   return (
-    <div className="w-full relative [background:linear-gradient(180deg,_#323232,_#000)] min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa">
-      <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
+    <div className="w-full relative [background:linear-gradient(180deg,_#323232,_#000)] h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* Header */}
+        <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font fixed top-0 left-0 right-0 z-40">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-yellow font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#289c28,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
             <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
@@ -142,6 +145,8 @@ const HomeScreen: NextPage = () => {
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
+          
+          {/* Navigation */}
           <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
             <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
               <div 
@@ -150,7 +155,7 @@ const HomeScreen: NextPage = () => {
                 onMouseEnter={() => setShowCategoriesDropdown(true)}
                 onMouseLeave={() => setShowCategoriesDropdown(false)}
               >
-                <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-M3-white">
                   CATEGORIAS
                 </div>
                 
@@ -237,21 +242,21 @@ const HomeScreen: NextPage = () => {
               </div>
               <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
                 <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-M3-white">
                     POPULARES
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
                 <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-M3-white">
                     NUEVOS
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
                 <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-M3-white">
                     BASICOS
                   </div>
                 </div>
@@ -648,47 +653,20 @@ const HomeScreen: NextPage = () => {
               </div>
             </div>
           </div>
+        </div>        </div>
+
+        {/* Page Title */}
+        <div className="self-stretch flex flex-col items-center justify-start !pt-8 !pb-8 !pl-8 !pr-8">
+          <h1 className="text-6xl font-bold text-M3-white tracking-[5px] leading-[100px] [text-shadow:0px_14px_4px_rgba(0,_0,_0,_0.29)]">
+            CATÁLOGO
+          </h1>
         </div>
-      </div>
-      
-      {/* Main Images Section */}
-      <div className="self-stretch flex flex-col items-center justify-start h-screen">
-        <div className="self-stretch flex flex-row items-center justify-start h-full">
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/look-polo-2-1@2x.png"
-          />
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/797e7904b64e13508ab322be3107e368-1@2x.png"
-          />
-        </div>
-      </div>
-      
-      {/* Promociones Section */}
-      <div className="self-stretch flex flex-col items-start justify-start !p-4 text-[96px] min-h-0 flex-shrink-0">
-        <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden bg-gradient-to-br from-green-600 via-white to-black">
-          {/* Overlay para mejor legibilidad del texto */}
-          <div className="absolute inset-0 bg-black/30 rounded-[46px]"></div>
-          <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.8)] text-white">
-            Promociones
-          </div>
-          <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.8)] text-white">
-            Especiales
-          </div>
-        </div>
-      </div>
-      <div className="self-stretch bg-gray-200 flex flex-col items-center justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 font-Body-Font-Family">
-        <div className="self-stretch h-[533px] overflow-x-auto shrink-0 flex flex-row items-start justify-center !pt-[79px] !pb-[79px] !pl-[70px] !pr-[70px] box-border gap-[68px]">
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+        {/* Products Grid - This section should fill remaining space */}
+        <div className="flex-1 bg-gray-200 flex flex-col items-center justify-start !pt-8 !pb-8 !pl-8 !pr-8 font-Body-Font-Family min-h-0">
+        <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {/* Product Card 1 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -697,19 +675,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 1</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$29.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 1</div>
               </div>
             </div>
           </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 2 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -718,19 +698,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 2</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$39.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 2</div>
               </div>
             </div>
           </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 3 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -739,19 +721,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 3</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$49.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 3</div>
               </div>
             </div>
           </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 4 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -760,19 +744,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 4</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$59.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 4</div>
               </div>
             </div>
           </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 5 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -781,56 +767,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 5</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$69.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 5</div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      <div className="self-stretch flex flex-col items-start justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 gap-[101px] text-center text-black">
-        <div className="self-stretch flex flex-row items-center justify-start">
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 1
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 2
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 3
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 4
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 5
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-green-500 transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              Categoria 6
-            </div>
-          </div>
-        </div>
-        <div className="self-stretch overflow-x-auto flex flex-row items-center justify-center !pt-[79px] !pb-[79px] !pl-[70px] !pr-[70px] gap-[68px] text-left text-white font-Body-Font-Family">
-          {/* First card - already has correct group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 6 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -839,20 +790,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 6</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$79.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 6</div>
               </div>
             </div>
           </div>
-          {/* Second card - already has correct group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 7 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -861,20 +813,21 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 7</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$89.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 7</div>
               </div>
             </div>
           </div>
-          {/* Third card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
+
+          {/* Product Card 8 */}
+          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
             <Image
               className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
               width={208}
@@ -883,349 +836,73 @@ const HomeScreen: NextPage = () => {
               alt=""
               src="/image@2x.png"
             />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
+            <div className="w-full flex flex-col items-start justify-start gap-Space-200">
               <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
+                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Producto 8</div>
               </div>
               <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
+                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$99.99</div>
               </div>
               <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Fourth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Fifth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Sixth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#279a27] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white group-hover:text-black transition-colors duration-300">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white group-hover:text-black transition-colors duration-300">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Body text.</div>
+                <div className="relative leading-[140%] text-gray-300 group-hover:text-black transition-colors duration-300">Descripción del producto 8</div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
       <div className="self-stretch [background:linear-gradient(11.21deg,_#279a27_39.9%,_#000)] overflow-hidden shrink-0 flex flex-row items-start justify-start !pt-16 !pb-2 !pl-8 !pr-8 text-Text-Default-Tertiary font-Body-Font-Family">
         <div className="flex flex-row items-start justify-start gap-[23px]">
           <div className="w-60 flex flex-col items-start justify-start gap-Space-600 min-w-[240px]">
             <Image
-              className="w-[50px] h-[50px]"
-              width={50}
-              height={50}
+              className="w-[23.3px] h-[35px]"
+              width={23.3}
+              height={35}
               sizes="100vw"
-              alt="Logo Treboluxe"
-              src="/sin-ttulo1-2@2x.png"
+              alt=""
+              src="/logo.svg"
             />
-            <div className="flex flex-col items-start justify-start gap-4">
-              <p className="text-white text-sm leading-relaxed">
-                Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.
-              </p>
-              <div className="flex flex-row items-center justify-start gap-Space-400">
-                <Image
-                  className="w-6 relative h-6 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Facebook"
-                  src="/figma.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Instagram"
-                  src="/logo-instagram.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Twitter/X"
-                  src="/x-logo.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="YouTube"
-                  src="/logo-youtube.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="LinkedIn"
-                  src="/linkedin.svg"
-                />
-              </div>
+            <div className="flex flex-row items-center justify-start gap-Space-400">
+              <Image
+                className="w-6 relative h-6"
+                width={24}
+                height={24}
+                sizes="100vw"
+                alt=""
+                src="/facebook.svg"
+              />
+              <Image
+                className="w-6 relative h-6 overflow-hidden shrink-0"
+                width={24}
+                height={24}
+                sizes="100vw"
+                alt=""
+                src="/instagram.svg"
+              />
+              <Image
+                className="w-6 relative h-6 overflow-hidden shrink-0"
+                width={24}
+                height={24}
+                sizes="100vw"
+                alt=""
+                src="/twitter.svg"
+              />
+              <Image
+                className="w-6 relative h-6 overflow-hidden shrink-0"
+                width={24}
+                height={24}
+                sizes="100vw"
+                alt=""
+                src="/youtube.svg"
+              />
             </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  Compras
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Cómo comprar
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Métodos de pago
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Envíos y entregas
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Cambios y devoluciones
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Tabla de tallas
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Gift cards
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Programa de fidelidad
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] h-[204px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  Categorías
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Mujer
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Hombre
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Niños
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Accesorios
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Calzado
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Nueva colección
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Ofertas especiales
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  Atención al cliente
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Contacto
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Preguntas frecuentes
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Centro de ayuda
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Chat en vivo
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Seguimiento de pedidos
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Reportar un problema
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Ubicación de tiendas
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  Legal
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Términos y condiciones
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Política de privacidad
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Política de cookies
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Aviso legal
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Sobre nosotros
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Trabaja con nosotros
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                Sostenibilidad
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Copyright section */}
-        <div className="w-full mt-12 pt-8 border-t border-white/20">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-gray-400 text-sm">
-              © 2024 Treboluxe. Todos los derechos reservados.
-            </div>
-            <div className="flex items-center gap-6 text-gray-400 text-sm">
-              <span className="hover:text-white transition-colors cursor-pointer">Mapa del sitio</span>
-              <span className="hover:text-white transition-colors cursor-pointer">Accesibilidad</span>
-              <span className="hover:text-white transition-colors cursor-pointer">Configurar cookies</span>
-            </div>
-          </div>
-          <div className="mt-4 text-gray-400 text-xs">
-            Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.
           </div>
         </div>
       </div>
     </div>
+    </div>
   );
 };
 
-export default HomeScreen;
+export default Catalogo;

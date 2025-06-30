@@ -9,6 +9,7 @@
 body {
   @apply leading-[normal] m-0;
 }
+
 @layer base {
   *,
   ::before,
