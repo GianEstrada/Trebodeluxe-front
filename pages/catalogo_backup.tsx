@@ -4,34 +4,45 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 
-const HomeScreen: NextPage = () => {
+const CatalogoScreen: NextPage = () => {
+  // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
+  
+  // Sistema de traducción universal
+  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  
+  // Estados específicos del catálogo
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("Todas");
+  const [selectedBrand, setSelectedBrand] = useState("Todas");
+  const [selectedColor, setSelectedColor] = useState("Todos");
+  const [selectedSize, setSelectedSize] = useState("Todas");
+  
+  // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const loginDropdownRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const cartDropdownRef = useRef<HTMLDivElement>(null);
   
-  // Usar el hook de traducción universal
-  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
-  
-  // Carrusel de texto
+  // Estados para el carrusel del header
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Textos originales en español - se traducirán automáticamente
+  // Textos del carrusel
   const promoTexts = [
     "Agrega 4 productos y paga 2",
     "2x1 en gorras"
   ];
-  
+
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
     setCurrentLanguage(lang);
@@ -44,14 +55,121 @@ const HomeScreen: NextPage = () => {
     localStorage.setItem('preferred-currency', currency);
   };
 
-  // Cargar preferencias guardadas
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('preferred-language');
-    const savedCurrency = localStorage.getItem('preferred-currency');
-    if (savedLanguage) setCurrentLanguage(savedLanguage);
-    if (savedCurrency) setCurrentCurrency(savedCurrency);
-  }, []);
+  // Función para formatear precio con la moneda seleccionada
+  const formatPrice = (price: number) => {
+    const exchangeRates = {
+      'EUR': 1,
+      'USD': 1.1,
+      'MXN': 20.5
+    };
+    
+    const symbols = {
+      'EUR': '€',
+      'USD': '$',
+      'MXN': '$'
+    };
+    
+    const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
+    const symbol = symbols[currentCurrency as keyof typeof symbols];
+    
+    return `${symbol}${convertedPrice}`;
+  };
 
+  // Función para manejar la búsqueda
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
+    }
+  };
+
+  // Función para manejar Enter en el input
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // Datos simulados de productos
+  const allProducts = [
+    {
+      id: 1,
+      name: "Camiseta Básica",
+      price: 29.99,
+      originalPrice: 39.99,
+      image: "/look-polo-2-1@2x.png",
+      category: "Camisetas",
+      brand: "Trebodeluxe",
+      color: "Azul",
+      size: "M",
+      discount: 25,
+      isNew: true
+    },
+    {
+      id: 2,
+      name: "Polo Elegante",
+      price: 49.99,
+      originalPrice: 59.99,
+      image: "/sin-ttulo1-2@2x.png",
+      category: "Polos",
+      brand: "Trebodeluxe",
+      color: "Blanco",
+      size: "L",
+      discount: 17,
+      isNew: false
+    },
+    {
+      id: 3,
+      name: "Camiseta Premium",
+      price: 39.99,
+      originalPrice: 49.99,
+      image: "/look-polo-2-1@2x.png",
+      category: "Camisetas",
+      brand: "Trebodeluxe",
+      color: "Negro",
+      size: "S",
+      discount: 20,
+      isNew: true
+    },
+    {
+      id: 4,
+      name: "Polo Deportivo",
+      price: 44.99,
+      originalPrice: 54.99,
+      image: "/sin-ttulo1-2@2x.png",
+      category: "Polos",
+      brand: "Trebodeluxe",
+      color: "Azul",
+      size: "XL",
+      discount: 18,
+      isNew: false
+    }
+  ];
+
+  // Filtrar productos
+  const filteredProducts = allProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "Todas" || product.category === selectedCategory;
+    const matchesBrand = selectedBrand === "Todas" || product.brand === selectedBrand;
+    const matchesColor = selectedColor === "Todos" || product.color === selectedColor;
+    const matchesSize = selectedSize === "Todas" || product.size === selectedSize;
+    
+    return matchesSearch && matchesCategory && matchesBrand && matchesColor && matchesSize;
+  });
+
+  // Efectos para carrusel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentTextIndex((prev) => (prev + 1) % promoTexts.length);
+        setIsAnimating(false);
+      }, 150);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [promoTexts.length]);
+
+  // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -71,64 +189,21 @@ const HomeScreen: NextPage = () => {
       }
     };
 
-    const handleScroll = () => {
-      setShowCategoriesDropdown(false);
-      setShowLanguageDropdown(false);
-      setShowLoginDropdown(false);
-      setShowSearchDropdown(false);
-      setShowCartDropdown(false);
-    };
-
-    // Agregar event listeners una sola vez
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []); // Dependencias vacías para ejecutar solo una vez
-
-  // Efecto para el carrusel de texto
+  // Cargar preferencias guardadas
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
-        setIsAnimating(false);
-      }, 300); // Duración del fade-out
-      
-    }, 3000); // Cambia cada 3 segundos
-
-    return () => clearInterval(interval);
-  }, [promoTexts.length]);
-
-  // Función para cambiar manualmente el texto
-  const handleDotClick = (index: number) => {
-    if (index !== currentTextIndex) {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex(index);
-        setIsAnimating(false);
-      }, 300);
+    const savedLanguage = localStorage.getItem('preferred-language');
+    const savedCurrency = localStorage.getItem('preferred-currency');
+    if (savedLanguage) {
+      setCurrentLanguage(savedLanguage);
     }
-  };
-
-  // Función para manejar la búsqueda
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
+    if (savedCurrency) {
+      setCurrentCurrency(savedCurrency);
     }
-  };
-
-  // Función para manejar Enter en el input
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+  }, []);
 
   return (
     <div className="w-full relative [background:linear-gradient(180deg,_#323232,_#000)] min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa">
@@ -141,9 +216,10 @@ const HomeScreen: NextPage = () => {
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">          <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-            <span className="text-white">{t('TREBOLUXE')}</span>
-          </div>
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
+            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+              <span className="text-white">{t('TREBOLUXE')}</span>
+            </div>
             
             {/* Contenido central - texto del carrusel */}
             <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
@@ -169,11 +245,11 @@ const HomeScreen: NextPage = () => {
               <div className={`w-2 relative shadow-[0px_4px_4px_rgba(0,_0,_0,_0.25),_0px_-1px_1.3px_#fff_inset] rounded-[50px] h-2 z-[1] transition-all duration-500 ease-in-out cursor-pointer ${
                 currentTextIndex === 0 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
               }`} 
-              onClick={() => handleDotClick(0)} />
+              onClick={() => setCurrentTextIndex(0)} />
               <div className={`w-2 relative shadow-[0px_2px_4px_#000_inset] rounded-[50px] h-2 z-[2] transition-all duration-500 ease-in-out cursor-pointer ${
                 currentTextIndex === 1 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
               }`}
-              onClick={() => handleDotClick(1)} />
+              onClick={() => setCurrentTextIndex(1)} />
             </div>
           </div>
           <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
@@ -375,7 +451,7 @@ const HomeScreen: NextPage = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">��</span>
+                              <span className="text-2xl">🇫🇷</span>
                               <span>Français</span>
                             </div>
                             {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
@@ -615,7 +691,7 @@ const HomeScreen: NextPage = () => {
                               <h4 className="text-white font-medium truncate">{t('Camisa Polo Clásica')}</h4>
                               <p className="text-gray-300 text-sm">{t('Talla: M, Color: Azul')}</p>
                               <div className="flex items-center justify-between mt-2">
-                                <span className="text-white font-bold">€29.99</span>
+                                <span className="text-white font-bold">{formatPrice(29.99)}</span>
                                 <div className="flex items-center gap-2">
                                   <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
                                     -
@@ -643,7 +719,7 @@ const HomeScreen: NextPage = () => {
                               <h4 className="text-white font-medium truncate">{t('Pantalón Chino')}</h4>
                               <p className="text-gray-300 text-sm">{t('Talla: 32, Color: Negro')}</p>
                               <div className="flex items-center justify-between mt-2">
-                                <span className="text-white font-bold">€45.99</span>
+                                <span className="text-white font-bold">{formatPrice(45.99)}</span>
                                 <div className="flex items-center gap-2">
                                   <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
                                     -
@@ -668,7 +744,7 @@ const HomeScreen: NextPage = () => {
                       <div className="mt-6 pt-4 border-t border-white/20">
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Subtotal:')}</span>
-                          <span className="text-white font-bold">€75.98</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
                         </div>
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Envío:')}</span>
@@ -676,7 +752,7 @@ const HomeScreen: NextPage = () => {
                         </div>
                         <div className="flex justify-between items-center mb-6 text-lg">
                           <span className="text-white font-bold">{t('Total:')}</span>
-                          <span className="text-white font-bold">€75.98</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
                         </div>
                         
                         <div className="space-y-3">
@@ -696,582 +772,464 @@ const HomeScreen: NextPage = () => {
           </div>
         </div>
       </div>
-      
-      {/* Main Images Section */}
-      <div className="self-stretch flex flex-col items-center justify-start h-screen">
-        <div className="self-stretch flex flex-row items-center justify-start h-full">
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/look-polo-2-1@2x.png"
-          />
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/797e7904b64e13508ab322be3107e368-1@2x.png"
-          />
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center">
+              <Image
+                className="w-[100px] h-[40px] object-contain"
+                width={100}
+                height={40}
+                alt="Logo"
+                src="/797e7904b64e13508ab322be3107e368-1@2x.png"
+              />
+            </Link>
+          </div>
+
+          {/* Navegación central */}
+          <div className="flex items-center space-x-8">
+            {/* Categorías dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowCategoriesDropdown(!showCategoriesDropdown)}
+                className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors duration-200"
+              >
+                <span className="font-medium tracking-[2px]">{t('CATEGORÍAS')}</span>
+                <Image
+                  className="w-4 h-4"
+                  width={16}
+                  height={16}
+                  alt="Dropdown"
+                  src="/more.svg"
+                />
+              </button>
+              
+              {showCategoriesDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-72 bg-black/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg z-50 p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 tracking-[2px]">{t('CATEGORÍAS')}</h3>
+                  <div className="space-y-2">
+                    <Link href="/catalogo" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                      <div className="flex items-center justify-between">
+                        <span>{t('Todas las categorías')}</span>
+                        <span className="text-gray-400">→</span>
+                      </div>
+                    </Link>
+                    <Link href="/catalogo?categoria=camisetas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                      <div className="flex items-center justify-between">
+                        <span>{t('Camisetas')}</span>
+                        <span className="text-gray-400">→</span>
+                      </div>
+                    </Link>
+                    <Link href="/catalogo?categoria=polos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                      <div className="flex items-center justify-between">
+                        <span>{t('Polos')}</span>
+                        <span className="text-gray-400">→</span>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Enlace al catálogo */}
+            <Link href="/catalogo" className="text-black hover:text-gray-700 transition-colors duration-200 font-medium tracking-[2px]">
+              {t('CATÁLOGO')}
+            </Link>
+          </div>
+
+          {/* Controles de usuario */}
+          <div className="flex items-center space-x-4">
+            {/* Idioma y moneda */}
+            <div className="relative" ref={languageDropdownRef}>
+              <button
+                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors duration-200"
+              >
+                <Image
+                  className="w-4 h-4"
+                  width={16}
+                  height={16}
+                  alt="Idioma"
+                  src="/icon.svg"
+                />
+              </button>
+              
+              {showLanguageDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-black/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg z-50 p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+                  
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-300 mb-2">{t('Idioma')}</h4>
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => changeLanguage('es')}
+                        className={`w-full text-left px-4 py-3 rounded-md transition-colors duration-200 ${
+                          currentLanguage === 'es' ? 'bg-gray-800 text-white' : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">🇪🇸</span>
+                            <span>Español</span>
+                          </div>
+                          {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => changeLanguage('en')}
+                        className={`w-full text-left px-4 py-3 rounded-md transition-colors duration-200 ${
+                          currentLanguage === 'en' ? 'bg-gray-800 text-white' : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">🇺🇸</span>
+                            <span>English</span>
+                          </div>
+                          {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-300 mb-2">{t('Moneda')}</h4>
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => changeCurrency('MXN')}
+                        className={`w-full text-left px-4 py-3 rounded-md transition-colors duration-200 ${
+                          currentCurrency === 'MXN' ? 'bg-gray-800 text-white' : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white">$</span>
+                            <span>MXN - Peso Mexicano</span>
+                          </div>
+                          {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => changeCurrency('USD')}
+                        className={`w-full text-left px-4 py-3 rounded-md transition-colors duration-200 ${
+                          currentCurrency === 'USD' ? 'bg-gray-800 text-white' : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white">$</span>
+                            <span>USD - Dólar Americano</span>
+                          </div>
+                          {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => changeCurrency('EUR')}
+                        className={`w-full text-left px-4 py-3 rounded-md transition-colors duration-200 ${
+                          currentCurrency === 'EUR' ? 'bg-gray-800 text-white' : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white">€</span>
+                            <span>EUR - Euro</span>
+                          </div>
+                          {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Login */}
+            <div className="relative" ref={loginDropdownRef}>
+              <button
+                onClick={() => setShowLoginDropdown(!showLoginDropdown)}
+                className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors duration-200"
+              >
+                <Image
+                  className="w-4 h-4"
+                  width={16}
+                  height={16}
+                  alt="Login"
+                  src="/icon1.svg"
+                />
+              </button>
+              
+              {showLoginDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-black/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg z-50 p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 tracking-[2px]">{t('INICIAR SESIÓN')}</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t('Correo electrónico')}</label>
+                      <input
+                        type="email"
+                        placeholder={t('Ingresa tu correo')}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t('Contraseña')}</label>
+                      <input
+                        type="password"
+                        placeholder={t('Ingresa tu contraseña')}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                      />
+                    </div>
+                    <button className="w-full bg-white text-black py-3 rounded-md hover:bg-gray-100 transition-colors duration-200 font-medium">
+                      {t('Iniciar Sesión')}
+                    </button>
+                    <div className="text-center">
+                      <a href="#" className="text-gray-300 hover:text-white text-sm">{t('¿Olvidaste tu contraseña?')}</a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Búsqueda */}
+            <div className="relative" ref={searchDropdownRef}>
+              <button
+                onClick={() => setShowSearchDropdown(!showSearchDropdown)}
+                className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors duration-200"
+              >
+                <Image
+                  className="w-4 h-4"
+                  width={16}
+                  height={16}
+                  alt="Búsqueda"
+                  src="/icon2.svg"
+                />
+              </button>
+              
+              {showSearchDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-black/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg z-50 p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 tracking-[2px]">{t('BUSCAR')}</h3>
+                  <div className="space-y-4">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        placeholder={t('Buscar productos...')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyPress={handleSearchKeyPress}
+                        className="flex-1 px-4 py-3 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                      />
+                      <button
+                        onClick={handleSearch}
+                        className="px-6 py-3 bg-white text-black rounded-md hover:bg-gray-100 transition-colors duration-200 font-medium"
+                      >
+                        {t('Buscar')}
+                      </button>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {t('Busca por nombre, categoría o marca')}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Carrito */}
+            <div className="relative" ref={cartDropdownRef}>
+              <button
+                onClick={() => setShowCartDropdown(!showCartDropdown)}
+                className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors duration-200"
+              >
+                <Image
+                  className="w-4 h-4"
+                  width={16}
+                  height={16}
+                  alt="Carrito"
+                  src="/icon3.svg"
+                />
+              </button>
+              
+              {showCartDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-black/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg z-50 p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 tracking-[2px]">{t('CARRITO')}</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-700">
+                      <div className="flex items-center space-x-3">
+                        <Image
+                          className="w-12 h-12 object-cover rounded"
+                          width={48}
+                          height={48}
+                          alt="Producto"
+                          src="/look-polo-2-1@2x.png"
+                        />
+                        <div>
+                          <p className="text-white font-medium">{t('Camiseta Básica')}</p>
+                          <p className="text-gray-400 text-sm">{t('Talla: M')}</p>
+                        </div>
+                      </div>
+                      <span className="text-white font-bold">{formatPrice(29.99)}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-700">
+                      <div className="flex items-center space-x-3">
+                        <Image
+                          className="w-12 h-12 object-cover rounded"
+                          width={48}
+                          height={48}
+                          alt="Producto"
+                          src="/sin-ttulo1-2@2x.png"
+                        />
+                        <div>
+                          <p className="text-white font-medium">{t('Polo Elegante')}</p>
+                          <p className="text-gray-400 text-sm">{t('Talla: L')}</p>
+                        </div>
+                      </div>
+                      <span className="text-white font-bold">{formatPrice(49.99)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                      <span className="text-white font-bold text-lg">{t('Total:')}</span>
+                      <span className="text-white font-bold text-lg">{formatPrice(79.98)}</span>
+                    </div>
+                    <button className="w-full bg-white text-black py-3 rounded-md hover:bg-gray-100 transition-colors duration-200 font-medium">
+                      {t('Ver Carrito Completo')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* Promociones Section */}
-      <div className="self-stretch flex flex-col items-start justify-start !p-4 text-[96px] min-h-0 flex-shrink-0">
-        <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden bg-gradient-to-br from-green-600 via-white to-black">
-          {/* Overlay para mejor legibilidad del texto */}
-          <div className="absolute inset-0 bg-black/30 rounded-[46px]"></div>
-          <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.8)] text-white">
-            {t('Promociones Especiales').split(' ')[0]}
-          </div>
-          <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.8)] text-white">
-            {t('Promociones Especiales').split(' ')[1]}
+      {/* Contenido principal del catálogo */}
+      <div className="self-stretch flex-1 flex flex-col items-center justify-start px-4 py-8 min-h-screen">
+        {/* Título de página */}
+        <div className="w-full max-w-7xl mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2 tracking-[2px]">{t('CATÁLOGO')}</h1>
+          <p className="text-gray-300 text-lg">{t('Descubre nuestra colección completa')}</p>
+        </div>
+
+        {/* Barra de búsqueda */}
+        <div className="w-full max-w-7xl mb-8">
+          <div className="flex items-center space-x-4">
+            <input
+              type="text"
+              placeholder={t('Buscar productos...')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
+              className="flex-1 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50"
+            />
+            <button
+              onClick={handleSearch}
+              className="px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200 font-medium"
+            >
+              {t('Buscar')}
+            </button>
           </div>
         </div>
-      </div>
-      <div className="self-stretch bg-gray-200 flex flex-col items-center justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 font-Body-Font-Family">
-        <div className="self-stretch h-[533px] overflow-x-auto shrink-0 flex flex-row items-start justify-center !pt-[79px] !pb-[79px] !pl-[70px] !pr-[70px] box-border gap-[68px]">
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
+
+        {/* Filtros */}
+        <div className="w-full max-w-7xl mb-8">
+          <div className="flex flex-wrap gap-4">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="Todas" className="text-black">{t('Todas las categorías')}</option>
+              <option value="Camisetas" className="text-black">{t('Camisetas')}</option>
+              <option value="Polos" className="text-black">{t('Polos')}</option>
+            </select>
+
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="Todas" className="text-black">{t('Todas las marcas')}</option>
+              <option value="Trebodeluxe" className="text-black">Trebodeluxe</option>
+            </select>
+
+            <select
+              value={selectedColor}
+              onChange={(e) => setSelectedColor(e.target.value)}
+              className="px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="Todos" className="text-black">{t('Todos los colores')}</option>
+              <option value="Azul" className="text-black">{t('Azul')}</option>
+              <option value="Blanco" className="text-black">{t('Blanco')}</option>
+              <option value="Negro" className="text-black">{t('Negro')}</option>
+            </select>
+
+            <select
+              value={selectedSize}
+              onChange={(e) => setSelectedSize(e.target.value)}
+              className="px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="Todas" className="text-black">{t('Todas las tallas')}</option>
+              <option value="S" className="text-black">S</option>
+              <option value="M" className="text-black">M</option>
+              <option value="L" className="text-black">L</option>
+              <option value="XL" className="text-black">XL</option>
+            </select>
           </div>
         </div>
-      </div>
-      <div className="self-stretch flex flex-col items-start justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 gap-[101px] text-center text-black">
-        <div className="self-stretch flex flex-row items-center justify-start">
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 1')}
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 2')}
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 3')}
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 4')}
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 5')}
-            </div>
-          </div>
-          <div className="flex-1 relative bg-gray-100 h-[90px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer">
-            <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center hover:text-white transition-colors duration-300">
-              {t('Categoria 6')}
-            </div>
-          </div>
-        </div>
-        <div className="self-stretch overflow-x-auto flex flex-row items-center justify-center !pt-[79px] !pb-[79px] !pl-[70px] !pr-[70px] gap-[68px] text-left text-white font-Body-Font-Family">
-          {/* First card - already has correct group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          {/* Second card - already has correct group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          {/* Third card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Fourth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Fifth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Sixth card - fix by adding group class and text colors */}
-          <div className="shadow-[0px_18px_13.1px_16px_rgba(0,_0,_0,_0.31)] rounded-Radius-200 bg-Background-Brand-Default border-forestgreen border-solid border-Stroke-Border box-border flex flex-col items-start justify-start !p-Space-400 gap-Space-400 min-w-[240px] hover:bg-[#1a6b1a] transition-colors duration-300 cursor-pointer group">
-            <Image
-              className="self-stretch max-w-full overflow-hidden h-[247px] shrink-0 object-cover"
-              width={208}
-              height={247}
-              sizes="100vw"
-              alt=""
-              src="/image@2x.png"
-            />
-            <div className="w-52 flex flex-col items-start justify-start gap-Space-200">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="flex-1 relative leading-[140%] text-white">Text</div>
-              </div>
-              <div className="flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white">$0</div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-start text-Body-Size-Small">
-                <div className="relative leading-[140%] text-gray-300">Body text.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-row items-start justify-start !pt-16 !pb-2 !pl-8 !pr-8 text-Text-Default-Tertiary font-Body-Font-Family">
-        <div className="flex flex-row items-start justify-start gap-[23px]">
-          <div className="w-60 flex flex-col items-start justify-start gap-Space-600 min-w-[240px]">
-            <Image
-              className="w-[50px] h-[50px]"
-              width={50}
-              height={50}
-              sizes="100vw"
-              alt="Logo Treboluxe"
-              src="/sin-ttulo1-2@2x.png"
-            />
-            <div className="flex flex-col items-start justify-start gap-4">
-              <p className="text-white text-sm leading-relaxed">
-                {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
-              </p>
-              <div className="flex flex-row items-center justify-start gap-Space-400">
-                <Image
-                  className="w-6 relative h-6 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Facebook"
-                  src="/figma.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Instagram"
-                  src="/logo-instagram.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Twitter/X"
-                  src="/x-logo.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="YouTube"
-                  src="/logo-youtube.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="LinkedIn"
-                  src="/linkedin.svg"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Compras')}
+
+        {/* Grid de productos */}
+        <div className="w-full max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <div key={product.id} className="bg-white/10 backdrop-blur-sm rounded-lg overflow-hidden hover:bg-white/20 transition-all duration-300 border border-white/20">
+                <div className="relative">
+                  <Image
+                    className="w-full h-64 object-cover"
+                    width={300}
+                    height={256}
+                    alt={product.name}
+                    src={product.image}
+                  />
+                  {product.isNew && (
+                    <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">
+                      {t('NUEVO')}
+                    </span>
+                  )}
+                  {product.discount > 0 && (
+                    <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                      -{product.discount}%
+                    </span>
+                  )}
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="text-white font-semibold mb-2">{t(product.name)}</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
+                      {product.originalPrice > product.price && (
+                        <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm text-gray-300 mb-3">
+                    <span>{t('Talla')}: {product.size}</span>
+                    <span>{t('Color')}: {t(product.color)}</span>
+                  </div>
+                  
+                  <button className="w-full bg-white text-black py-2 rounded-md hover:bg-gray-100 transition-colors duration-200 font-medium">
+                    {t('Agregar al Carrito')}
+                  </button>
                 </div>
               </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cómo comprar')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Métodos de pago')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Envíos y entregas')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cambios y devoluciones')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Tabla de tallas')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Gift cards')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Programa de fidelidad')}
-              </div>
-            </div>
+            ))}
           </div>
           
-          <div className="w-[262px] h-[204px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Categorías')}
-                </div>
-              </div>
+          {filteredProducts.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-300 text-lg">{t('No se encontraron productos que coincidan con tu búsqueda.')}</p>
             </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Mujer')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Hombre')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Niños')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Accesorios')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Calzado')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Nueva colección')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ofertas especiales')}
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Atención al cliente')}
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Contacto')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Preguntas frecuentes')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Centro de ayuda')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Chat en vivo')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Seguimiento de pedidos')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Reportar un problema')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ubicación de tiendas')}
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-[262px] flex flex-col items-start justify-start gap-Space-300">
-            <div className="self-stretch flex flex-col items-start justify-start !pt-0 !pb-Space-400 !pl-0 !pr-0">
-              <div className="self-stretch flex flex-row items-start justify-start">
-                <div className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Legal')}
-                </div>
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Términos y condiciones')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de privacidad')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de cookies')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Aviso legal')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sobre nosotros')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Trabaja con nosotros')}
-              </div>
-            </div>
-            <div className="w-full relative">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sostenibilidad')}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Copyright section */}
-        <div className="w-full mt-12 pt-8 border-t border-white/20">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-gray-400 text-sm">
-              {t('© 2024 Treboluxe. Todos los derechos reservados.')}
-            </div>
-            <div className="flex items-center gap-6 text-gray-400 text-sm">
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
-            </div>
-          </div>
-          <div className="mt-4 text-gray-400 text-xs">
-            {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default HomeScreen;
+export default CatalogoScreen;
