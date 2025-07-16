@@ -94,6 +94,20 @@ interface HomeImages {
   promosBannerImage: string;
 }
 
+interface SizeSystem {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  talla_1: string;
+  talla_2: string;
+  talla_3: string;
+  talla_4?: string;
+  talla_5?: string;
+  talla_6?: string;
+  talla_7?: string;
+  talla_8?: string;
+}
+
 const AdminPage: NextPage = () => {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -227,6 +241,48 @@ const AdminPage: NextPage = () => {
   ]);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
+
+  // Estados para Size Systems
+  const [sizeSystems, setSizeSystems] = useState<SizeSystem[]>([
+    {
+      id: 1,
+      nombre: "Tallas Estándar",
+      talla_1: "XS",
+      talla_2: "S",
+      talla_3: "M",
+      talla_4: "L",
+      talla_5: "XL",
+      talla_6: "XXL",
+      talla_7: "",
+      talla_8: ""
+    },
+    {
+      id: 2,
+      nombre: "Tallas Numéricas",
+      talla_1: "36",
+      talla_2: "38",
+      talla_3: "40",
+      talla_4: "42",
+      talla_5: "44",
+      talla_6: "46",
+      talla_7: "48",
+      talla_8: "50"
+    },
+    {
+      id: 3,
+      nombre: "Tallas de Calzado",
+      talla_1: "35",
+      talla_2: "36",
+      talla_3: "37",
+      talla_4: "38",
+      talla_5: "39",
+      talla_6: "40",
+      talla_7: "41",
+      talla_8: "42"
+    }
+  ]);
+  const [editingSizeSystem, setEditingSizeSystem] = useState<SizeSystem | null>(null);
+  const [showSizeSystemForm, setShowSizeSystemForm] = useState(false);
 
   // Verificar si el usuario es administrador
   useEffect(() => {
@@ -390,6 +446,53 @@ const AdminPage: NextPage = () => {
     }
   };
 
+  // Funciones para Size Systems CRUD
+  const saveSizeSystem = async (editingSystem: SizeSystem | null, formData: any) => {
+    try {
+      const sizeSystemData = {
+        nombre: formData.name,
+        descripcion: formData.description,
+        talla_1: formData.size1,
+        talla_2: formData.size2,
+        talla_3: formData.size3,
+        talla_4: formData.size4,
+        talla_5: formData.size5,
+        talla_6: formData.size6,
+        talla_7: formData.size7,
+        talla_8: formData.size8
+      };
+
+      if (editingSystem) {
+        const updatedSizeSystems = sizeSystems.map(s => 
+          s.id === editingSystem.id ? { ...sizeSystemData, id: editingSystem.id } : s
+        );
+        setSizeSystems(updatedSizeSystems);
+        console.log('Updating size system:', { ...sizeSystemData, id: editingSystem.id });
+      } else {
+        const newSizeSystem = { ...sizeSystemData, id: Date.now() };
+        setSizeSystems([...sizeSystems, newSizeSystem]);
+        console.log('Creating size system:', newSizeSystem);
+      }
+      alert(t('Sistema de tallas guardado correctamente'));
+    } catch (error) {
+      console.error('Error saving size system:', error);
+      alert(t('Error al guardar el sistema de tallas'));
+    }
+  };
+
+  const deleteSizeSystem = async (sizeSystemId: number) => {
+    if (confirm(t('¿Estás seguro de que quieres eliminar este sistema de tallas?'))) {
+      try {
+        setSizeSystems(sizeSystems.filter(s => s.id !== sizeSystemId));
+        console.log('Deleting size system:', sizeSystemId);
+        alert(t('Sistema de tallas eliminado correctamente'));
+      } catch (error) {
+        console.error('Error deleting size system:', error);
+        alert(t('Error al eliminar el sistema de tallas'));
+      }
+    }
+  };
+
   const renderSidebar = () => (
     <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
       <div className="p-6">
@@ -464,6 +567,16 @@ const AdminPage: NextPage = () => {
             }`}
           >
             📝 {t('Notas')}
+          </button>
+          <button
+            onClick={() => setActiveSection('sizes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'sizes' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📏 {t('Sistemas de Tallas')}
           </button>
         </nav>
       </div>
@@ -546,7 +659,8 @@ const AdminPage: NextPage = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
-          <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3>
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3
+          >
           
           <div className="space-y-6">
             <div>
@@ -1113,762 +1227,206 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  // Componentes de formularios
-  const PromoTextForm: React.FC<{
-    promoText: PromoText | null;
-    onSave: (promoText: Omit<PromoText, 'id'>) => void;
-    onCancel: () => void;
-  }> = ({ promoText, onSave, onCancel }) => {
+  const renderSizeSystems = () => {
+    const [showForm, setShowForm] = useState(false);
+    const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
     const [formData, setFormData] = useState({
-      text: promoText?.text || '',
-      isActive: promoText?.isActive ?? true,
-      order: promoText?.order || 1
+      name: '',
+      description: '',
+      size1: '',
+      size2: '',
+      size3: '',
+      size4: '',
+      size5: '',
+      size6: '',
+      size7: '',
+      size8: ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!formData.text.trim()) {
-        alert(t('El texto promocional es obligatorio'));
-        return;
-      }
-      onSave(formData);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Texto Promocional')}</label>
-          <textarea
-            value={formData.text}
-            onChange={(e) => setFormData({...formData, text: e.target.value})}
-            className="w-full bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors resize-none"
-            placeholder={t('Escribe el texto promocional que aparecerá en el carrusel del header')}
-            rows={3}
-            maxLength={100}
-            required
-          />
-          <div className="text-right text-gray-400 text-sm mt-1">
-            {formData.text.length}/100 {t('caracteres')}
-          </div>
-        </div>
-        
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Orden de Aparición')}</label>
-          <input
-            type="number"
-            value={formData.order}
-            onChange={(e) => setFormData({...formData, order: parseInt(e.target.value) || 1})}
-            className="w-full bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-            min="1"
-            placeholder={t('Orden de aparición (1, 2, 3...)')}
-          />
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <input
-            type="checkbox"
-            id="isActive"
-            checked={formData.isActive}
-            onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-            className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
-          />
-          <label htmlFor="isActive" className="text-white font-medium">
-            {t('Activo (aparecerá en el carrusel)')}
-          </label>
-        </div>
-        
-        <div className="flex justify-end space-x-4 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Guardar')}
-          </button>
-        </div>
-      </form>
-    );
-  };
-
-  const ProductForm: React.FC<{
-    product: Product | null;
-    onSave: (product: Omit<Product, 'id'>) => void;
-    onCancel: () => void;
-  }> = ({ product, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-      name: product?.name || '',
-      price: product?.price || 0,
-      originalPrice: product?.originalPrice || 0,
-      image: product?.image || '',
-      category: product?.category || '',
-      description: product?.description || '',
-      sizes: product?.sizes?.join(',') || '',
-      colors: product?.colors?.join(',') || '',
-      inStock: product?.inStock ?? true,
-      featured: product?.featured ?? false
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      onSave({
-        ...formData,
-        sizes: formData.sizes.split(',').map(s => s.trim()).filter(s => s),
-        colors: formData.colors.split(',').map(c => c.trim()).filter(c => c)
+    const handleEdit = (system: SizeSystem) => {
+      setEditingSystem(system);
+      setFormData({
+        name: system.nombre,
+        description: system.descripcion || '',
+        size1: system.talla_1,
+        size2: system.talla_2,
+        size3: system.talla_3,
+        size4: system.talla_4 || '',
+        size5: system.talla_5 || '',
+        size6: system.talla_6 || '',
+        size7: system.talla_7 || '',
+        size8: system.talla_8 || ''
       });
+      setShowForm(true);
     };
 
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Nombre del Producto')}</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Categoría')}</label>
-            <input
-              type="text"
-              value={formData.category}
-              onChange={(e) => setFormData({...formData, category: e.target.value})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Precio')}</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Precio Original')}</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.originalPrice}
-              onChange={(e) => setFormData({...formData, originalPrice: parseFloat(e.target.value)})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-white font-medium mb-2">{t('URL de Imagen')}</label>
-          <input
-            type="text"
-            value={formData.image}
-            onChange={(e) => setFormData({...formData, image: e.target.value})}
-            className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Descripción')}</label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white h-24 resize-none"
-            required
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Tallas (separadas por coma)')}</label>
-            <input
-              type="text"
-              value={formData.sizes}
-              onChange={(e) => setFormData({...formData, sizes: e.target.value})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-              placeholder="S, M, L, XL"
-            />
-          </div>
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Colores (separados por coma)')}</label>
-            <input
-              type="text"
-              value={formData.colors}
-              onChange={(e) => setFormData({...formData, colors: e.target.value})}
-              className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-              placeholder="Rojo, Azul, Verde"
-            />
-          </div>
-        </div>
-        <div className="flex items-center space-x-6">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={formData.inStock}
-              onChange={(e) => setFormData({...formData, inStock: e.target.checked})}
-              className="w-4 h-4"
-            />
-            <span className="text-white">{t('En Stock')}</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={formData.featured}
-              onChange={(e) => setFormData({...formData, featured: e.target.checked})}
-              className="w-4 h-4"
-            />
-            <span className="text-white">{t('Producto Destacado')}</span>
-          </label>
-        </div>
-        <div className="flex justify-end space-x-4 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Guardar')}
-          </button>
-        </div>
-      </form>
-    );
-  };
-
-  const PromotionForm: React.FC<{
-    promotion: Promotion | null;
-    onSave: (promotion: Omit<Promotion, 'id'>) => void;
-    onCancel: () => void;
-  }> = ({ promotion, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-      title: promotion?.title || '',
-      description: promotion?.description || '',
-      type: promotion?.type || 'percentage' as Promotion['type'],
-      
-      // Campos para descuento por porcentaje
-      discountPercentage: promotion?.discountPercentage || 0,
-      
-      // Campos para promoción por cantidad
-      quantityRequired: promotion?.quantityRequired || 2,
-      quantityFree: promotion?.quantityFree || 1,
-      
-      // Campos para código promocional
-      promoCode: promotion?.promoCode || '',
-      codeDiscountPercentage: promotion?.codeDiscountPercentage || 0,
-      codeDiscountAmount: promotion?.codeDiscountAmount || 0,
-      
-      // Aplicación
-      applicationType: promotion?.applicationType || 'all_products' as Promotion['applicationType'],
-      targetCategoryId: promotion?.targetCategoryId || '',
-      targetProductId: promotion?.targetProductId || 0,
-      
-      validFrom: promotion?.validFrom || '',
-      validTo: promotion?.validTo || '',
-      isActive: promotion?.isActive ?? true,
-      image: promotion?.image || '',
-      
-      // Límites de uso
-      usageLimit: promotion?.usageLimit || 0,
-      currentUsage: promotion?.currentUsage || 0,
-      minPurchaseAmount: promotion?.minPurchaseAmount || 0
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      
-      // Crear objeto limpio según el tipo de promoción
-      const baseData = {
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        applicationType: formData.applicationType,
-        validFrom: formData.validFrom,
-        validTo: formData.validTo,
-        isActive: formData.isActive,
-        image: formData.image,
-        currentUsage: formData.currentUsage
-      };
-      
-      let cleanedData: any = { ...baseData };
-      
-      // Agregar campos específicos según el tipo
-      if (formData.type === 'percentage') {
-        cleanedData.discountPercentage = formData.discountPercentage;
-      } else if (formData.type === 'quantity') {
-        cleanedData.quantityRequired = formData.quantityRequired;
-        cleanedData.quantityFree = formData.quantityFree;
-      } else if (formData.type === 'promo_code') {
-        cleanedData.promoCode = formData.promoCode;
-        if (formData.codeDiscountPercentage > 0) {
-          cleanedData.codeDiscountPercentage = formData.codeDiscountPercentage;
-        }
-        if (formData.codeDiscountAmount > 0) {
-          cleanedData.codeDiscountAmount = formData.codeDiscountAmount;
-        }
-        if (formData.usageLimit > 0) {
-          cleanedData.usageLimit = formData.usageLimit;
-        }
-        if (formData.minPurchaseAmount > 0) {
-          cleanedData.minPurchaseAmount = formData.minPurchaseAmount;
-        }
+      try {
+        await saveSizeSystem(editingSystem, formData);
+        setShowForm(false);
+        setEditingSystem(null);
+        setFormData({
+          name: '',
+          description: '',
+          size1: '',
+          size2: '',
+          size3: '',
+          size4: '',
+          size5: '',
+          size6: '',
+          size7: '',
+          size8: ''
+        });
+      } catch (error) {
+        console.error('Error saving size system:', error);
       }
-      
-      // Agregar campos de aplicación específicos
-      if (formData.applicationType === 'specific_category') {
-        cleanedData.targetCategoryId = formData.targetCategoryId;
-      } else if (formData.applicationType === 'specific_product') {
-        cleanedData.targetProductId = formData.targetProductId;
-      }
-      
-      onSave(cleanedData);
     };
 
     return (
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica */}
-        <div className="bg-black/20 rounded-lg p-4 space-y-4">
-          <h4 className="text-lg font-semibold text-white">{t('Información Básica')}</h4>
-          
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Título de la Promoción')}</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Descripción')}</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white h-24 resize-none focus:border-gray-400 focus:outline-none"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Tipo de promoción */}
-        <div className="bg-black/20 rounded-lg p-4 space-y-4">
-          <h4 className="text-lg font-semibold text-white">{t('Tipo de Promoción')}</h4>
-          
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Seleccionar Tipo')}</label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value as Promotion['type']})}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-            >
-              <option value="percentage">{t('Descuento por Porcentaje')}</option>
-              <option value="quantity">{t('Promoción por Cantidad (2x1, 3x2, etc.)')}</option>
-              <option value="promo_code">{t('Código Promocional')}</option>
-            </select>
-          </div>
-
-          {/* Campos específicos según el tipo */}
-          {formData.type === 'percentage' && (
-            <div>
-              <label className="block text-white font-medium mb-2">{t('Porcentaje de Descuento')}</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={formData.discountPercentage}
-                onChange={(e) => setFormData({...formData, discountPercentage: parseInt(e.target.value) || 0})}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                required
-              />
-            </div>
-          )}
-
-          {formData.type === 'quantity' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-white font-medium mb-2">{t('Cantidad Requerida')}</label>
-                <input
-                  type="number"
-                  min="2"
-                  value={formData.quantityRequired}
-                  onChange={(e) => setFormData({...formData, quantityRequired: parseInt(e.target.value) || 2})}
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-white font-medium mb-2">{t('Cantidad Gratis')}</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.quantityFree}
-                  onChange={(e) => setFormData({...formData, quantityFree: parseInt(e.target.value) || 1})}
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {formData.type === 'promo_code' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-white font-medium mb-2">{t('Código Promocional')}</label>
-                <input
-                  type="text"
-                  value={formData.promoCode}
-                  onChange={(e) => setFormData({...formData, promoCode: e.target.value.toUpperCase()})}
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  placeholder="Ej: SUMMER30"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">{t('Descuento (%)')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.codeDiscountPercentage}
-                    onChange={(e) => setFormData({...formData, codeDiscountPercentage: parseInt(e.target.value) || 0})}
-                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-medium mb-2">{t('Descuento ($)')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.codeDiscountAmount}
-                    onChange={(e) => setFormData({...formData, codeDiscountAmount: parseInt(e.target.value) || 0})}
-                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">{t('Límite de Uso')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.usageLimit}
-                    onChange={(e) => setFormData({...formData, usageLimit: parseInt(e.target.value) || 0})}
-                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                    placeholder="0 = ilimitado"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-medium mb-2">{t('Compra Mínima ($)')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.minPurchaseAmount}
-                    onChange={(e) => setFormData({...formData, minPurchaseAmount: parseInt(e.target.value) || 0})}
-                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Aplicación de la promoción */}
-        <div className="bg-black/20 rounded-lg p-4 space-y-4">
-          <h4 className="text-lg font-semibold text-white">{t('Aplicación de la Promoción')}</h4>
-          
-          <div>
-            <label className="block text-white font-medium mb-2">{t('Aplicar a')}</label>
-            <select
-              value={formData.applicationType}
-              onChange={(e) => setFormData({...formData, applicationType: e.target.value as Promotion['applicationType']})}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-            >
-              <option value="all_products">{t('Todos los Productos')}</option>
-              <option value="specific_category">{t('Categoría Específica')}</option>
-              <option value="specific_product">{t('Producto Específico')}</option>
-            </select>
-          </div>
-
-          {formData.applicationType === 'specific_category' && (
-            <div>
-              <label className="block text-white font-medium mb-2">{t('Categoría')}</label>
-              <select
-                value={formData.targetCategoryId}
-                onChange={(e) => setFormData({...formData, targetCategoryId: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                required
-              >
-                <option value="">{t('Seleccionar categoría...')}</option>
-                {availableCategories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {formData.applicationType === 'specific_product' && (
-            <div>
-              <label className="block text-white font-medium mb-2">{t('Producto')}</label>
-              <select
-                value={formData.targetProductId}
-                onChange={(e) => setFormData({...formData, targetProductId: parseInt(e.target.value) || 0})}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                required
-              >
-                <option value={0}>{t('Seleccionar producto...')}</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    #{product.id} - {product.name} (${product.price})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Fechas y configuración */}
-        <div className="bg-black/20 rounded-lg p-4 space-y-4">
-          <h4 className="text-lg font-semibold text-white">{t('Fechas y Configuración')}</h4>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-white font-medium mb-2">{t('Fecha de Inicio')}</label>
-              <input
-                type="date"
-                value={formData.validFrom}
-                onChange={(e) => setFormData({...formData, validFrom: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-white font-medium mb-2">{t('Fecha de Fin')}</label>
-              <input
-                type="date"
-                value={formData.validTo}
-                onChange={(e) => setFormData({...formData, validTo: e.target.value})}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-white font-medium mb-2">{t('URL de Imagen (opcional)')}</label>
-            <input
-              type="text"
-              value={formData.image}
-              onChange={(e) => setFormData({...formData, image: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none"
-            />
-          </div>
-          
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-                className="w-4 h-4"
-              />
-              <span className="text-white">{t('Promoción Activa')}</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="flex justify-end space-x-4 pt-4">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold text-white">{t('Sistemas de Tallas')}</h2>
           <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded transition-colors"
+            onClick={() => setShowForm(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            {t('Cancelar')}
-          </button>
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Guardar')}
+            + {t('Agregar Sistema')}
           </button>
         </div>
-      </form>
-    );
-  };
 
-  const NoteForm: React.FC<{
-    note: Note | null;
-    onSave: (note: Omit<Note, 'id' | 'createdAt'>) => void;
-    onCancel: () => void;
-  }> = ({ note, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-      title: note?.title || '',
-      content: note?.content || '',
-      priority: note?.priority || 'medium' as const
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      onSave(formData);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Título de la Nota')}</label>
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
-            className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Contenido')}</label>
-          <textarea
-            value={formData.content}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
-            className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white h-32 resize-none"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-white font-medium mb-2">{t('Prioridad')}</label>
-          <select
-            value={formData.priority}
-            onChange={(e) => setFormData({...formData, priority: e.target.value as 'low' | 'medium' | 'high'})}
-            className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white"
-          >
-            <option value="low">{t('Baja')}</option>
-            <option value="medium">{t('Media')}</option>
-            <option value="high">{t('Alta')}</option>
-          </select>
-        </div>
-        <div className="flex justify-end space-x-4 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
-          >
-            {t('Guardar')}
-          </button>
-        </div>
-      </form>
-    );
-  };
-
-  const renderNotes = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white">{t('Gestión de Notas')}</h2>
-        <button
-          onClick={() => {
-            setEditingNote(null);
-            setShowNoteForm(true);
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-        >
-          + {t('Nueva Nota')}
-        </button>
-      </div>
-
-      {/* Lista de notas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {notes.map(note => (
-          <div key={note.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <div className="flex justify-between items-start mb-3">
-              <h3 className="text-lg font-semibold text-white">{note.title}</h3>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                note.priority === 'high' ? 'bg-red-500/20 text-red-300' :
-                note.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
-                'bg-green-500/20 text-green-300'
-              }`}>
-                {note.priority === 'high' ? t('Alta') : 
-                 note.priority === 'medium' ? t('Media') : t('Baja')}
-              </span>
-            </div>
-            <p className="text-gray-300 mb-4 line-clamp-3">{note.content}</p>
-            <div className="text-xs text-gray-400 mb-4">
-              {t('Creada')}: {new Date(note.createdAt).toLocaleDateString()}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => {
-                  setEditingNote(note);
-                  setShowNoteForm(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
-              >
-                {t('Editar')}
-              </button>
-              <button
-                onClick={() => deleteNote(note.id)}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
-              >
-                {t('Eliminar')}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Formulario de nota */}
-      {showNoteForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-4">
-              {editingNote ? t('Editar Nota') : t('Nueva Nota')}
+        {showForm && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <h3 className="text-xl font-semibold text-white mb-4">
+              {editingSystem ? t('Editar Sistema') : t('Nuevo Sistema')}
             </h3>
-            <NoteForm
-              note={editingNote}
-              onSave={(noteData) => {
-                if (editingNote) {
-                  const updatedNotes = notes.map(n => 
-                    n.id === editingNote.id ? { ...noteData, id: editingNote.id, createdAt: editingNote.createdAt } : n
-                  );
-                  setNotes(updatedNotes);
-                } else {
-                  const newNote: Note = {
-                    ...noteData,
-                    id: Date.now(),
-                    createdAt: new Date().toISOString()
-                  };
-                  setNotes([...notes, newNote]);
-                }
-                setShowNoteForm(false);
-              }}
-              onCancel={() => setShowNoteForm(false)}
-            />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Nombre del Sistema')}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Descripción')}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                  <div key={num}>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t(`Talla ${num}`)}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData[`size${num}` as keyof typeof formData]}
+                      onChange={(e) => setFormData({...formData, [`size${num}`]: e.target.value})}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+                      placeholder={`Ej: ${num === 1 ? 'XS' : num === 2 ? 'S' : num === 3 ? 'M' : num === 4 ? 'L' : num === 5 ? 'XL' : num === 6 ? 'XXL' : num === 7 ? 'XXXL' : 'XXXXL'}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  {editingSystem ? t('Actualizar') : t('Guardar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingSystem(null);
+                    setFormData({
+                      name: '',
+                      description: '',
+                      size1: '',
+                      size2: '',
+                      size3: '',
+                      size4: '',
+                      size5: '',
+                      size6: '',
+                      size7: '',
+                      size8: ''
+                    });
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  {t('Cancelar')}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Sistemas Existentes')}</h3>
+          <div className="space-y-4">
+            {sizeSystems.map(system => (
+              <div key={system.id} className="bg-black/30 rounded-lg p-4 border border-white/10">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="text-lg font-medium text-white">{system.nombre}</h4>
+                    <p className="text-gray-300 text-sm">{system.descripcion}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(system)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                    >
+                      {t('Editar')}
+                    </button>
+                    <button
+                      onClick={() => deleteSizeSystem(system.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                    >
+                      {t('Eliminar')}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {[system.talla_1, system.talla_2, system.talla_3, system.talla_4, system.talla_5, system.talla_6, system.talla_7, system.talla_8]
+                    .filter(size => size && size.trim() !== '')
+                    .map((size, index) => (
+                      <span
+                        key={index}
+                        className="bg-green-600/20 text-green-400 px-2 py-1 rounded text-sm border border-green-600/30"
+                      >
+                        {size}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            ))}
+            {sizeSystems.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                {t('No hay sistemas de tallas configurados')}
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -1886,6 +1444,8 @@ const AdminPage: NextPage = () => {
         return renderOrders();
       case 'notes':
         return renderNotes();
+      case 'sizes':
+        return renderSizeSystems();
       default:
         return renderDashboard();
     }
