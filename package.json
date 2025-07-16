@@ -24,8 +24,9 @@
     "build": "next build",
     "dev": "next dev -H 0.0.0.0",
     "lint": "next lint",
-    "start": "next start",
-    "start:prod": "next start -H 0.0.0.0 -p ${PORT:-3000}"
+    "start": "next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "start:prod": "next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "serve": "next start -H 0.0.0.0 -p ${PORT:-10000}"
   },
   "version": "0.1.0",
   "engines": {
