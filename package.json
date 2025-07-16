@@ -25,7 +25,12 @@
     "build": "next build",
     "dev": "next dev -H 0.0.0.0",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "start:prod": "next start -p $PORT"
   },
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
 }

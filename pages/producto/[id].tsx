@@ -1,35 +1,58 @@
-import type { NextPage } from "next";
-import Image from "next/image";
-import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
-import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
-import { useAuth } from "../contexts/AuthContext";
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
+import { NextPage } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
+import { useAuth } from '../../contexts/AuthContext';
 
-// Definir el tipo para los productos
 interface Product {
   id: number;
   name: string;
   price: number;
-  originalPrice: number;
+  originalPrice?: number;
   image: string;
   category: string;
   brand: string;
   color: string;
   size: string;
   inStock: boolean;
+  description?: string;
+  features?: string[];
+  materials?: string[];
+  sizes?: string[];
+  colors?: string[];
 }
 
-const HomeScreen: NextPage = () => {
+const ProductPage: NextPage = () => {
+  const router = useRouter();
+  const { id } = router.query;
+  const { user, logout } = useAuth();
+  
+  // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
-  const [selectedCategory, setSelectedCategory] = useState("Camisetas");
+  
+  // Sistema de traducción universal
+  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  
+  // Estados específicos del producto
+  const [product, setProduct] = useState<Product | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
+  const [quantity, setQuantity] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const loginDropdownRef = useRef<HTMLDivElement>(null);
@@ -37,37 +60,77 @@ const HomeScreen: NextPage = () => {
   const cartDropdownRef = useRef<HTMLDivElement>(null);
   const adminDropdownRef = useRef<HTMLDivElement>(null);
   
-  // Usar el hook de traducción universal y autenticación
-  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
-  const { user, isAuthenticated, logout } = useAuth();
-  
-  // Carrusel de texto
+  // Estados para el carrusel del header
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Textos originales en español - se traducirán automáticamente
+  // Textos del carrusel
   const promoTexts = [
-    "Agrega 4 productos y paga 2",
-    "2x1 en gorras"
+    "ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN",
+    "OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA"
   ];
 
-  // Estado para las imágenes del administrador (simulado - en producción vendría de una API)
-  const [adminImages] = useState({
-    heroImage1: '/797e7904b64e13508ab322be3107e368-1@2x.png',
-    heroImage2: '/look-polo-2-1@2x.png',
-    promosBannerImage: '/promociones-playa.jpg'
-  });
+  // Datos de productos simulados
+  const products: Product[] = [
+    {
+      id: 1,
+      name: "Camiseta Básica Premium",
+      price: 24.99,
+      originalPrice: 29.99,
+      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      category: "Camisetas",
+      brand: "TreboLuxe",
+      color: "Blanco",
+      size: "M",
+      inStock: true,
+      description: "Camiseta básica de algodón 100% premium, perfecta para el uso diario. Diseño clásico y cómodo que combina con cualquier outfit.",
+      features: [
+        "Algodón 100% premium",
+        "Corte clásico",
+        "Cuello redondo",
+        "Manga corta",
+        "Lavable a máquina"
+      ],
+      materials: ["100% Algodón orgánico"],
+      sizes: ["XS", "S", "M", "L", "XL", "XXL"],
+      colors: ["Blanco", "Negro", "Gris", "Azul marino"]
+    },
+    {
+      id: 2,
+      name: "Pantalón Chino Classic",
+      price: 48.99,
+      originalPrice: 59.99,
+      image: "/sin-ttulo1-2@2x.png",
+      category: "Pantalones",
+      brand: "ClassicFit",
+      color: "Beige",
+      size: "32",
+      inStock: true,
+      description: "Pantalón chino clásico de corte moderno. Ideal para looks casuales y semi-formales.",
+      features: [
+        "Corte moderno",
+        "Tela stretch",
+        "Cintura ajustable",
+        "Bolsillos funcionales",
+        "Resistente al desgaste"
+      ],
+      materials: ["97% Algodón", "3% Elastano"],
+      sizes: ["28", "30", "32", "34", "36", "38"],
+      colors: ["Beige", "Negro", "Azul marino", "Gris"]
+    }
+  ];
 
-  // Función para cambiar idioma
-  const changeLanguage = (lang: string) => {
-    setCurrentLanguage(lang);
-    localStorage.setItem('preferred-language', lang);
+  // Funciones para cambiar idioma y moneda
+  const changeLanguage = (newLanguage: string) => {
+    setCurrentLanguage(newLanguage);
+    localStorage.setItem('preferred-language', newLanguage);
+    setShowLanguageDropdown(false);
   };
 
-  // Función para cambiar moneda
-  const changeCurrency = (currency: string) => {
-    setCurrentCurrency(currency);
-    localStorage.setItem('preferred-currency', currency);
+  const changeCurrency = (newCurrency: string) => {
+    setCurrentCurrency(newCurrency);
+    localStorage.setItem('preferred-currency', newCurrency);
+    setShowLanguageDropdown(false);
   };
 
   // Función para formatear precio con la moneda seleccionada
@@ -90,209 +153,47 @@ const HomeScreen: NextPage = () => {
     return `${symbol}${convertedPrice}`;
   };
 
-  // Función para filtrar productos por categoría
-  const getFilteredProducts = () => {
-    return featuredProducts.filter(product => product.category === selectedCategory);
+  // Función para manejar la búsqueda
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
+    }
   };
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Camiseta Básica Premium",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "Treboluxe",
-      color: "Azul",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Polo Clásico Elegante",
-      price: 49.99,
-      originalPrice: 59.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "Treboluxe",
-      color: "Blanco",
-      size: "L",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Camiseta Deportiva Pro",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "SportLine",
-      color: "Negro",
-      size: "S",
-      inStock: true
-    },
-    {
-      id: 4,
-      name: "Camisa Casual Moderna",
-      price: 55.99,
-      originalPrice: 69.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Camisas",
-      brand: "Premium",
-      color: "Azul",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 5,
-      name: "Polo Vintage Retro",
-      price: 42.99,
-      originalPrice: 52.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Polos",
-      brand: "Treboluxe",
-      color: "Verde",
-      size: "L",
-      inStock: false
-    },
-    {
-      id: 6,
-      name: "Camiseta Gráfica Limitada",
-      price: 38.99,
-      originalPrice: 48.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Camisetas",
-      brand: "Limited",
-      color: "Blanco",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 7,
-      name: "Camisa Oxford Formal",
-      price: 62.99,
-      originalPrice: 79.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisas",
-      brand: "Premium",
-      color: "Blanco",
-      size: "L",
-      inStock: true
-    },
-    {
-      id: 8,
-      name: "Polo Deportivo Tech",
-      price: 45.99,
-      originalPrice: 55.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "SportLine",
-      color: "Azul",
-      size: "XL",
-      inStock: true
-    },
-    // Zapatos
-    {
-      id: 9,
-      name: "Zapatos Deportivos Running",
-      price: 89.99,
-      originalPrice: 109.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Zapatos",
-      brand: "RunTech",
-      color: "Negro",
-      size: "42",
-      inStock: true
-    },
-    {
-      id: 10,
-      name: "Zapatos Casuales Urban",
-      price: 75.99,
-      originalPrice: 95.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Zapatos",
-      brand: "UrbanStyle",
-      color: "Marrón",
-      size: "41",
-      inStock: true
-    },
-    // Gorras
-    {
-      id: 11,
-      name: "Gorra Baseball Classic",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Gorras",
-      brand: "SportCap",
-      color: "Negro",
-      size: "Ajustable",
-      inStock: true
-    },
-    {
-      id: 12,
-      name: "Gorra Snapback Street",
-      price: 28.99,
-      originalPrice: 35.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Gorras",
-      brand: "StreetWear",
-      color: "Azul",
-      size: "Ajustable",
-      inStock: false
-    },
-    // Accesorios
-    {
-      id: 13,
-      name: "Reloj Deportivo Smart",
-      price: 159.99,
-      originalPrice: 199.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Accesorios",
-      brand: "TechTime",
-      color: "Negro",
-      size: "Universal",
-      inStock: true
-    },
-    {
-      id: 14,
-      name: "Mochila Urban Explorer",
-      price: 65.99,
-      originalPrice: 79.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Accesorios",
-      brand: "Explorer",
-      color: "Gris",
-      size: "Grande",
-      inStock: true
-    },
-    // Pantalones
-    {
-      id: 15,
-      name: "Jeans Slim Fit",
-      price: 55.99,
-      originalPrice: 69.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Pantalones",
-      brand: "DenimCo",
-      color: "Azul",
-      size: "32",
-      inStock: true
-    },
-    {
-      id: 16,
-      name: "Pantalón Chino Classic",
-      price: 48.99,
-      originalPrice: 59.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Pantalones",
-      brand: "ClassicFit",
-      color: "Beige",
-      size: "34",
-      inStock: true
+  // Función para manejar Enter en el input
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
-  ];
+  };
+
+  // Función para cambiar manualmente el texto del carrusel
+  const handleDotClick = (index: number) => {
+    if (index !== currentTextIndex) {
+      setIsAnimating(true);
+      
+      setTimeout(() => {
+        setCurrentTextIndex(index);
+        setIsAnimating(false);
+      }, 300);
+    }
+  };
+
+  // Cargar producto basado en el ID
+  useEffect(() => {
+    if (id) {
+      setLoading(true);
+      setTimeout(() => {
+        const foundProduct = products.find(p => p.id === parseInt(id as string));
+        if (foundProduct) {
+          setProduct(foundProduct);
+          setSelectedSize(foundProduct.size);
+          setSelectedColor(foundProduct.color);
+        }
+        setLoading(false);
+      }, 500);
+    }
+  }, [id]);
 
   // Cargar preferencias guardadas
   useEffect(() => {
@@ -302,6 +203,22 @@ const HomeScreen: NextPage = () => {
     if (savedCurrency) setCurrentCurrency(savedCurrency);
   }, []);
 
+  // Efecto para el carrusel de texto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      
+      setTimeout(() => {
+        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
+        setIsAnimating(false);
+      }, 300);
+      
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [promoTexts.length]);
+
+  // Event listeners para cerrar dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -329,7 +246,6 @@ const HomeScreen: NextPage = () => {
       setShowCartDropdown(false);
     };
 
-    // Agregar event listeners una sola vez
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('scroll', handleScroll);
 
@@ -337,53 +253,48 @@ const HomeScreen: NextPage = () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []); // Dependencias vacías para ejecutar solo una vez
+  }, []);
 
-  // Efecto para el carrusel de texto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
-        setIsAnimating(false);
-      }, 300); // Duración del fade-out
-      
-    }, 3000); // Cambia cada 3 segundos
-
-    return () => clearInterval(interval);
-  }, [promoTexts.length]);
-
-  // Función para cambiar manualmente el texto
-  const handleDotClick = (index: number) => {
-    if (index !== currentTextIndex) {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex(index);
-        setIsAnimating(false);
-      }, 300);
-    }
+  const handleAddToCart = () => {
+    if (!product || !selectedSize || !selectedColor) return;
+    alert(t('Producto agregado al carrito'));
   };
 
-  // Función para manejar la búsqueda
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
-    }
+  const handleBuyNow = () => {
+    if (!product || !selectedSize || !selectedColor) return;
+    router.push('/checkout');
   };
 
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+  if (loading) {
+    return (
+      <div className="w-full relative [background:linear-gradient(180deg,_#000,_#1a6b1a)] min-h-screen flex items-center justify-center text-white">
+        <div className="text-xl">{t('Cargando...')}</div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="w-full relative [background:linear-gradient(180deg,_#000,_#1a6b1a)] min-h-screen flex items-center justify-center text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-4">{t('Producto no encontrado')}</h1>
+          <Link 
+            href="/"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
+          >
+            {t('Volver al inicio')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
+      
       {/* Indicador de traducción */}
       {isTranslating && (
         <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-green-600 to-green-400 z-50">
@@ -391,11 +302,13 @@ const HomeScreen: NextPage = () => {
         </div>
       )}
       
+      {/* Header igual al del index */}
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">          <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-            <span className="text-white">{t('TREBOLUXE')}</span>
-          </div>
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
+            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+              <span className="text-white">{t('TREBOLUXE')}</span>
+            </div>
             
             {/* Contenido central - texto del carrusel */}
             <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
@@ -627,7 +540,7 @@ const HomeScreen: NextPage = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">��</span>
+                              <span className="text-2xl">🇫🇷</span>
                               <span>Français</span>
                             </div>
                             {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
@@ -696,7 +609,7 @@ const HomeScreen: NextPage = () => {
               </div>
               
               {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
-              {isAuthenticated && user && (
+              {user && (
                 <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
@@ -787,7 +700,7 @@ const HomeScreen: NextPage = () => {
                   showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    {isAuthenticated && user ? (
+                    {user ? (
                       // Usuario logueado
                       <div className="p-6">
                         <div className="text-center mb-6">
@@ -925,25 +838,25 @@ const HomeScreen: NextPage = () => {
                         <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
                         <div className="flex flex-wrap gap-2">
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Camisas'}
+                            onClick={() => router.push('/catalogo?busqueda=Camisas')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Camisas')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Pantalones'}
+                            onClick={() => router.push('/catalogo?busqueda=Pantalones')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Pantalones')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Vestidos'}
+                            onClick={() => router.push('/catalogo?busqueda=Vestidos')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Vestidos')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Zapatos'}
+                            onClick={() => router.push('/catalogo?busqueda=Zapatos')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Zapatos')}
@@ -1000,7 +913,7 @@ const HomeScreen: NextPage = () => {
                               <h4 className="text-white font-medium truncate">{t('Camisa Polo Clásica')}</h4>
                               <p className="text-gray-300 text-sm">{t('Talla: M, Color: Azul')}</p>
                               <div className="flex items-center justify-between mt-2">
-                                <span className="text-white font-bold">€29.99</span>
+                                <span className="text-white font-bold">{formatPrice(29.99)}</span>
                                 <div className="flex items-center gap-2">
                                   <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
                                     -
@@ -1015,7 +928,7 @@ const HomeScreen: NextPage = () => {
                             <button className="text-red-400 hover:text-red-300 transition-colors">
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                            </svg>
                             </button>
                           </div>
                         </div>
@@ -1028,7 +941,7 @@ const HomeScreen: NextPage = () => {
                               <h4 className="text-white font-medium truncate">{t('Pantalón Chino')}</h4>
                               <p className="text-gray-300 text-sm">{t('Talla: 32, Color: Negro')}</p>
                               <div className="flex items-center justify-between mt-2">
-                                <span className="text-white font-bold">€45.99</span>
+                                <span className="text-white font-bold">{formatPrice(45.99)}</span>
                                 <div className="flex items-center gap-2">
                                   <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
                                     -
@@ -1053,7 +966,7 @@ const HomeScreen: NextPage = () => {
                       <div className="mt-6 pt-4 border-t border-white/20">
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Subtotal:')}</span>
-                          <span className="text-white font-bold">€75.98</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
                         </div>
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Envío:')}</span>
@@ -1061,7 +974,7 @@ const HomeScreen: NextPage = () => {
                         </div>
                         <div className="flex justify-between items-center mb-6 text-lg">
                           <span className="text-white font-bold">{t('Total:')}</span>
-                          <span className="text-white font-bold">€75.98</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
                         </div>
                         
                         <div className="space-y-3">
@@ -1084,376 +997,334 @@ const HomeScreen: NextPage = () => {
             </div>
           </div>
         </div>
-      
-      {/* Main Images Section */}
-      <div className="self-stretch flex flex-col items-center justify-start h-screen">
-        <div className="self-stretch flex flex-row items-center justify-start h-full">
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/look-polo-2-1@2x.png"
-          />
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/797e7904b64e13508ab322be3107e368-1@2x.png"
-          />
-        </div>
       </div>
-      
-      {/* Promociones Section */}
-      <div className="self-stretch flex flex-col items-start justify-start !p-4 text-[96px] min-h-0 flex-shrink-0">
-        <Link href="/catalogo?filter=promociones" className="no-underline w-full">
-          <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group">
-            {/* Imagen de fondo */}
-            <div className="absolute inset-0 rounded-[46px] overflow-hidden">
+
+      {/* Contenido principal del producto */}
+      <div className="flex-1 container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
+          <Link href="/" className="hover:text-white transition-colors no-underline text-gray-400">{t('Inicio')}</Link>
+          <span>/</span>
+          <Link href="/catalogo" className="hover:text-white transition-colors no-underline text-gray-400">{t('Catálogo')}</Link>
+          <span>/</span>
+          <span className="text-white">{t(product.name)}</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Imagen del producto */}
+          <div className="space-y-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 border border-white/20">
               <Image
-                src={adminImages.promosBannerImage}
-                alt="Banner Promociones"
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                priority
+                src={product.image}
+                alt={product.name}
+                width={500}
+                height={500}
+                className="w-full h-auto object-contain"
               />
             </div>
-            
-            {/* Overlay para mejor legibilidad del texto */}
-            <div className="absolute inset-0 bg-black/40 rounded-[46px] group-hover:bg-black/30 transition-all duration-300"></div>
-            
-            {/* Contenido de texto */}
-            <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
-              {t('Promociones Especiales').split(' ')[0]}
-            </div>
-            <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
-              {t('Promociones Especiales').split(' ')[1]}
-            </div>
-            
-            {/* Botón de acción en hover */}
-            <div className="absolute bottom-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="bg-green-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 shadow-lg">
-                <span>{t('Ver todas las promociones')}</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
-            
-            {/* Indicador visual de promoción */}
-            <div className="absolute top-8 right-8 z-10">
-              <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
-                🔥 {t('HOT')}
-              </div>
-            </div>
           </div>
-        </Link>
-      </div>
 
-      {/* Sección de productos destacados */}
-      <div className="self-stretch bg-transparent flex flex-col items-center justify-start !py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
-        <div className="w-full">
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('PRODUCTOS DESTACADOS')}</h2>
-            <p className="text-gray-300 text-lg">{t('Descubre nuestra selección especial')}</p>
-          </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {featuredProducts.slice(0, 6).map((product) => (
-              <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                  <div className="relative mb-4">
-                    <Image
-                      className="w-full h-64 object-cover rounded-lg"
-                      width={300}
-                      height={256}
-                      src={product.image}
-                      alt={product.name}
-                    />
-                    {!product.inStock && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <span className="text-white font-bold text-lg">{t('Agotado')}</span>
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                  <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                  <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
-                    </div>
-                  </div>
-                  
+          {/* Información del producto */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2 text-white">{t(product.name)}</h1>
+              <p className="text-gray-400 mb-4">{t(product.brand)}</p>
+              
+              <div className="flex items-center space-x-4 mb-6">
+                <span className="text-3xl font-bold text-green-400">
+                  {formatPrice(product.price)}
+                </span>
+                {product.originalPrice && (
+                  <span className="text-xl text-gray-500 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-gray-300 leading-relaxed text-lg">
+                {t(product.description || '')}
+              </p>
+            </div>
+
+            {/* Estado de stock */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${product.inStock ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <span className="text-sm">
+                {product.inStock ? t('En stock') : t('Agotado')}
+              </span>
+            </div>
+
+            {/* Selecciones */}
+            <div className="space-y-6">
+              {/* Talla */}
+              <div>
+                <label className="block text-sm font-medium mb-3 text-white">
+                  {t('Talla')}
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes?.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`px-4 py-2 rounded-lg backdrop-blur-md transition-all duration-300 ${
+                        selectedSize === size
+                          ? 'bg-black/60 border-2 border-green-400 text-green-400 font-bold shadow-lg shadow-green-400/20'
+                          : 'bg-black/40 border border-white/20 text-white hover:bg-black/60 hover:border-green-400/50 hover:text-white'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block text-sm font-medium mb-3 text-white">
+                  {t('Color')}
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {product.colors?.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-4 py-2 rounded-lg backdrop-blur-md transition-all duration-300 ${
+                        selectedColor === color
+                          ? 'bg-black/60 border-2 border-green-400 text-green-400 font-bold shadow-lg shadow-green-400/20'
+                          : 'bg-black/40 border border-white/20 text-white hover:bg-black/60 hover:border-green-400/50 hover:text-white'
+                      }`}
+                    >
+                      {t(color)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cantidad */}
+              <div>
+                <label className="block text-sm font-medium mb-3 text-white">
+                  {t('Cantidad')}
+                </label>
+                <div className="flex items-center space-x-3">
                   <button
-                    disabled={!product.inStock}
-                    className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
-                      product.inStock 
-                        ? 'bg-white text-black hover:bg-gray-100' 
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (product.inStock) {
-                        // Aquí puedes agregar la lógica para añadir al carrito
-                        console.log('Producto añadido al carrito:', product.name);
-                      }
-                    }}
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-12 h-12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg flex items-center justify-center hover:bg-black/70 hover:border-green-400/50 transition-all duration-300 text-white hover:text-white text-xl font-bold"
                   >
-                    {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                    -
+                  </button>
+                  <span className="w-16 text-center text-white text-lg font-medium bg-black/50 backdrop-blur-md py-2 rounded-lg border border-white/20">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-12 h-12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg flex items-center justify-center hover:bg-black/70 hover:border-green-400/50 transition-all duration-300 text-white hover:text-white text-xl font-bold"
+                  >
+                    +
                   </button>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+              </div>
+            </div>
 
-      <div className="self-stretch flex flex-col items-start justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 gap-[101px] text-center text-black">
-        <div className="self-stretch flex flex-row items-center justify-start">
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Camisetas' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Camisetas')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Camisetas' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Camisetas')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Polos' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Polos')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Polos' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Polos')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Zapatos' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Zapatos')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Zapatos' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Zapatos')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Gorras' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Gorras')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Gorras' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Gorras')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Accesorios' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Accesorios')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Accesorios' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Accesorios')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Pantalones' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Pantalones')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Pantalones' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Pantalones')}
+            {/* Botones de acción */}
+            <div className="space-y-4">
+              <button
+                onClick={handleAddToCart}
+                disabled={!selectedSize || !selectedColor || !product.inStock}
+                className="w-full bg-black/50 backdrop-blur-md border border-white/30 disabled:bg-black/30 disabled:cursor-not-allowed disabled:text-gray-500 text-white py-4 rounded-lg font-medium transition-all duration-300 text-lg hover:bg-black/70 hover:border-green-400/50 hover:shadow-lg hover:shadow-white/10"
+              >
+                {product.inStock ? t('Agregar al carrito') : t('Agotado')}
+              </button>
+              
+              <button
+                onClick={handleBuyNow}
+                disabled={!selectedSize || !selectedColor || !product.inStock}
+                className="w-full bg-black/60 backdrop-blur-md border border-green-400/40 disabled:bg-black/30 disabled:cursor-not-allowed disabled:text-gray-500 text-white py-4 rounded-lg font-medium transition-all duration-300 text-lg hover:bg-black/80 hover:border-green-400/60 hover:text-green-300 hover:shadow-lg hover:shadow-green-400/20"
+              >
+                {t('Comprar ahora')}
+              </button>
             </div>
           </div>
         </div>
 
-      </div>
+        {/* Información adicional */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Características */}
+          {product.features && product.features.length > 0 && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">{t('Características')}</h3>
+              <ul className="space-y-3">
+                {product.features.map((feature, index) => (
+                  <li key={index} className="flex items-start space-x-3">
+                    <span className="text-green-400 mt-1 text-lg">•</span>
+                    <span className="text-gray-300">{t(feature)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-      {/* Sección de productos por categoría */}
-      <div className="self-stretch bg-transparent flex flex-col items-center justify-start !py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
-        <div className="w-full">
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t(selectedCategory.toUpperCase())}</h2>
-            <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t(selectedCategory.toLowerCase())}</p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {getFilteredProducts().slice(0, 6).map((product) => (
-              <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                  <div className="relative mb-4">
-                    <Image
-                      className="w-full h-64 object-cover rounded-lg"
-                      width={300}
-                      height={256}
-                      src={product.image}
-                      alt={product.name}
-                    />
-                    {!product.inStock && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <span className="text-white font-bold text-lg">{t('Agotado')}</span>
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                  <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                  <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    disabled={!product.inStock}
-                    className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
-                      product.inStock 
-                        ? 'bg-white text-black hover:bg-gray-100' 
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (product.inStock) {
-                        // Aquí puedes agregar la lógica para añadir al carrito
-                        console.log('Producto añadido al carrito:', product.name);
-                      }
-                    }}
-                  >
-                    {product.inStock ? t('Añadir al carrito') : t('Agotado')}
-                  </button>
-                </div>
-              </Link>
-            ))}
-          </div>
-          
-          {getFilteredProducts().length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-300 text-lg">{t('No hay productos disponibles en esta categoría.')}</p>
+          {/* Materiales */}
+          {product.materials && product.materials.length > 0 && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">{t('Materiales')}</h3>
+              <ul className="space-y-3">
+                {product.materials.map((material, index) => (
+                  <li key={index} className="flex items-start space-x-3">
+                    <span className="text-green-400 mt-1 text-lg">•</span>
+                    <span className="text-gray-300">{material}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
-      </div>      
-      {/* Sección Acerca de */}
-      <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16 px-4">
-        <div className="w-full max-w-6xl">
+
+        {/* Sección de productos recomendados */}
+        <div className="mt-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-[3px]">
-              {t('ACERCA DE')} <span className="text-green-400">TREBOLUXE</span>
-            </h2>
-            <div className="w-24 h-1 bg-green-400 mx-auto"></div>
+            <h2 className="text-3xl font-bold text-white mb-4">{t('Productos Recomendados')}</h2>
+            <p className="text-gray-400 text-lg">{t('Descubre otros productos que podrían interesarte')}</p>
           </div>
           
-          <div className="bg-black/30 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-white/10 shadow-2xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              
-              {/* Contenido de texto */}
-              <div className="space-y-6">
-                <div className="space-y-4 text-gray-300 leading-relaxed text-lg">
-                  <p>
-                    {t('Treboluxe nació en Monterrey, Nuevo León, México, con una idea clara: llevar estilo, autenticidad y actitud a cada prenda. Fundada en 2022 por Emilio Torres Valdez, un joven emprendedor de 21 años apasionado por la moda urbana, la marca comenzó con una pequeña colección de gorras y camisas con diseños únicos, pensados para quienes buscan destacar sin perder su esencia.')}
-                  </p>
-                  
-                  <p>
-                    {t('El nombre Treboluxe une dos conceptos poderosos: la suerte del trébol y el lujo accesible que todos merecen. Creemos que vestir bien no es cuestión de gastar más, sino de saber quién eres y reflejarlo en lo que usas. Cada pieza está cuidadosamente elegida o diseñada para ofrecer estilo, comodidad y autenticidad.')}
-                  </p>
-                  
-                  <p>
-                    {t('Con el paso del tiempo, nuestro catálogo se ha expandido, incorporando productos variados dentro del mundo de la ropa, siempre con una visión clara: ofrecer moda con personalidad. En Treboluxe, no solo vendemos ropa; construimos una comunidad que apuesta por lo original, lo diferente y lo auténtico.')}
-                  </p>
-                  
-                  <p>
-                    {t('Gracias por formar parte de esta historia. Lo mejor apenas está por comenzar.')}
-                  </p>
-                </div>
-                
-                <div className="text-center lg:text-left">
-                  <p className="text-2xl font-bold text-green-400 italic">
-                    {t('Recuerda viste con suerte, vive con estilo')} 🍀
-                  </p>
-                </div>
-                
-                {/* Información del fundador */}
-                <div className="bg-green-900/20 rounded-lg p-6 border border-green-500/20">
-                  <h3 className="text-white font-semibold text-xl mb-2">{t('Fundador')}</h3>
-                  <p className="text-green-300 font-medium">Emilio Torres Valdez</p>
-                  <p className="text-gray-400">{t('Emprendedor apasionado por la moda urbana')}</p>
-                  <p className="text-gray-400">{t('Monterrey, Nuevo León, México')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Card Producto 1 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-300 group">
+              <div className="relative aspect-square overflow-hidden">
+                <Image
+                  src="/797e7904b64e13508ab322be3107e368-1@2x.png"
+                  alt="Camiseta Premium"
+                  width={300}
+                  height={300}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  {t('Nuevo')}
                 </div>
               </div>
-              
-              {/* Imagen/Stats */}
-              <div className="space-y-8">
-                {/* Logo o imagen representativa */}
-                <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-8 text-center">
-                  <div className="text-6xl mb-4">🍀</div>
-                  <h3 className="text-white font-bold text-2xl mb-2">TREBOLUXE</h3>
-                  <p className="text-green-200">{t('Estilo • Autenticidad • Actitud')}</p>
-                </div>
-                
-                {/* Estadísticas */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-black/40 rounded-lg p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold text-green-400">2022</div>
-                    <div className="text-gray-300 text-sm">{t('Año de Fundación')}</div>
+              <div className="p-4">
+                <h3 className="text-white font-medium mb-2 group-hover:text-green-400 transition-colors">
+                  {t('Camiseta Premium Básica')}
+                </h3>
+                <p className="text-gray-400 text-sm mb-3">{t('TreboLuxe')}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-400 font-bold">{formatPrice(24.99)}</span>
+                    <span className="text-gray-500 text-sm line-through">{formatPrice(29.99)}</span>
                   </div>
-                  <div className="bg-black/40 rounded-lg p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold text-green-400">MTY</div>
-                    <div className="text-gray-300 text-sm">{t('Monterrey, NL')}</div>
-                  </div>
-                  <div className="bg-black/40 rounded-lg p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold text-green-400">100%</div>
-                    <div className="text-gray-300 text-sm">{t('Auténtico')}</div>
-                  </div>
-                  <div className="bg-black/40 rounded-lg p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold text-green-400">∞</div>
-                    <div className="text-gray-300 text-sm">{t('Estilo')}</div>
-                  </div>
-                </div>
-                
-                {/* Call to action */}
-                <div className="text-center">
-                  <Link href="/catalogo" className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg transition-colors duration-300 no-underline">
-                    {t('Descubre Nuestra Colección')}
+                  <Link 
+                    href="/producto/2"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm transition-colors no-underline"
+                  >
+                    {t('Ver')}
                   </Link>
                 </div>
               </div>
             </div>
+
+            {/* Card Producto 2 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-300 group">
+              <div className="relative aspect-square overflow-hidden">
+                <Image
+                  src="/look-polo-2-1@2x.png"
+                  alt="Polo Clásico"
+                  width={300}
+                  height={300}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  {t('Oferta')}
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-medium mb-2 group-hover:text-green-400 transition-colors">
+                  {t('Polo Clásico Elegante')}
+                </h3>
+                <p className="text-gray-400 text-sm mb-3">{t('TreboLuxe')}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-400 font-bold">{formatPrice(34.99)}</span>
+                    <span className="text-gray-500 text-sm line-through">{formatPrice(44.99)}</span>
+                  </div>
+                  <Link 
+                    href="/producto/3"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm transition-colors no-underline"
+                  >
+                    {t('Ver')}
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Producto 3 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-300 group">
+              <div className="relative aspect-square overflow-hidden">
+                <Image
+                  src="/image@2x.png"
+                  alt="Chaqueta Moderna"
+                  width={300}
+                  height={300}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-3 right-3 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  {t('Popular')}
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-medium mb-2 group-hover:text-green-400 transition-colors">
+                  {t('Chaqueta Moderna Sport')}
+                </h3>
+                <p className="text-gray-400 text-sm mb-3">{t('TreboLuxe')}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-400 font-bold">{formatPrice(89.99)}</span>
+                  </div>
+                  <Link 
+                    href="/producto/4"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm transition-colors no-underline"
+                  >
+                    {t('Ver')}
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Producto 4 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-300 group">
+              <div className="relative aspect-square overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                  <span className="text-white text-6xl opacity-30">👕</span>
+                </div>
+                <div className="absolute top-3 right-3 bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  {t('Limitado')}
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-medium mb-2 group-hover:text-green-400 transition-colors">
+                  {t('Sudadera Comfort Pro')}
+                </h3>
+                <p className="text-gray-400 text-sm mb-3">{t('TreboLuxe')}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-400 font-bold">{formatPrice(54.99)}</span>
+                    <span className="text-gray-500 text-sm line-through">{formatPrice(69.99)}</span>
+                  </div>
+                  <Link 
+                    href="/producto/5"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm transition-colors no-underline"
+                  >
+                    {t('Ver')}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Botón ver más productos */}
+          <div className="text-center mt-10">
+            <Link 
+              href="/catalogo"
+              className="inline-block bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-lg font-medium transition-colors no-underline border border-gray-600"
+            >
+              {t('Ver Todos los Productos')}
+            </Link>
           </div>
         </div>
       </div>
@@ -1715,8 +1586,7 @@ const HomeScreen: NextPage = () => {
         </div>
       </footer>
     </div>
-    </div>
   );
 };
 
-export default HomeScreen;
+export default ProductPage;

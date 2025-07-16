@@ -2,15 +2,20 @@ import type { NextPage } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
+import { useAuth } from "../contexts/AuthContext";
 
 const CatalogoScreen: NextPage = () => {
+  const router = useRouter();
+  
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
+  const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   
   // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
@@ -18,6 +23,7 @@ const CatalogoScreen: NextPage = () => {
   
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  const { user, isAuthenticated, logout } = useAuth();
   
   // Estados específicos del catálogo
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +31,22 @@ const CatalogoScreen: NextPage = () => {
   const [selectedBrand, setSelectedBrand] = useState("Todas");
   const [selectedColor, setSelectedColor] = useState("Todos");
   const [selectedSize, setSelectedSize] = useState("Todas");
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  
+  // Efecto para manejar los parámetros URL
+  useEffect(() => {
+    if (router.isReady) {
+      const filter = router.query.filter as string;
+      if (filter) {
+        setActiveFilter(filter);
+        
+        // Si es filtro de promociones, configurar algunos valores por defecto
+        if (filter === 'promociones') {
+          setSelectedCategory("Todas");
+        }
+      }
+    }
+  }, [router.isReady, router.query]);
   
   // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -32,6 +54,7 @@ const CatalogoScreen: NextPage = () => {
   const loginDropdownRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const cartDropdownRef = useRef<HTMLDivElement>(null);
+  const adminDropdownRef = useRef<HTMLDivElement>(null);
   
   // Estados para el carrusel del header
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -225,7 +248,19 @@ const CatalogoScreen: NextPage = () => {
     const matchesColor = selectedColor === "Todos" || product.color === selectedColor;
     const matchesSize = selectedSize === "Todas" || product.size === selectedSize;
     
-    return matchesSearch && matchesCategory && matchesBrand && matchesColor && matchesSize;
+    // Filtro específico para promociones (productos con descuento)
+    let matchesFilter = true;
+    if (activeFilter === 'promociones') {
+      matchesFilter = product.originalPrice > product.price; // Solo productos con descuento
+    } else if (activeFilter === 'populares') {
+      matchesFilter = product.inStock; // Solo productos en stock para populares
+    } else if (activeFilter === 'nuevos') {
+      matchesFilter = product.id > 2; // Simular productos nuevos (IDs más altos)
+    } else if (activeFilter === 'basicos') {
+      matchesFilter = product.category === 'Camisetas'; // Solo camisetas para básicos
+    }
+    
+    return matchesSearch && matchesCategory && matchesBrand && matchesColor && matchesSize && matchesFilter;
   });
 
   return (
@@ -369,23 +404,30 @@ const CatalogoScreen: NextPage = () => {
                 </div>
               </div>
               <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
+                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'populares' ? 'bg-green-600' : ''}`}>
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('POPULARES')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
+                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'nuevos' ? 'bg-green-600' : ''}`}>
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('NUEVOS')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
+                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'basicos' ? 'bg-green-600' : ''}`}>
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('BASICOS')}
+                  </div>
+                </div>
+              </Link>
+              <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
+                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'promociones' ? 'bg-green-600' : ''}`}>
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                    {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
@@ -541,6 +583,79 @@ const CatalogoScreen: NextPage = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
+              {isAuthenticated && user && (
+                <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
+                  <button 
+                    onClick={() => setShowAdminDropdown(!showAdminDropdown)}
+                    className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                    title={t('Panel de Administración')}
+                  >
+                    <svg 
+                      className="h-full w-full object-contain text-white" 
+                      width={16} 
+                      height={18} 
+                      fill="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
+                      <path d="M10 14l-3-3 1.41-1.41L10 11.17l5.59-5.58L17 7l-7 7z" fill="white"/>
+                    </svg>
+                  </button>
+                  
+                  {/* Admin Dropdown */}
+                  <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
+                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                  } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
+                    <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
+                      <div className="p-6 text-center">
+                        <div className="mb-6">
+                          <div className="w-16 h-16 bg-green-600/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
+                              <path d="M10 14l-3-3 1.41-1.41L10 11.17l5.59-5.58L17 7l-7 7z" fill="currentColor"/>
+                            </svg>
+                          </div>
+                          <h3 className="text-xl text-white mb-2">{t('Panel de Administración')}</h3>
+                          <p className="text-gray-300 text-sm">{t('Gestiona el contenido del sitio')}</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <Link 
+                            href="/admin"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
+                            onClick={() => setShowAdminDropdown(false)}
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                            </svg>
+                            {t('Acceder al Panel')}
+                          </Link>
+                          <div className="text-xs text-gray-400 bg-white/5 p-3 rounded-lg">
+                            <p className="font-medium mb-1">{t('Características:')}</p>
+                            <ul className="text-left space-y-1">
+                              <li>• {t('Gestión de textos del header')}</li>
+                              <li>• {t('Administración de imágenes')}</li>
+                              <li>• {t('CRUD de productos')}</li>
+                              <li>• {t('Gestión de promociones')}</li>
+                              <li>• {t('Control de pedidos')}</li>
+                              <li>• {t('Sistema de notas')}</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-auto p-6 border-t border-white/20">
+                        <p className="text-gray-300 text-xs text-center">
+                          {t('Acceso solo para administradores autorizados')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
                 <button 
                   onClick={() => setShowLoginDropdown(!showLoginDropdown)}
@@ -779,12 +894,16 @@ const CatalogoScreen: NextPage = () => {
                         </div>
                         
                         <div className="space-y-3">
-                          <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                            {t('Finalizar Compra')}
-                          </button>
-                          <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
-                            {t('Ver Carrito Completo')}
-                          </button>
+                          <Link href="/checkout" className="block">
+                            <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
+                              {t('Finalizar Compra')}
+                            </button>
+                          </Link>
+                          <Link href="/carrito" className="block">
+                            <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
+                              {t('Ver Carrito Completo')}
+                            </button>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -872,6 +991,29 @@ const CatalogoScreen: NextPage = () => {
             </select>
           </div>
         </div>
+
+        {/* Indicador de filtro activo */}
+        {activeFilter && (
+          <div className="w-full max-w-7xl mb-6">
+            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-300 font-medium">
+                  {activeFilter === 'promociones' && t('Mostrando productos en promoción')}
+                  {activeFilter === 'populares' && t('Mostrando productos populares')}
+                  {activeFilter === 'nuevos' && t('Mostrando productos nuevos')}
+                  {activeFilter === 'basicos' && t('Mostrando productos básicos')}
+                </span>
+                <span className="text-green-400 bg-green-900/30 px-2 py-1 rounded text-sm">
+                  {filteredProducts.length} {t('productos encontrados')}
+                </span>
+              </div>
+              <Link href="/catalogo" className="text-green-300 hover:text-white transition-colors text-sm">
+                {t('Limpiar filtro')} ✕
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Grid de productos */}
         <div className="w-full max-w-7xl">

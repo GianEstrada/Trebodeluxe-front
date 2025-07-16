@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: treboluxe-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    plan: free
