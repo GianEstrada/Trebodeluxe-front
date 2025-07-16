@@ -14,8 +14,8 @@ const nextConfig = {
   poweredByHeader: false,
   generateEtags: false,
   
-  // Configuración de output para mejor rendimiento
-  output: 'standalone',
+  // Configuración optimizada para Render (sin standalone para ahorrar espacio)
+  // output: 'standalone', // Comentado para ahorrar espacio en disco
   
   // Variables de entorno públicas
   env: {
