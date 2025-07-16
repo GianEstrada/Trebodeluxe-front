@@ -493,6 +493,219 @@ const AdminPage: NextPage = () => {
     }
   };
 
+  // Componente ProductForm básico
+  const ProductForm = ({ product, onSave, onCancel }: any) => {
+    const [formData, setFormData] = useState({
+      nombre: product?.nombre || '',
+      descripcion: product?.descripcion || '',
+      precio: product?.precio || '',
+      imagen: product?.imagen || '',
+      categoria: product?.categoria || '',
+      disponible: product?.disponible || true
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Nombre del Producto')}
+          </label>
+          <input
+            type="text"
+            value={formData.nombre}
+            onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descripción')}
+          </label>
+          <textarea
+            value={formData.descripcion}
+            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            rows={3}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Precio')}
+          </label>
+          <input
+            type="number"
+            value={formData.precio}
+            onChange={(e) => setFormData({...formData, precio: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Imagen URL')}
+          </label>
+          <input
+            type="text"
+            value={formData.imagen}
+            onChange={(e) => setFormData({...formData, imagen: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Categoría')}
+          </label>
+          <input
+            type="text"
+            value={formData.categoria}
+            onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.disponible}
+            onChange={(e) => setFormData({...formData, disponible: e.target.checked})}
+            className="mr-2"
+          />
+          <label className="text-sm text-gray-300">
+            {t('Disponible')}
+          </label>
+        </div>
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Guardar')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Cancelar')}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  // Componente PromotionForm básico
+  const PromotionForm = ({ promotion, onSave, onCancel }: any) => {
+    const [formData, setFormData] = useState({
+      titulo: promotion?.titulo || '',
+      descripcion: promotion?.descripcion || '',
+      descuento: promotion?.descuento || '',
+      fechaInicio: promotion?.fechaInicio || '',
+      fechaFin: promotion?.fechaFin || '',
+      isActive: promotion?.isActive || true
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Título')}
+          </label>
+          <input
+            type="text"
+            value={formData.titulo}
+            onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descripción')}
+          </label>
+          <textarea
+            value={formData.descripcion}
+            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            rows={3}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descuento (%)')}
+          </label>
+          <input
+            type="number"
+            value={formData.descuento}
+            onChange={(e) => setFormData({...formData, descuento: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              {t('Fecha Inicio')}
+            </label>
+            <input
+              type="date"
+              value={formData.fechaInicio}
+              onChange={(e) => setFormData({...formData, fechaInicio: e.target.value})}
+              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              {t('Fecha Fin')}
+            </label>
+            <input
+              type="date"
+              value={formData.fechaFin}
+              onChange={(e) => setFormData({...formData, fechaFin: e.target.value})}
+              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            />
+          </div>
+        </div>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.isActive}
+            onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+            className="mr-2"
+          />
+          <label className="text-sm text-gray-300">
+            {t('Activa')}
+          </label>
+        </div>
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Guardar')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Cancelar')}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
   const renderSidebar = () => (
     <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
       <div className="p-6">
@@ -1427,6 +1640,28 @@ const AdminPage: NextPage = () => {
       </div>
     );
   };
+
+  const renderNotes = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Notas')}</h2>
+      
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <h3 className="text-xl font-semibold text-white mb-4">{t('Notas del Sistema')}</h3>
+        <div className="space-y-4">
+          <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+            <p className="text-gray-300">
+              {t('Aquí puedes agregar notas importantes sobre el sistema de administración.')}
+            </p>
+          </div>
+          <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+            <p className="text-gray-300">
+              {t('Funcionalidad de notas en desarrollo.')}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderContent = () => {
     switch (activeSection) {
