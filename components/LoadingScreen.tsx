@@ -94,11 +94,17 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           if (onBackendReady && data.database === 'connected') {
             onBackendReady();
           }
-        } else {
-          console.log('Backend responde pero la base de datos no está conectada');
+        } else if (data.status === 'warning' && data.database === 'disconnected') {
+          console.log('Backend activo pero base de datos desconectada:', data.message);
           setDbConnected(false);
           setStatus('db-connecting');
-          // Reducimos el tiempo de reintento a 3 segundos para una mejor experiencia
+          // Esperamos 5 segundos antes de reintentar cuando sabemos que la BD está desconectada
+          setTimeout(checkBackendStatus, 5000);
+        } else {
+          console.log('Backend responde pero en estado desconocido:', data);
+          setDbConnected(false);
+          setStatus('db-connecting');
+          // Reducimos el tiempo de reintento a 3 segundos para estados desconocidos
           setTimeout(checkBackendStatus, 3000);
         }
       } catch (error: any) {
@@ -161,9 +167,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           
           {status === 'db-connecting' && (
             <div>
-              <p className="text-blue-400 text-lg">Conectando a la base de datos{dots}</p>
+              <p className="text-yellow-400 text-lg">Esperando conexión a la base de datos{dots}</p>
               <p className="text-gray-400 mt-2 text-sm">
-                El servidor está activo, esperando conexión a la base de datos
+                El servidor está activo pero la base de datos está desconectada
+              </p>
+              <p className="text-gray-400 mt-2 text-sm">
+                Por favor, espera mientras se restablece la conexión
               </p>
               <p className="text-gray-500 text-sm mt-1">
                 Tiempo transcurrido: {elapsedTime} segundos
