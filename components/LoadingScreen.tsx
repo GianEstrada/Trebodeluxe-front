@@ -50,9 +50,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         setStatus('checking');
         console.log('Verificando backend en:', backendUrl);
         
-        // Intentar conectar con timeout y retry
-        const fetchWithTimeout = async (attempt = 1, maxAttempts = 3) => {
+        // Función para hacer un solo intento
+        const fetchWithTimeout = async () => {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+            
             const response = await fetch(`${backendUrl}/api/health`, {
               method: 'GET',
               headers: {
@@ -60,8 +63,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 'Content-Type': 'application/json'
               },
               mode: 'cors',
-              signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
+              signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             if (response.ok) {
               const data = await response.json();
@@ -72,40 +77,47 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
             throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
           } catch (error: any) {
-            console.error('Error en intento', attempt, ':', error.message);
-            if (attempt < maxAttempts) {
-              const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Backoff exponencial
-              console.log(`Reintentando en ${delay/1000} segundos...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              return fetchWithTimeout(attempt + 1, maxAttempts);
+            if (error.name === 'AbortError') {
+              throw new Error('Timeout al intentar conectar con el servidor');
             }
             throw error;
           }
         };
 
-        const { data } = await fetchWithTimeout();
-        console.log('Respuesta del backend:', data);
-        
-        if (data.database === 'connected' && data.status === 'ok') {
-          console.log('Backend y base de datos conectados correctamente');
-          setDbConnected(true);
-          setStatus('ready');
-          // Solo notificamos que está listo si la base de datos está conectada
-          if (onBackendReady && data.database === 'connected') {
-            onBackendReady();
+        try {
+          const { data } = await fetchWithTimeout();
+          console.log('Respuesta del backend:', data);
+          
+          if (data.database === 'connected' && data.status === 'ok') {
+            console.log('Backend y base de datos conectados correctamente');
+            setDbConnected(true);
+            setStatus('ready');
+            // Solo notificamos que está listo si la base de datos está conectada
+            if (onBackendReady) {
+              onBackendReady();
+            }
+          } else if (data.status === 'warning' && data.database === 'disconnected') {
+            console.log('Backend activo pero base de datos desconectada:', data.message);
+            setDbConnected(false);
+            setStatus('db-connecting');
+            // Esperamos exactamente 1 segundo antes del siguiente intento
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            checkBackendStatus();
+          } else {
+            console.log('Backend responde pero en estado desconocido:', data);
+            setDbConnected(false);
+            setStatus('db-connecting');
+            // Esperamos exactamente 1 segundo antes del siguiente intento
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            checkBackendStatus();
           }
-        } else if (data.status === 'warning' && data.database === 'disconnected') {
-          console.log('Backend activo pero base de datos desconectada:', data.message);
+        } catch (error: any) {
+          console.error('Error al verificar el backend:', error.message);
           setDbConnected(false);
-          setStatus('db-connecting');
-          // Esperamos 5 segundos antes de reintentar cuando sabemos que la BD está desconectada
-          setTimeout(checkBackendStatus, 5000);
-        } else {
-          console.log('Backend responde pero en estado desconocido:', data);
-          setDbConnected(false);
-          setStatus('db-connecting');
-          // Reducimos el tiempo de reintento a 3 segundos para estados desconocidos
-          setTimeout(checkBackendStatus, 3000);
+          setStatus('waking');
+          // Esperamos exactamente 1 segundo antes del siguiente intento
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          checkBackendStatus();
         }
       } catch (error: any) {
         const errorMessage = error.message || 'Error desconocido';
