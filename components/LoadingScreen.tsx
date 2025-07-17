@@ -88,14 +88,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           const { data } = await fetchWithTimeout();
           console.log('Respuesta del backend:', data);
           
-          if (data.database === 'connected' && data.status === 'ok') {
+          if (data.database === 'connected') {
             console.log('Backend y base de datos conectados correctamente');
             setDbConnected(true);
             setStatus('ready');
-            // Solo notificamos que está listo si la base de datos está conectada
+            // Notificamos que está listo cuando la base de datos está conectada
             if (onBackendReady) {
               onBackendReady();
             }
+            return; // Salimos inmediatamente si la base de datos está conectada
           } else if (data.status === 'warning' && data.database === 'disconnected') {
             console.log('Backend activo pero base de datos desconectada:', data.message);
             setDbConnected(false);
@@ -135,8 +136,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     checkBackendStatus();
   }, [isVisible, backendUrl, onBackendReady]);
 
-  // Solo ocultamos la pantalla de carga si no es visible Y la base de datos está conectada
-  if (!isVisible && dbConnected) return null;
+  // Ocultamos la pantalla de carga si no es visible O si la base de datos está conectada
+  if (!isVisible || dbConnected) return null;
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">

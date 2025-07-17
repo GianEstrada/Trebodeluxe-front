@@ -43,11 +43,16 @@ function InitialLoadingCheck({ children }: { children: React.ReactNode }) {
           // Verificar si la respuesta incluye información sobre la base de datos
           const data = await response.json();
           
-          if (data.database === 'connected') {
+          if (data.database === 'connected' && data.status === 'ok') {
             // Base de datos conectada, quitar la pantalla de carga
             setDbStatus('connected');
             setIsBackendLoading(false);
             console.log('Backend y base de datos están listos');
+          } else if (data.database === 'connected') {
+            // Base de datos conectada pero el estado no es ok
+            setDbStatus('connected');
+            setIsBackendLoading(false);
+            console.log('Backend y base de datos conectados, pero el estado no es óptimo');
           } else {
             // Base de datos no está conectada todavía, seguir intentando
             setDbStatus('disconnected');
