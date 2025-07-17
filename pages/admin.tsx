@@ -1440,21 +1440,23 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
+  // Estados para el sistema de tallas
+  const [showForm, setShowForm] = useState(false);
+  const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    size1: '',
+    size2: '',
+    size3: '',
+    size4: '',
+    size5: '',
+    size6: '',
+    size7: '',
+    size8: ''
+  });
+
   const renderSizeSystems = () => {
-    const [showForm, setShowForm] = useState(false);
-    const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
-    const [formData, setFormData] = useState({
-      name: '',
-      description: '',
-      size1: '',
-      size2: '',
-      size3: '',
-      size4: '',
-      size5: '',
-      size6: '',
-      size7: '',
-      size8: ''
-    });
 
     const handleEdit = (system: SizeSystem) => {
       setEditingSystem(system);

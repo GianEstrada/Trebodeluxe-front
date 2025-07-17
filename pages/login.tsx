@@ -7,7 +7,7 @@ import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 
 const LoginScreen: NextPage = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,11 +22,15 @@ const LoginScreen: NextPage = () => {
     setError("");
     
     try {
-      const success = await login(username, password);
+      const success = await login({
+        correo: email,
+        contrasena: password
+      });
+      
       if (success) {
         router.push("/");
       } else {
-        setError(t('Credenciales inválidas. Por favor, verifica tu usuario y contraseña.'));
+        setError(t('Credenciales inválidas. Por favor, verifica tu correo y contraseña.'));
       }
     } catch (error) {
       setError(t('Error al iniciar sesión. Por favor, inténtalo de nuevo.'));
@@ -102,16 +106,16 @@ const LoginScreen: NextPage = () => {
               </div>
 
               <div className="flex flex-col items-center">
-                <label htmlFor="username" className="block text-white font-medium mb-2 w-72 text-left">
-                  {t('Nombre de usuario')}
+                <label htmlFor="email" className="block text-white font-medium mb-2 w-72 text-left">
+                  {t('Correo electrónico')}
                 </label>
                 <input
-                  type="text"
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-72 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
-                  placeholder={t('Ingresa tu nombre de usuario')}
+                  placeholder={t('Ingresa tu correo electrónico')}
                   required
                   disabled={isLoading}
                 />
