@@ -15,8 +15,9 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   onBackendReady
 }) => {
   const [dots, setDots] = useState('');
-  const [status, setStatus] = useState<'checking' | 'waking' | 'ready'>('checking');
+  const [status, setStatus] = useState<'checking' | 'waking' | 'db-connecting' | 'ready'>('checking');
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [dbConnected, setDbConnected] = useState(false);
 
   // Efecto para animar los puntos suspensivos
   useEffect(() => {
@@ -47,23 +48,47 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     const checkBackendStatus = async () => {
       try {
         setStatus('checking');
-        const response = await fetch(`${backendUrl}/api/health`, {
-          signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
-        });
         
-        if (response.ok) {
+        // Intentar conectar con timeout y retry
+        const fetchWithTimeout = async (attempt = 1, maxAttempts = 3) => {
+          try {
+            const response = await fetch(`${backendUrl}/api/health`, {
+              signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              return { ok: true, data };
+            }
+            
+            throw new Error('Response not ok');
+          } catch (error) {
+            if (attempt < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos
+              return fetchWithTimeout(attempt + 1, maxAttempts);
+            }
+            throw error;
+          }
+        };
+
+        const { data } = await fetchWithTimeout();
+        
+        if (data.database === 'connected' && data.status === 'ok') {
+          setDbConnected(true);
           setStatus('ready');
           if (onBackendReady) {
             onBackendReady();
           }
         } else {
-          setStatus('waking');
-          setTimeout(checkBackendStatus, 3000); // Intentar de nuevo en 3 segundos
+          // Backend está despierto pero la base de datos no está conectada
+          setDbConnected(false);
+          setStatus('db-connecting');
+          setTimeout(checkBackendStatus, 5000); // Intentar de nuevo en 5 segundos
         }
       } catch (error) {
-        console.log('Backend en modo sleep, intentando despertar...');
+        console.log('Backend no responde, reintentando...');
         setStatus('waking');
-        setTimeout(checkBackendStatus, 3000); // Intentar de nuevo en 3 segundos
+        setTimeout(checkBackendStatus, 5000); // Intentar de nuevo en 5 segundos
       }
     };
 
@@ -111,6 +136,18 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             </div>
           )}
           
+          {status === 'db-connecting' && (
+            <div>
+              <p className="text-blue-400 text-lg">Conectando a la base de datos{dots}</p>
+              <p className="text-gray-400 mt-2 text-sm">
+                El servidor está activo, esperando conexión a la base de datos
+              </p>
+              <p className="text-gray-500 text-sm mt-1">
+                Tiempo transcurrido: {elapsedTime} segundos
+              </p>
+            </div>
+          )}
+          
           {status === 'ready' && (
             <p className="text-green-500 text-lg">{message}</p>
           )}
@@ -120,17 +157,24 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         <div className="w-full bg-gray-700 rounded-full h-2.5 mb-6 overflow-hidden">
           <div 
             className={`h-full rounded-full transition-all duration-500 ${
-              status === 'checking' ? 'bg-green-500 w-1/3' : 
-              status === 'waking' ? 'bg-yellow-500 animate-pulse w-2/3' : 
+              status === 'checking' ? 'bg-green-500 w-1/4' : 
+              status === 'waking' ? 'bg-yellow-500 animate-pulse w-2/4' : 
+              status === 'db-connecting' ? 'bg-blue-500 animate-pulse w-3/4' :
               'bg-green-500 w-full'
             }`} 
           />
         </div>
         
-        {/* Mensaje informativo sobre el plan gratuito */}
+        {/* Mensaje informativo sobre el estado */}
         {status === 'waking' && (
           <p className="text-gray-500 text-xs mt-4">
             Este sitio utiliza un plan gratuito de Render.com que entra en modo reposo después de 15 minutos de inactividad.
+          </p>
+        )}
+        
+        {status === 'db-connecting' && (
+          <p className="text-gray-500 text-xs mt-4">
+            La base de datos puede tardar un poco más en establecer la conexión cuando ha estado inactiva.
           </p>
         )}
       </div>
