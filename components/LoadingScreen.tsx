@@ -15,9 +15,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   onBackendReady
 }) => {
   const [dots, setDots] = useState('');
-  const [status, setStatus] = useState<'checking' | 'waking' | 'db-connecting' | 'ready'>('checking');
+  const [status, setStatus] = useState<'initial' | 'checking' | 'waking' | 'db-connecting' | 'ready'>('initial');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [dbConnected, setDbConnected] = useState(false);
+  const [initialWaitComplete, setInitialWaitComplete] = useState(false);
 
   // Efecto para animar los puntos suspensivos
   useEffect(() => {
@@ -41,9 +42,22 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // Efecto para verificar si el backend está despierto
+  // Efecto para el tiempo de espera inicial
   useEffect(() => {
     if (!isVisible) return;
+    
+    // Esperar 2 segundos antes de comenzar la verificación
+    const timer = setTimeout(() => {
+      setInitialWaitComplete(true);
+      setStatus('checking');
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [isVisible]);
+
+  // Efecto para verificar si el backend está despierto
+  useEffect(() => {
+    if (!isVisible || !initialWaitComplete) return;
     
     const checkBackendStatus = async () => {
       try {
@@ -136,8 +150,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     checkBackendStatus();
   }, [isVisible, backendUrl, onBackendReady]);
 
-  // Ocultamos la pantalla de carga si no es visible O si la base de datos está conectada
-  if (!isVisible || dbConnected) return null;
+  // Solo ocultamos la pantalla cuando se complete la espera inicial Y la base de datos esté conectada
+  if (dbConnected) return null;
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">
@@ -162,6 +176,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         
         {/* Mensaje de estado */}
         <div className="mb-6">
+          {status === 'initial' && (
+            <p className="text-blue-400 text-lg">Preparando la aplicación{dots}</p>
+          )}
+          
           {status === 'checking' && (
             <p className="text-green-400 text-lg">Verificando conexión al servidor{dots}</p>
           )}
@@ -202,9 +220,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         <div className="w-full bg-gray-700 rounded-full h-2.5 mb-6 overflow-hidden">
           <div 
             className={`h-full rounded-full transition-all duration-500 ${
-              status === 'checking' ? 'bg-green-500 w-1/4' : 
-              status === 'waking' ? 'bg-yellow-500 animate-pulse w-2/4' : 
-              status === 'db-connecting' ? 'bg-blue-500 animate-pulse w-3/4' :
+              status === 'initial' ? 'bg-blue-500 w-1/5' :
+              status === 'checking' ? 'bg-green-500 w-2/5' : 
+              status === 'waking' ? 'bg-yellow-500 animate-pulse w-3/5' : 
+              status === 'db-connecting' ? 'bg-blue-500 animate-pulse w-4/5' :
               'bg-green-500 w-full'
             }`} 
           />
