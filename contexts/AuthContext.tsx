@@ -87,20 +87,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Función para verificar que el backend esté despierto antes de hacer peticiones
   const ensureBackendAwake = async (): Promise<boolean> => {
-    // Ya no necesitamos mostrar la pantalla de carga cada vez
-    // setLoading(true);
     try {
-      // Asumimos que el backend está funcionando
-      return true;
+      // Comprobamos realmente si el backend está funcionando
+      const response = await fetch(`${API_URL}/api/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Agregamos un timeout para no esperar indefinidamente
+        signal: AbortSignal.timeout(10000)
+      });
       
-      // Si en el futuro necesitamos verificar de nuevo:
-      // const isReady = await checkBackendStatus();
-      // return isReady;
+      return response.ok;
     } catch (error) {
       console.error('Error al verificar el estado del backend:', error);
-      return true; // Asumimos que está funcionando
-    } finally {
-      // setLoading(false);
+      return false; // El backend no está disponible
     }
   };
 
@@ -110,7 +111,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Asegurarse de que el backend esté despierto
       const isBackendReady = await ensureBackendAwake();
       if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor');
+        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
       }
 
       // Petición real al backend
@@ -156,7 +157,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Asegurarse de que el backend esté despierto
       const isBackendReady = await ensureBackendAwake();
       if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor');
+        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
       }
 
       // Petición real al backend
@@ -204,7 +205,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Asegurarse de que el backend esté despierto
       const isBackendReady = await ensureBackendAwake();
       if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor');
+        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
       }
 
       const response = await fetch(`${API_URL}/api/users/profile`, {

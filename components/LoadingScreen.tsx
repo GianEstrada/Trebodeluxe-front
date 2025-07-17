@@ -9,14 +9,14 @@ interface LoadingScreenProps {
 }
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
-  message = 'Cargando...',
+  message = 'Procesando tu solicitud...',
   isVisible,
   backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com',
   onBackendReady
 }) => {
+  const [dots, setDots] = useState('');
   const [status, setStatus] = useState<'checking' | 'waking' | 'ready'>('checking');
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [dots, setDots] = useState('');
 
   // Efecto para animar los puntos suspensivos
   useEffect(() => {
@@ -47,7 +47,9 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     const checkBackendStatus = async () => {
       try {
         setStatus('checking');
-        const response = await fetch(`${backendUrl}/api/health`);
+        const response = await fetch(`${backendUrl}/api/health`, {
+          signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
+        });
         
         if (response.ok) {
           setStatus('ready');
@@ -110,7 +112,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           )}
           
           {status === 'ready' && (
-            <p className="text-green-500 text-lg">¡Servidor listo! Redirigiendo...</p>
+            <p className="text-green-500 text-lg">{message}</p>
           )}
         </div>
         
@@ -125,15 +127,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           />
         </div>
         
-        {/* Mensaje informativo */}
-        <p className="text-gray-400 text-sm">
-          {message}
-        </p>
-
-        {/* Mensaje sobre el plan gratuito */}
-        <p className="text-gray-500 text-xs mt-4">
-          Este sitio utiliza un plan gratuito de Render.com que entra en modo reposo después de 15 minutos de inactividad.
-        </p>
+        {/* Mensaje informativo sobre el plan gratuito */}
+        {status === 'waking' && (
+          <p className="text-gray-500 text-xs mt-4">
+            Este sitio utiliza un plan gratuito de Render.com que entra en modo reposo después de 15 minutos de inactividad.
+          </p>
+        )}
       </div>
     </div>
   );

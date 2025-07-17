@@ -3,16 +3,28 @@ import Head from "next/head";
 import type { AppProps } from "next/app";
 import "./global.css";
 import { AuthProvider } from "../contexts/AuthContext";
-import { LoadingProvider } from "../contexts/LoadingContext";
+import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import LoadingScreen from "../components/LoadingScreen";
 
-function MyApp({ Component, pageProps }: AppProps) {
-  // El backend ya está funcionando, por lo que no necesitamos mostrar la pantalla de carga
-  const [isBackendLoading, setIsBackendLoading] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(true);
+// Componente wrapper para mostrar la pantalla de carga basada en el contexto
+function LoadingWrapper({ children }: { children: React.ReactNode }) {
+  const { isLoading } = useLoading();
+  return (
+    <>
+      <LoadingScreen 
+        isVisible={isLoading}
+        message="Procesando tu solicitud..."
+      />
+      {children}
+    </>
+  );
+}
+
+// Componente para la verificación inicial del backend
+function InitialLoadingCheck({ children }: { children: React.ReactNode }) {
+  const [isBackendLoading, setIsBackendLoading] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   
-  // Dejamos este efecto comentado por si necesitamos volver a activar la pantalla de carga en el futuro
-  /*
   useEffect(() => {
     // Verificar el estado del backend al cargar la aplicación
     const checkBackend = async () => {
@@ -27,9 +39,12 @@ function MyApp({ Component, pageProps }: AppProps) {
         
         if (response.ok) {
           setIsBackendLoading(false);
+        } else {
+          // Si el backend no responde correctamente, mantener la pantalla de carga
+          console.log('Backend respondió con error, verificando estado...');
         }
       } catch (error) {
-        console.log('Backend en modo sleep o no disponible');
+        console.log('Backend en modo sleep o no disponible, mostrando pantalla de carga');
         // Mantener el estado de carga activo
       } finally {
         setInitialCheckDone(true);
@@ -38,7 +53,22 @@ function MyApp({ Component, pageProps }: AppProps) {
     
     checkBackend();
   }, []);
-  */
+  
+  return (
+    <>
+      {initialCheckDone && (
+        <LoadingScreen 
+          isVisible={isBackendLoading}
+          message="Preparando tu experiencia de compra"
+          onBackendReady={() => setIsBackendLoading(false)}
+        />
+      )}
+      {children}
+    </>
+  );
+}
+
+function MyApp({ Component, pageProps }: AppProps) {
   
   return (
     <Fragment>
@@ -50,16 +80,13 @@ function MyApp({ Component, pageProps }: AppProps) {
         />
       </Head>
       <LoadingProvider>
-        <AuthProvider>
-          {initialCheckDone && (
-            <LoadingScreen 
-              isVisible={isBackendLoading}
-              message="Preparando tu experiencia de compra"
-              onBackendReady={() => setIsBackendLoading(false)}
-            />
-          )}
-          <Component {...pageProps} />
-        </AuthProvider>
+        <InitialLoadingCheck>
+          <AuthProvider>
+            <LoadingWrapper>
+              <Component {...pageProps} />
+            </LoadingWrapper>
+          </AuthProvider>
+        </InitialLoadingCheck>
       </LoadingProvider>
     </Fragment>
   );
