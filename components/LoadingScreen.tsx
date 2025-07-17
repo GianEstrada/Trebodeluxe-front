@@ -48,11 +48,18 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     const checkBackendStatus = async () => {
       try {
         setStatus('checking');
+        console.log('Verificando backend en:', backendUrl);
         
         // Intentar conectar con timeout y retry
         const fetchWithTimeout = async (attempt = 1, maxAttempts = 3) => {
           try {
             const response = await fetch(`${backendUrl}/api/health`, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              mode: 'cors',
               signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
             });
             
@@ -61,10 +68,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
               return { ok: true, data };
             }
             
-            throw new Error('Response not ok');
-          } catch (error) {
+            // Si la respuesta no es OK, intentamos leer el mensaje de error
+            const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+          } catch (error: any) {
+            console.error('Error en intento', attempt, ':', error.message);
             if (attempt < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos
+              const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Backoff exponencial
+              console.log(`Reintentando en ${delay/1000} segundos...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
               return fetchWithTimeout(attempt + 1, maxAttempts);
             }
             throw error;
@@ -72,23 +84,31 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         };
 
         const { data } = await fetchWithTimeout();
+        console.log('Respuesta del backend:', data);
         
         if (data.database === 'connected' && data.status === 'ok') {
+          console.log('Backend y base de datos conectados correctamente');
           setDbConnected(true);
           setStatus('ready');
           if (onBackendReady) {
             onBackendReady();
           }
         } else {
-          // Backend está despierto pero la base de datos no está conectada
+          console.log('Backend responde pero la base de datos no está conectada');
           setDbConnected(false);
           setStatus('db-connecting');
-          setTimeout(checkBackendStatus, 5000); // Intentar de nuevo en 5 segundos
+          setTimeout(checkBackendStatus, 5000);
         }
-      } catch (error) {
-        console.log('Backend no responde, reintentando...');
+      } catch (error: any) {
+        const errorMessage = error.message || 'Error desconocido';
+        console.error('Error al verificar el backend:', errorMessage);
+        
+        if (errorMessage.includes('CORS')) {
+          console.error('Error de CORS detectado. Verificar la configuración del backend y la URL:', backendUrl);
+        }
+        
         setStatus('waking');
-        setTimeout(checkBackendStatus, 5000); // Intentar de nuevo en 5 segundos
+        setTimeout(checkBackendStatus, 5000);
       }
     };
 
