@@ -792,22 +792,12 @@ const HomeScreen: NextPage = () => {
                       <div className="p-6">
                         <div className="text-center mb-6">
                           <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
-                            {user.avatar ? (
-                              <Image
-                                src={user.avatar}
-                                alt="Avatar"
-                                width={64}
-                                height={64}
-                                className="rounded-full"
-                              />
-                            ) : (
-                              <span className="text-white text-xl font-bold">
-                                {user.username.charAt(0).toUpperCase()}
-                              </span>
-                            )}
+                            <span className="text-white text-xl font-bold">
+                              {user.nombres.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', user.fullName || user.username)}</h3>
-                          <p className="text-gray-300 text-sm">@{user.username}</p>
+                          <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user.nombres} ${user.apellidos}`)}</h3>
+                          <p className="text-gray-300 text-sm">{user.correo}</p>
                         </div>
                         
                         <div className="space-y-3 mb-6">
