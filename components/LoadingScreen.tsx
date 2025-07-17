@@ -90,14 +90,16 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           console.log('Backend y base de datos conectados correctamente');
           setDbConnected(true);
           setStatus('ready');
-          if (onBackendReady) {
+          // Solo notificamos que está listo si la base de datos está conectada
+          if (onBackendReady && data.database === 'connected') {
             onBackendReady();
           }
         } else {
           console.log('Backend responde pero la base de datos no está conectada');
           setDbConnected(false);
           setStatus('db-connecting');
-          setTimeout(checkBackendStatus, 5000);
+          // Reducimos el tiempo de reintento a 3 segundos para una mejor experiencia
+          setTimeout(checkBackendStatus, 3000);
         }
       } catch (error: any) {
         const errorMessage = error.message || 'Error desconocido';
@@ -115,7 +117,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     checkBackendStatus();
   }, [isVisible, backendUrl, onBackendReady]);
 
-  if (!isVisible) return null;
+  // Solo ocultamos la pantalla de carga si no es visible Y la base de datos está conectada
+  if (!isVisible && dbConnected) return null;
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">
