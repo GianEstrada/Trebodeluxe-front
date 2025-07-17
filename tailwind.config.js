@@ -28,6 +28,25 @@ module.exports = {
         forestgreen: "#289c28",
         black: "#000",
       },
+      animation: {
+        fadeIn: 'fadeIn 0.5s ease-in-out',
+        expand: 'expand 0.4s ease-out forwards',
+        contract: 'contract 0.4s ease-out forwards',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateX(-20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        expand: {
+          '0%': { width: 'var(--initial-width)', maxWidth: 'var(--initial-width)' },
+          '100%': { width: 'var(--expanded-width)', maxWidth: 'var(--expanded-width)' },
+        },
+        contract: {
+          '0%': { width: 'var(--expanded-width)', maxWidth: 'var(--expanded-width)' },
+          '100%': { width: 'var(--initial-width)', maxWidth: 'var(--initial-width)' },
+        },
+      },
       spacing: {
         "Space-400": "16px",
         "Space-200": "8px",
