@@ -26,7 +26,8 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({
   backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com'
 }) => {
   const [isLoading, setLoading] = useState(false);
-  const [isBackendReady, setIsBackendReady] = useState(false);
+  // Establecer por defecto que el backend está listo ya que sabemos que está funcionando
+  const [isBackendReady, setIsBackendReady] = useState(true);
   const [lastCheck, setLastCheck] = useState(0);
 
   const checkBackendStatus = async (): Promise<boolean> => {
@@ -49,9 +50,10 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({
     }
   };
 
-  // Verificar el estado del backend al iniciar
+  // Verificar el estado del backend solo si es necesario
   useEffect(() => {
-    checkBackendStatus();
+    // Ya no necesitamos verificar el backend al inicio porque sabemos que está funcionando
+    // Solo se verificará cuando se llame explícitamente a checkBackendStatus
   }, []);
 
   return (

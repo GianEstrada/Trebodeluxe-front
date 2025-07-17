@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { setLoading, checkBackendStatus } = useLoading();
 
+  // Configurar la URL del backend
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
 
   // Cargar usuario del localStorage al inicializar
@@ -77,15 +78,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Función para verificar que el backend esté despierto antes de hacer peticiones
   const ensureBackendAwake = async (): Promise<boolean> => {
-    setLoading(true);
+    // Ya no necesitamos mostrar la pantalla de carga cada vez
+    // setLoading(true);
     try {
-      const isReady = await checkBackendStatus();
-      return isReady;
+      // Asumimos que el backend está funcionando
+      return true;
+      
+      // Si en el futuro necesitamos verificar de nuevo:
+      // const isReady = await checkBackendStatus();
+      // return isReady;
     } catch (error) {
       console.error('Error al verificar el estado del backend:', error);
-      return false;
+      return true; // Asumimos que está funcionando
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 

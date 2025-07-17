@@ -7,9 +7,12 @@ import { LoadingProvider } from "../contexts/LoadingContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 function MyApp({ Component, pageProps }: AppProps) {
-  const [isBackendLoading, setIsBackendLoading] = useState(true);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  // El backend ya está funcionando, por lo que no necesitamos mostrar la pantalla de carga
+  const [isBackendLoading, setIsBackendLoading] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(true);
   
+  // Dejamos este efecto comentado por si necesitamos volver a activar la pantalla de carga en el futuro
+  /*
   useEffect(() => {
     // Verificar el estado del backend al cargar la aplicación
     const checkBackend = async () => {
@@ -35,6 +38,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     
     checkBackend();
   }, []);
+  */
   
   return (
     <Fragment>
