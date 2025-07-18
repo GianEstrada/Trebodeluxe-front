@@ -714,6 +714,7 @@ const HomeScreen: NextPage = () => {
                     </div>
                   </div>
                 </div>
+              </div>
               
               {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
               {isAuthenticated && user && (
@@ -1730,7 +1731,6 @@ const HomeScreen: NextPage = () => {
       
       </div>
     </div>
-  </div>
   );
 };
 
