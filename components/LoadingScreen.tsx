@@ -116,49 +116,40 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           const { data } = await fetchWithTimeout();
           console.log('Respuesta del backend:', data);
           
-          if (data.database === 'connected') {
+          if (data.database === 'connected' || (data.status === 'ok' && data.message?.includes('correctamente'))) {
             console.log('Backend y base de datos conectados correctamente');
             // Actualizamos los estados de forma síncrona
-            await Promise.all([
-              new Promise<void>(resolve => {
-                setDbConnected(true);
-                resolve();
-              }),
-              new Promise<void>(resolve => {
-                setStatus('ready');
-                resolve();
-              })
-            ]);
+            setDbConnected(true);
+            setStatus('ready');
             
-            console.log('Estados actualizados:', { dbConnected: true, status: 'ready' });
-            
-            // Notificamos que está listo
+            // Ejecutamos el callback si existe
             if (onBackendReady) {
-              onBackendReady();
+              try {
+                await Promise.resolve(onBackendReady());
+              } catch (error) {
+                console.error('Error en onBackendReady:', error);
+              }
             }
+            
+            console.log('Estados actualizados y callbacks ejecutados:', { 
+              dbConnected: true, 
+              status: 'ready',
+              timestamp: new Date().toISOString()
+            });
             return;
-          } else if (data.status === 'warning' && data.database === 'disconnected') {
-            console.log('Backend activo pero base de datos desconectada:', data.message);
+          } else if (data.database === 'disconnected' || data.status === 'warning') {
+            console.log('Backend activo pero base de datos desconectada:', data);
             setDbConnected(false);
             setStatus('db-connecting');
-            // Esperamos exactamente 1 segundo antes del siguiente intento
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            checkBackendStatus();
           } else {
             console.log('Backend responde pero en estado desconocido:', data);
             setDbConnected(false);
             setStatus('db-connecting');
-            // Esperamos exactamente 1 segundo antes del siguiente intento
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            checkBackendStatus();
           }
         } catch (error: any) {
           console.error('Error al verificar el backend:', error.message);
           setDbConnected(false);
           setStatus('waking');
-          // Esperamos exactamente 1 segundo antes del siguiente intento
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          checkBackendStatus();
         }
       } catch (error: any) {
         const errorMessage = error.message || 'Error desconocido';
@@ -169,7 +160,6 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         }
         
         setStatus('waking');
-        setTimeout(checkBackendStatus, 5000);
       }
     };
 
