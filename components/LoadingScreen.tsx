@@ -190,11 +190,17 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     return () => clearInterval(interval);
   }, [isVisible, backendUrl, onBackendReady]);
 
-  // Verificación final antes de ocultar la pantalla
-  if (dbConnected && status === 'ready') {
+  // Si el componente no debe ser visible, retornamos null
+  if (!isVisible) {
+    return null;
+  }
+
+  // Si el backend está listo y conectado, también retornamos null
+  if (dbConnected && status === 'ready' && initialWaitComplete) {
     console.log('Condiciones cumplidas para ocultar la pantalla:', {
       dbConnected,
-      status
+      status,
+      initialWaitComplete
     });
     return null;
   }

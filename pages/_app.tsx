@@ -6,33 +6,19 @@ import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import LoadingScreen from "../components/LoadingScreen";
 
-// Componente wrapper para mostrar la pantalla de carga basada en el contexto
-function LoadingWrapper({ children }: { children: React.ReactNode }) {
+// Componente unificado para manejo de carga
+function LoadingManager({ children }: { children: React.ReactNode }) {
   const { isLoading } = useLoading();
-  return (
-    <>
-      <LoadingScreen 
-        isVisible={isLoading}
-        message="Procesando tu solicitud..."
-      />
-      {children}
-    </>
-  );
-}
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-// Componente para la verificación inicial del backend
-function InitialLoadingCheck({ children }: { children: React.ReactNode }) {
-  // Este estado controla la visibilidad del LoadingScreen
-  const [isVisible, setIsVisible] = useState(true);
-  
   return (
     <>
       <LoadingScreen 
-        isVisible={isVisible}
-        message="Preparando tu experiencia de compra"
+        isVisible={isInitialLoading || isLoading}
+        message={isInitialLoading ? "Preparando tu experiencia de compra" : "Procesando tu solicitud..."}
         onBackendReady={() => {
-          console.log('Backend listo, ocultando pantalla de carga');
-          setIsVisible(false);
+          console.log('Backend listo, ocultando pantalla de carga inicial');
+          setIsInitialLoading(false);
         }}
       />
       {children}
@@ -50,11 +36,9 @@ function MyApp({ Component, pageProps }: AppProps) {
       
       <AuthProvider>
         <LoadingProvider>
-          <InitialLoadingCheck>
-            <LoadingWrapper>
-              <Component {...pageProps} />
-            </LoadingWrapper>
-          </InitialLoadingCheck>
+          <LoadingManager>
+            <Component {...pageProps} />
+          </LoadingManager>
         </LoadingProvider>
       </AuthProvider>
     </Fragment>
