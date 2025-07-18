@@ -581,9 +581,9 @@ const HomeScreen: NextPage = () => {
               </Link>
             </div>
             
-            <div className="flex-1 flex flex-row items-center justify-end gap-[31px]">
+            <div className="flex-1 flex flex-row items-center justify-end gap-8">
               <div 
-                className="w-5 relative h-5 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+                className="w-8 relative h-8 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
                 ref={languageDropdownRef}
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
               >
@@ -717,7 +717,7 @@ const HomeScreen: NextPage = () => {
               
               {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
               {isAuthenticated && user && (
-                <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
+                <div className="w-8 relative h-8" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
                     className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -787,7 +787,7 @@ const HomeScreen: NextPage = () => {
                 </div>
               )}
               
-              <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
+              <div className="w-8 relative h-8" ref={loginDropdownRef}>
                 <button 
                   onClick={() => setShowLoginDropdown(!showLoginDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -884,7 +884,7 @@ const HomeScreen: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-[15px] relative h-[15px]" ref={searchDropdownRef}>
+              <div className="w-8 relative h-8" ref={searchDropdownRef}>
                 <button 
                   onClick={() => setShowSearchDropdown(!showSearchDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -973,7 +973,7 @@ const HomeScreen: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-[19.2px] relative h-[17.5px]" ref={cartDropdownRef}>
+              <div className="w-8 relative h-8" ref={cartDropdownRef}>
                 <button 
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
@@ -1470,7 +1470,7 @@ const HomeScreen: NextPage = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Footer completo */}
       <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
         <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
