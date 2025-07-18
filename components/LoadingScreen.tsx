@@ -55,11 +55,13 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   // Efecto para el tiempo de espera inicial
   useEffect(() => {
     if (!isVisible) return;
+
+    // Comenzar inmediatamente pero con estado 'initial'
+    setStatus('initial');
     
-    // Esperar 2 segundos antes de comenzar la verificación
+    // Después de 2 segundos, permitir que se muestren otros estados
     const timer = setTimeout(() => {
       setInitialWaitComplete(true);
-      setStatus('checking');
     }, 2000);
     
     return () => clearTimeout(timer);
@@ -67,11 +69,13 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
 
   // Efecto para verificar si el backend está despierto
   useEffect(() => {
-    if (!isVisible || !initialWaitComplete) return;
+    if (!isVisible) return;
     
     const checkBackendStatus = async () => {
       try {
-        setStatus('checking');
+        if (status !== 'initial') {
+          setStatus('checking');
+        }
         console.log('Verificando backend en:', backendUrl);
         
         // Función para hacer un solo intento
@@ -128,12 +132,11 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             
             console.log('Estados actualizados:', { dbConnected: true, status: 'ready' });
             
-            // Esperamos un momento para asegurar que los estados se actualizaron
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
+            // Notificamos que está listo
             if (onBackendReady) {
               onBackendReady();
             }
+            return;
           } else if (data.status === 'warning' && data.database === 'disconnected') {
             console.log('Backend activo pero base de datos desconectada:', data.message);
             setDbConnected(false);
@@ -170,8 +173,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
       }
     };
 
+    // Verificar inmediatamente
     checkBackendStatus();
-  }, [isVisible, backendUrl, onBackendReady, initialWaitComplete]);
+
+    // Configurar verificación periódica cada 1 segundo
+    const interval = setInterval(checkBackendStatus, 1000);
+
+    // Limpiar el intervalo cuando el componente se desmonte
+    return () => clearInterval(interval);
+  }, [isVisible, backendUrl, onBackendReady]);
 
   // Verificación final antes de ocultar la pantalla
   if (dbConnected && status === 'ready') {
