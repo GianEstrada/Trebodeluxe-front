@@ -408,10 +408,12 @@ const HomeScreen: NextPage = () => {
           <div className="h-full bg-white opacity-50 animate-pulse"></div>
         </div>
       )}
+      )}
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">          <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
+            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
             <span className="text-white">{t('TREBOLUXE')}</span>
           </div>
             
@@ -448,23 +450,17 @@ const HomeScreen: NextPage = () => {
           </div>
           <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
             <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
-              <div 
-                className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
-                ref={dropdownRef}
-                onMouseEnter={() => setShowCategoriesDropdown(true)}
-                onMouseLeave={() => setShowCategoriesDropdown(false)}
-              >
+            </div>
+          </div>
+        </div>
                 <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                   {t('CATEGORIAS')}
                 </div>
                 
                 {/* Dropdown Menu - Starts below CATEGORIAS */}
-                <div 
-                  className={`fixed top-[82px] left-0 w-80 sm:w-72 md:w-80 lg:w-80 h-[calc(100vh-82px)] bg-black/30 shadow-2xl z-50 transform transition-all duration-300 ease-out ${
-                    showCategoriesDropdown 
-                      ? 'translate-x-0 opacity-100' 
-                      : '-translate-x-full opacity-0 pointer-events-none'
-                  }`}
+            </div>
+          </div>
+        </div>
                 >
                     <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
                       <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
@@ -1724,7 +1720,6 @@ const HomeScreen: NextPage = () => {
           </div>
         </div>
       </footer>
-    </div>
     </div>
   );
 };
