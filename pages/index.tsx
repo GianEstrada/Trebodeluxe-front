@@ -447,8 +447,8 @@ const HomeScreen: NextPage = () => {
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
-            <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
+          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+            <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
                 className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
                 ref={dropdownRef}
@@ -581,7 +581,7 @@ const HomeScreen: NextPage = () => {
               </Link>
             </div>
             
-            <div className="flex-1 flex flex-row items-center justify-end gap-4">
+            <div className="flex flex-row items-center justify-end gap-[32px]">
               <div 
                 className="w-8 relative h-8 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
                 ref={languageDropdownRef}
