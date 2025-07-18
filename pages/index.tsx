@@ -581,7 +581,7 @@ const HomeScreen: NextPage = () => {
               </Link>
             </div>
             
-            <div className="flex-1 flex flex-row items-center justify-end gap-8">
+            <div className="flex-1 flex flex-row items-center justify-end gap-4">
               <div 
                 className="w-8 relative h-8 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
                 ref={languageDropdownRef}
