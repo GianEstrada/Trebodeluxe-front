@@ -22,18 +22,15 @@ const LoginScreen: NextPage = () => {
     setError("");
     
     try {
-      const success = await login({
+      await login({
         correo: email,
         contrasena: password
       });
       
-      if (success) {
-        router.push("/");
-      } else {
-        setError(t('Credenciales inválidas. Por favor, verifica tu correo y contraseña.'));
-      }
+      // Si llegamos aquí, el login fue exitoso
+      router.push("/");
     } catch (error) {
-      setError(t('Error al iniciar sesión. Por favor, inténtalo de nuevo.'));
+      setError(t('Error al iniciar sesión. Por favor, verifica tu correo y contraseña.'));
     } finally {
       setIsLoading(false);
     }

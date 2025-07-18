@@ -94,15 +94,12 @@ const RegisterScreen: NextPage = () => {
         shippingInfo: showShippingForm ? shippingData : undefined
       };
       
-      const success = await register(registrationData);
+      await register(registrationData);
       
-      if (success) {
-        router.push('/catalogo');
-      } else {
-        setError(t('Error al registrar usuario. Intente nuevamente.'));
-      }
+      // Si llegamos aquí, el registro fue exitoso
+      router.push('/catalogo');
     } catch (err) {
-      setError(t('Ocurrió un error inesperado. Intente nuevamente.'));
+      setError(t('Error al registrar usuario. Intente nuevamente.'));
       console.error(err);
     } finally {
       setIsLoading(false);

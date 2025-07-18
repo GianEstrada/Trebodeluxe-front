@@ -11,14 +11,12 @@ interface LoadingScreenProps {
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
   message = 'Procesando tu solicitud...',
   isVisible,
-  backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com',
+  backendUrl = 'https://trebodeluxe-backend.onrender.com',
   onBackendReady
 }) => {
   const [dots, setDots] = useState('');
-  const [status, setStatus] = useState<'initial' | 'checking' | 'waking' | 'db-connecting' | 'ready'>('initial');
+  const [status, setStatus] = useState<'initial' | 'checking' | 'ready'>('initial');
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [dbConnected, setDbConnected] = useState(false);
-  const [initialWaitComplete, setInitialWaitComplete] = useState(false);
 
   // Efecto para animar los puntos suspensivos
   useEffect(() => {
@@ -42,206 +40,154 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // Efecto para el tiempo de espera inicial
+  // Efecto principal: inicialización simplificada
   useEffect(() => {
     if (!isVisible) return;
+
+    setStatus('initial');
     
-    // Esperar 2 segundos antes de comenzar la verificación
-    const timer = setTimeout(() => {
-      setInitialWaitComplete(true);
+    // Después de 1 segundo, intentar verificar backend
+    const initialTimer = setTimeout(() => {
       setStatus('checking');
-    }, 2000);
-    
-    return () => clearTimeout(timer);
-  }, [isVisible]);
-
-  // Efecto para verificar si el backend está despierto
-  useEffect(() => {
-    if (!isVisible || !initialWaitComplete) return;
-    
-    const checkBackendStatus = async () => {
-      try {
-        setStatus('checking');
-        console.log('Verificando backend en:', backendUrl);
-        
-        // Función para hacer un solo intento
-        const fetchWithTimeout = async () => {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
-            
-            const response = await fetch(`${backendUrl}/api/health`, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              mode: 'cors',
-              signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-              const data = await response.json();
-              return { ok: true, data };
-            }
-            
-            // Si la respuesta no es OK, intentamos leer el mensaje de error
-            const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-          } catch (error: any) {
-            if (error.name === 'AbortError') {
-              throw new Error('Timeout al intentar conectar con el servidor');
-            }
-            throw error;
-          }
-        };
-
+      
+      // Función simplificada para verificar backend
+      const checkBackend = async () => {
         try {
-          const { data } = await fetchWithTimeout();
-          console.log('Respuesta del backend:', data);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
           
-          if (data.database === 'connected') {
-            console.log('Backend y base de datos conectados correctamente');
-            setDbConnected(true);
+          const response = await fetch(`${backendUrl}/api/health`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            console.log('Backend conectado correctamente');
+          } else {
+            console.warn('Backend respondió con error:', response.status);
+          }
+        } catch (error) {
+          console.warn('No se pudo conectar al backend:', error);
+        } finally {
+          // Siempre continuar después de la verificación
+          setTimeout(() => {
             setStatus('ready');
-            // Notificamos que está listo cuando la base de datos está conectada
             if (onBackendReady) {
               onBackendReady();
             }
-            return; // Salimos inmediatamente si la base de datos está conectada
-          } else if (data.status === 'warning' && data.database === 'disconnected') {
-            console.log('Backend activo pero base de datos desconectada:', data.message);
-            setDbConnected(false);
-            setStatus('db-connecting');
-            // Esperamos exactamente 1 segundo antes del siguiente intento
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            checkBackendStatus();
-          } else {
-            console.log('Backend responde pero en estado desconocido:', data);
-            setDbConnected(false);
-            setStatus('db-connecting');
-            // Esperamos exactamente 1 segundo antes del siguiente intento
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            checkBackendStatus();
-          }
-        } catch (error: any) {
-          console.error('Error al verificar el backend:', error.message);
-          setDbConnected(false);
-          setStatus('waking');
-          // Esperamos exactamente 1 segundo antes del siguiente intento
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          checkBackendStatus();
+          }, 500); // Pequeño delay para mostrar el estado ready
         }
-      } catch (error: any) {
-        const errorMessage = error.message || 'Error desconocido';
-        console.error('Error al verificar el backend:', errorMessage);
-        
-        if (errorMessage.includes('CORS')) {
-          console.error('Error de CORS detectado. Verificar la configuración del backend y la URL:', backendUrl);
+      };
+      
+      checkBackend();
+      
+      // Timeout de seguridad: si después de 3 segundos no está listo, forzar
+      const forceReadyTimer = setTimeout(() => {
+        setStatus('ready');
+        if (onBackendReady) {
+          onBackendReady();
         }
-        
-        setStatus('waking');
-        setTimeout(checkBackendStatus, 5000);
-      }
-    };
-
-    checkBackendStatus();
+      }, 3000);
+      
+      return () => clearTimeout(forceReadyTimer);
+    }, 1000);
+    
+    return () => clearTimeout(initialTimer);
   }, [isVisible, backendUrl, onBackendReady]);
 
-  // Solo ocultamos la pantalla cuando se complete la espera inicial Y la base de datos esté conectada
-  if (dbConnected) return null;
+  // Ocultar la pantalla cuando esté lista
+  useEffect(() => {
+    if (status === 'ready') {
+      const hideTimer = setTimeout(() => {
+        // Este efecto se ejecutará pero la pantalla se ocultará porque onBackendReady se habrá llamado
+      }, 1000);
+      
+      return () => clearTimeout(hideTimer);
+    }
+  }, [status]);
+
+  // Obtener mensaje según el estado
+  const getStatusMessage = () => {
+    switch (status) {
+      case 'initial':
+        return 'Preparando tu experiencia de compra';
+      case 'checking':
+        return 'Verificando conexión con el servidor';
+      case 'ready':
+        return 'Listo para comenzar';
+      default:
+        return message;
+    }
+  };
+
+  if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">
-      <div className="max-w-md mx-auto text-center p-6">
+    <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-green-900 flex flex-col items-center justify-center z-[9999] overflow-hidden">
+      {/* Fondo animado */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 via-blue-500/20 to-purple-600/20 animate-pulse"></div>
+      </div>
+      
+      {/* Contenido principal */}
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-8 max-w-md">
         {/* Logo animado */}
         <div className="mb-8 relative">
-          <div className="w-32 h-32 mx-auto relative">
-            <Image 
-              src="/icon.svg" 
-              alt="Trebodeluxe Logo" 
-              width={128} 
-              height={128}
-              className={`animate-pulse ${status === 'ready' ? 'animate-bounce' : ''}`}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-blue-500 opacity-75 animate-ping"></div>
+          <div className="relative bg-white rounded-full p-4 shadow-2xl">
+            <Image
+              src="/sin-ttulo1-2@2x.png"
+              alt="Treboluxe Logo"
+              width={80}
+              height={80}
+              className="w-20 h-20 object-contain"
             />
           </div>
         </div>
-        
-        {/* Título con animación */}
-        <h2 className="text-3xl font-bold text-white mb-4">
+
+        {/* Texto principal */}
+        <h1 className="text-3xl font-bold text-white mb-4 tracking-wide">
           TREBOLUXE
-        </h2>
+        </h1>
         
         {/* Mensaje de estado */}
-        <div className="mb-6">
-          {status === 'initial' && (
-            <p className="text-blue-400 text-lg">Preparando la aplicación{dots}</p>
-          )}
-          
-          {status === 'checking' && (
-            <p className="text-green-400 text-lg">Verificando conexión al servidor{dots}</p>
-          )}
-          
-          {status === 'waking' && (
-            <div>
-              <p className="text-yellow-400 text-lg">Despertando el servidor{dots}</p>
-              <p className="text-gray-400 mt-2 text-sm">
-                Esto puede tomar hasta 30 segundos en la primera visita
-              </p>
-              <p className="text-gray-500 text-sm mt-1">
-                Tiempo transcurrido: {elapsedTime} segundos
-              </p>
-            </div>
-          )}
-          
-          {status === 'db-connecting' && (
-            <div>
-              <p className="text-yellow-400 text-lg">Esperando conexión a la base de datos{dots}</p>
-              <p className="text-gray-400 mt-2 text-sm">
-                El servidor está activo pero la base de datos está desconectada
-              </p>
-              <p className="text-gray-400 mt-2 text-sm">
-                Por favor, espera mientras se restablece la conexión
-              </p>
-              <p className="text-gray-500 text-sm mt-1">
-                Tiempo transcurrido: {elapsedTime} segundos
-              </p>
-            </div>
-          )}
-          
-          {status === 'ready' && (
-            <p className="text-green-500 text-lg">{message}</p>
-          )}
-        </div>
-        
+        <p className="text-lg text-gray-300 mb-6">
+          {getStatusMessage()}{dots}
+        </p>
+
         {/* Barra de progreso */}
-        <div className="w-full bg-gray-700 rounded-full h-2.5 mb-6 overflow-hidden">
-          <div 
-            className={`h-full rounded-full transition-all duration-500 ${
-              status === 'initial' ? 'bg-blue-500 w-1/5' :
-              status === 'checking' ? 'bg-green-500 w-2/5' : 
-              status === 'waking' ? 'bg-yellow-500 animate-pulse w-3/5' : 
-              status === 'db-connecting' ? 'bg-blue-500 animate-pulse w-4/5' :
-              'bg-green-500 w-full'
-            }`} 
-          />
+        <div className="w-full max-w-xs mb-6">
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
+          </div>
         </div>
-        
-        {/* Mensaje informativo sobre el estado */}
-        {status === 'waking' && (
-          <p className="text-gray-500 text-xs mt-4">
-            Este sitio utiliza un plan gratuito de Render.com que entra en modo reposo después de 15 minutos de inactividad.
-          </p>
-        )}
-        
-        {status === 'db-connecting' && (
-          <p className="text-gray-500 text-xs mt-4">
-            La base de datos puede tardar un poco más en establecer la conexión cuando ha estado inactiva.
-          </p>
-        )}
+
+        {/* Tiempo transcurrido */}
+        <p className="text-sm text-gray-400">
+          {elapsedTime}s
+        </p>
+
+        {/* Indicador de estados */}
+        <div className="flex space-x-2 mt-4">
+          <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            status === 'initial' ? 'bg-green-400' : 'bg-gray-600'
+          }`}></div>
+          <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            status === 'checking' ? 'bg-green-400' : 'bg-gray-600'
+          }`}></div>
+          <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            status === 'ready' ? 'bg-green-400' : 'bg-gray-600'
+          }`}></div>
+        </div>
       </div>
+
+      {/* Elementos decorativos */}
+      <div className="absolute top-20 left-20 w-32 h-32 bg-green-500/10 rounded-full animate-bounce"></div>
+      <div className="absolute bottom-20 right-20 w-24 h-24 bg-blue-500/10 rounded-full animate-bounce delay-75"></div>
+      <div className="absolute top-1/2 left-10 w-16 h-16 bg-purple-500/10 rounded-full animate-bounce delay-150"></div>
     </div>
   );
 };
