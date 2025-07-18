@@ -20,6 +20,16 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   const [dbConnected, setDbConnected] = useState(false);
   const [initialWaitComplete, setInitialWaitComplete] = useState(false);
 
+  // Log de cambios de estado
+  useEffect(() => {
+    console.log('Estado actual del LoadingScreen:', {
+      dbConnected,
+      status,
+      initialWaitComplete,
+      isVisible
+    });
+  }, [dbConnected, status, initialWaitComplete, isVisible]);
+
   // Efecto para animar los puntos suspensivos
   useEffect(() => {
     if (!isVisible) return;
@@ -104,15 +114,26 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
           
           if (data.database === 'connected') {
             console.log('Backend y base de datos conectados correctamente');
-            setDbConnected(true);
-            setStatus('ready');
-            // Esperar un momento breve antes de notificar que está listo
+            // Actualizamos los estados de forma síncrona
+            await Promise.all([
+              new Promise<void>(resolve => {
+                setDbConnected(true);
+                resolve();
+              }),
+              new Promise<void>(resolve => {
+                setStatus('ready');
+                resolve();
+              })
+            ]);
+            
+            console.log('Estados actualizados:', { dbConnected: true, status: 'ready' });
+            
+            // Esperamos un momento para asegurar que los estados se actualizaron
             await new Promise(resolve => setTimeout(resolve, 500));
-            // Notificamos que está listo cuando la base de datos está conectada
+            
             if (onBackendReady) {
               onBackendReady();
             }
-            return; // Salimos inmediatamente si la base de datos está conectada
           } else if (data.status === 'warning' && data.database === 'disconnected') {
             console.log('Backend activo pero base de datos desconectada:', data.message);
             setDbConnected(false);
@@ -150,12 +171,14 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     };
 
     checkBackendStatus();
-  }, [isVisible, backendUrl, onBackendReady]);
+  }, [isVisible, backendUrl, onBackendReady, initialWaitComplete]);
 
-  // Solo ocultamos la pantalla cuando la base de datos esté conectada y el estado sea 'ready'
-  console.log('Estado actual:', { dbConnected, status, initialWaitComplete });
+  // Verificación final antes de ocultar la pantalla
   if (dbConnected && status === 'ready') {
-    console.log('Ocultando pantalla de carga');
+    console.log('Condiciones cumplidas para ocultar la pantalla:', {
+      dbConnected,
+      status
+    });
     return null;
   }
 
