@@ -39,7 +39,7 @@ const HomeScreen: NextPage = () => {
   
   // Usar el hook de traducción universal y autenticación
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -319,6 +319,9 @@ const HomeScreen: NextPage = () => {
       if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
         setShowCartDropdown(false);
       }
+      if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target as Node)) {
+        setShowAdminDropdown(false);
+      }
     };
 
     const handleScroll = () => {
@@ -327,6 +330,7 @@ const HomeScreen: NextPage = () => {
       setShowLoginDropdown(false);
       setShowSearchDropdown(false);
       setShowCartDropdown(false);
+      setShowAdminDropdown(false);
     };
 
     // Agregar event listeners una sola vez
@@ -717,7 +721,7 @@ const HomeScreen: NextPage = () => {
               </div>
               
               {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
-              {isAuthenticated && user && (
+              {isAuthenticated && user && user.rol === 'admin' && (
                 <div className="w-8 relative h-8" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
@@ -843,9 +847,13 @@ const HomeScreen: NextPage = () => {
                         </div>
                         
                         <button 
-                          onClick={() => {
-                            // Lógica para cerrar sesión
-                            console.log('Cerrando sesión');
+                          onClick={async () => {
+                            try {
+                              await logout();
+                              setShowLoginDropdown(false);
+                            } catch (error) {
+                              console.error('Error al cerrar sesión:', error);
+                            }
                           }}
                           className="w-full bg-transparent border-2 border-red-400 text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-400 hover:text-white transition-colors duration-200"
                         >

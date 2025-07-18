@@ -7,6 +7,7 @@ interface User {
   apellidos: string;
   correo: string;
   usuario: string;
+  rol: string;
   token?: string;
   shippingInfo?: {
     id_informacion?: number;
@@ -39,7 +40,7 @@ interface AuthContextType {
   isInitialized: boolean;
   login: (data: LoginData) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
@@ -202,10 +203,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Si hay un usuario logueado, notificar al backend
+      if (user?.token) {
+        setLoading(true);
+        try {
+          await fetch(`${API_URL}/api/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            signal: AbortSignal.timeout(5000)
+          });
+        } catch (error) {
+          // Ignorar errores del backend para logout
+          console.warn('Error al notificar logout al backend:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Siempre limpiar la sesión local, independientemente del resultado del backend
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+      setLoading(false);
+    }
   };
 
   const updateProfile = async (data: Partial<User>) => {
