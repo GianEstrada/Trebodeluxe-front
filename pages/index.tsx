@@ -1470,7 +1470,6 @@ const HomeScreen: NextPage = () => {
           </div>
         </div>
       </div>
-
       {/* Footer completo */}
       <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
         <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
