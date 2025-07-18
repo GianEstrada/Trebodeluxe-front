@@ -6,6 +6,7 @@ interface User {
   nombres: string;
   apellidos: string;
   correo: string;
+  usuario: string;
   token?: string;
   shippingInfo?: {
     id_informacion?: number;
@@ -20,7 +21,7 @@ interface User {
 }
 
 interface LoginData {
-  correo: string;
+  usuario: string;
   contrasena: string;
 }
 
@@ -29,6 +30,7 @@ interface RegisterData {
   apellidos: string;
   correo: string;
   contrasena: string;
+  usuario: string;
 }
 
 interface AuthContextType {

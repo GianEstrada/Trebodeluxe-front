@@ -90,6 +90,7 @@ const RegisterScreen: NextPage = () => {
         apellidos: formData.apellidos,
         correo: formData.correo,
         contrasena: formData.contrasena,
+        usuario: formData.usuario,
         // Incluir datos de envío solo si el formulario está habilitado
         shippingInfo: showShippingForm ? shippingData : undefined
       };
