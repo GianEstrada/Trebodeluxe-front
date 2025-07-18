@@ -11,7 +11,7 @@ interface LoadingScreenProps {
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
   message = 'Procesando tu solicitud...',
   isVisible,
-  backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com',
+  backendUrl = 'https://trebodeluxe-backend.onrender.com', // URL fija para pruebas
   onBackendReady
 }) => {
   const [dots, setDots] = useState('');
@@ -84,7 +84,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
             
-            const response = await fetch(`${backendUrl}/api/health`, {
+            const url = `${backendUrl}/api/health`;
+            console.log('Intentando conexión a:', url);
+            
+            const response = await fetch(url, {
               method: 'GET',
               headers: {
                 'Accept': 'application/json',
@@ -92,6 +95,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
               },
               mode: 'cors',
               signal: controller.signal
+            });
+            
+            console.log('Respuesta recibida:', {
+              status: response.status,
+              statusText: response.statusText,
+              headers: Object.fromEntries(response.headers.entries())
             });
             
             clearTimeout(timeoutId);
@@ -105,10 +114,16 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
             throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
           } catch (error: any) {
+            console.error('Error en la petición fetch:', {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            });
+            
             if (error.name === 'AbortError') {
               throw new Error('Timeout al intentar conectar con el servidor');
             }
-            throw error;
+            throw new Error(`Error de red: ${error.message}`);
           }
         };
 
@@ -163,11 +178,13 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
       }
     };
 
+    console.log('Iniciando verificación del backend...');
+    
     // Verificar inmediatamente
     checkBackendStatus();
 
-    // Configurar verificación periódica cada 1 segundo
-    const interval = setInterval(checkBackendStatus, 1000);
+    // Configurar verificación periódica cada 3 segundos para no sobrecargar el servidor
+    const interval = setInterval(checkBackendStatus, 3000);
 
     // Limpiar el intervalo cuando el componente se desmonte
     return () => clearInterval(interval);
