@@ -29,44 +29,25 @@ interface RegisterData {
   apellidos: string;
   correo: string;
   contrasena: string;
-  shippingInfo?: {
-    nombre_completo?: string;
-    telefono?: string;
-    direccion?: string;
-    ciudad?: string;
-    estado?: string;
-    codigo_postal?: string;
-    pais?: string;
-  };
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (data: LoginData) => Promise<boolean>;
+  isInitialized: boolean;
+  login: (data: LoginData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => void;
-  register: (userData: RegisterData) => Promise<boolean>;
-  updateProfile: (userData: Partial<User>) => Promise<boolean>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { setLoading, checkBackendStatus } = useLoading();
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { setLoading } = useLoading();
 
   // Configurar la URL del backend
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
@@ -80,162 +61,123 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(userData);
         setIsAuthenticated(true);
       } catch (error) {
+        console.error('Error loading user data:', error);
         localStorage.removeItem('user');
+        setUser(null);
+        setIsAuthenticated(false);
       }
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
     }
+    setIsInitialized(true);
   }, []);
 
-  // Función para verificar que el backend esté despierto antes de hacer peticiones
+  // Función para verificar que el backend esté despierto
   const ensureBackendAwake = async (): Promise<boolean> => {
     try {
-      // Comprobamos realmente si el backend está funcionando
       const response = await fetch(`${API_URL}/api/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Agregamos un timeout para no esperar indefinidamente
         signal: AbortSignal.timeout(10000)
       });
       
-      return response.ok;
+      if (!response.ok) {
+        console.error('Backend health check failed');
+        return false;
+      }
+
+      return true;
     } catch (error) {
-      console.error('Error al verificar el estado del backend:', error);
-      return false; // El backend no está disponible
+      console.error('Error checking backend health:', error);
+      return false;
     }
   };
 
-  const login = async (data: LoginData): Promise<boolean> => {
-    setLoading(true);
+  const login = async (data: LoginData) => {
     try {
-      // Asegurarse de que el backend esté despierto
+      setLoading(true);
+      
+      // Verificar que el backend esté disponible
       const isBackendReady = await ensureBackendAwake();
       if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
+        throw new Error('El servidor no está disponible en este momento');
       }
 
-      // Petición real al backend
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al iniciar sesión');
+        throw new Error('Credenciales inválidas');
       }
 
-      const userData = await response.json();
+      const result = await response.json();
       
-      // Guardar el usuario y token en el estado y localStorage
-      const userToSave = {
-        id_usuario: userData.id_usuario,
-        nombres: userData.nombres,
-        apellidos: userData.apellidos,
-        correo: userData.correo,
-        token: userData.token,
-      };
-      
-      setUser(userToSave);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userToSave));
-      return true;
+      if (result.success) {
+        const userData = {
+          ...result.user,
+          token: result.token
+        };
+        setUser(userData);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        throw new Error(result.message || 'Error al iniciar sesión');
+      }
     } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-      return false;
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
-    setLoading(true);
+  const register = async (data: RegisterData) => {
     try {
-      // Asegurarse de que el backend esté despierto
+      setLoading(true);
+
+      // Verificar que el backend esté disponible
       const isBackendReady = await ensureBackendAwake();
       if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
+        throw new Error('El servidor no está disponible en este momento');
       }
 
-      // Petición real al backend
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al registrar usuario');
+        throw new Error(errorData.message || 'Error en el registro');
       }
 
-      const newUser = await response.json();
+      const result = await response.json();
       
-      // Guardar el usuario y token en el estado y localStorage
-      const userToSave = {
-        id_usuario: newUser.id_usuario,
-        nombres: newUser.nombres,
-        apellidos: newUser.apellidos,
-        correo: newUser.correo,
-        token: newUser.token,
-      };
-      
-      setUser(userToSave);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userToSave));
-      return true;
+      if (result.success) {
+        const userData = {
+          ...result.user,
+          token: result.token
+        };
+        setUser(userData);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        throw new Error(result.message || 'Error en el registro');
+      }
     } catch (error) {
-      console.error('Error al registrar usuario:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
-    if (!user || !user.token) return false;
-    
-    setLoading(true);
-    try {
-      // Asegurarse de que el backend esté despierto
-      const isBackendReady = await ensureBackendAwake();
-      if (!isBackendReady) {
-        throw new Error('No se pudo conectar con el servidor. El servicio puede estar en modo reposo.');
-      }
-
-      const response = await fetch(`${API_URL}/api/users/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`,
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al actualizar perfil');
-      }
-
-      const updatedUser = await response.json();
-      
-      // Actualizar el usuario en el estado y localStorage
-      const userToSave = {
-        ...user,
-        ...updatedUser,
-      };
-      
-      setUser(userToSave);
-      localStorage.setItem('user', JSON.stringify(userToSave));
-      return true;
-    } catch (error) {
-      console.error('Error al actualizar perfil:', error);
-      return false;
+      console.error('Register error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -247,16 +189,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem('user');
   };
 
+  const updateProfile = async (data: Partial<User>) => {
+    if (!user?.token) {
+      throw new Error('Usuario no autenticado');
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el perfil');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        const updatedUser = {
+          ...user,
+          ...result.user
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } else {
+        throw new Error(result.message || 'Error al actualizar el perfil');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
+      isInitialized,
       login,
-      logout,
       register,
+      logout,
       updateProfile
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
