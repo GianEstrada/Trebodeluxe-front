@@ -106,6 +106,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             console.log('Backend y base de datos conectados correctamente');
             setDbConnected(true);
             setStatus('ready');
+            // Esperar un momento breve antes de notificar que está listo
+            await new Promise(resolve => setTimeout(resolve, 500));
             // Notificamos que está listo cuando la base de datos está conectada
             if (onBackendReady) {
               onBackendReady();
@@ -150,8 +152,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     checkBackendStatus();
   }, [isVisible, backendUrl, onBackendReady]);
 
-  // Solo ocultamos la pantalla cuando se complete la espera inicial Y la base de datos esté conectada
-  if (dbConnected) return null;
+  // Solo ocultamos la pantalla cuando la base de datos esté conectada y el estado sea 'ready'
+  console.log('Estado actual:', { dbConnected, status, initialWaitComplete });
+  if (dbConnected && status === 'ready') {
+    console.log('Ocultando pantalla de carga');
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">
