@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { canAccessAdminPanel } from "../utils/roles";
 
 // Definir el tipo para los productos
 interface Product {
@@ -721,7 +722,7 @@ const HomeScreen: NextPage = () => {
               </div>
               
               {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
-              {isAuthenticated && user && user.rol === 'admin' && (
+              {isAuthenticated && user && canAccessAdminPanel(user.rol) && (
                 <div className="w-8 relative h-8" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}

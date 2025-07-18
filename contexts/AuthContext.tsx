@@ -7,7 +7,7 @@ interface User {
   apellidos: string;
   correo: string;
   usuario: string;
-  rol: string;
+  rol: number; // 0=user, 1=admin, 2=moderator
   token?: string;
   shippingInfo?: {
     id_informacion?: number;

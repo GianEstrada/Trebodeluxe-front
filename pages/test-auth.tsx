@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getRoleName, ROLES } from '../utils/roles';
 
 const TestPage: React.FC = () => {
   const { user, isAuthenticated, login, logout, register } = useAuth();
@@ -59,7 +60,7 @@ const TestPage: React.FC = () => {
               <p><strong>Usuario:</strong> {user.usuario}</p>
               <p><strong>Nombre:</strong> {user.nombres} {user.apellidos}</p>
               <p><strong>Email:</strong> {user.correo}</p>
-              <p><strong>Rol:</strong> {user.rol}</p>
+              <p><strong>Rol:</strong> {user.rol} ({getRoleName(user.rol)})</p>
               <p><strong>ID:</strong> {user.id_usuario}</p>
             </div>
           )}
@@ -107,9 +108,9 @@ const TestPage: React.FC = () => {
             <li>✅ Login automático no deseado eliminado</li>
             <li>✅ Botones de login/registro visibles cuando no hay sesión</li>
             <li>✅ Dropdown de admin se cierra al hacer click fuera</li>
-            <li>✅ Campo "rol" agregado a la base de datos</li>
+            <li>✅ Campo "rol" agregado a la base de datos (numérico: 0=usuario, 1=admin, 2=moderador)</li>
             <li>✅ Endpoint de logout implementado en backend</li>
-            <li>✅ Botón de admin solo visible para usuarios con rol 'admin'</li>
+            <li>✅ Botón de admin solo visible para usuarios con rol = 1</li>
             <li>✅ Botón "Cerrar sesión" conectado al backend</li>
           </ul>
         </div>
@@ -117,11 +118,11 @@ const TestPage: React.FC = () => {
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Cambios Técnicos</h2>
           <ul className="list-disc list-inside space-y-2 text-gray-700">
-            <li>Base de datos: Campo "rol" con valores 'user', 'admin', 'moderator'</li>
+            <li>Base de datos: Campo "rol" con valores numéricos (0=usuario, 1=admin, 2=moderador)</li>
             <li>Backend: Endpoint POST /api/auth/logout</li>
             <li>Frontend: Función logout asíncrona con notificación al servidor</li>
             <li>UI: Dropdown de admin en eventos de click outside</li>
-            <li>Seguridad: Restricción de acceso por rol de usuario</li>
+            <li>Seguridad: Restricción de acceso por rol numérico (solo rol = 1)</li>
           </ul>
         </div>
       </div>
