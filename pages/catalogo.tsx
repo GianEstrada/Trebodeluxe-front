@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { canAccessAdminPanel } from "../utils/roles";
 
 const CatalogoScreen: NextPage = () => {
   const router = useRouter();
@@ -165,6 +166,9 @@ const CatalogoScreen: NextPage = () => {
       if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
         setShowCartDropdown(false);
       }
+      if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target as Node)) {
+        setShowAdminDropdown(false);
+      }
     };
 
     const handleScroll = () => {
@@ -173,6 +177,7 @@ const CatalogoScreen: NextPage = () => {
       setShowLoginDropdown(false);
       setShowSearchDropdown(false);
       setShowCartDropdown(false);
+      setShowAdminDropdown(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -184,7 +189,7 @@ const CatalogoScreen: NextPage = () => {
     };
   }, []);
 
-  // Datos simulados de productos
+  // Productos de ejemplo
   const allProducts = [
     {
       id: 1,
@@ -584,8 +589,8 @@ const CatalogoScreen: NextPage = () => {
                 </div>
               </div>
               
-              {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
-              {isAuthenticated && user && (
+              {/* Botón de Admin - Solo visible para usuarios con rol = 1 */}
+              {user && canAccessAdminPanel(user.rol) && (
                 <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
@@ -606,7 +611,7 @@ const CatalogoScreen: NextPage = () => {
                   
                   {/* Admin Dropdown */}
                   <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                   } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                     <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                       <div className="p-6 text-center">
@@ -673,30 +678,87 @@ const CatalogoScreen: NextPage = () => {
                 
                 {/* Login Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    <div className="p-6 text-center">
-                      <div className="mb-6">
-                        <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
-                        <p className="text-gray-300 text-sm">{t('Parece que no estás logueado')}</p>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                          {t('Iniciar sesión')}
+                    {user ? (
+                      // Usuario logueado
+                      <div className="p-6">
+                        <div className="text-center mb-6">
+                          <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <span className="text-white text-xl font-bold">
+                              {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                          <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                          <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
+                        </div>
+                        
+                        <div className="space-y-3 mb-6">
+                          <Link 
+                            href="/profile"
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            {t('Mi perfil')}
+                          </Link>
+                          <Link 
+                            href="/orders"
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            {t('Mis pedidos')}
+                          </Link>
+                        </div>
+                        
+                        <button 
+                          onClick={async () => {
+                            try {
+                              await logout();
+                              setShowLoginDropdown(false);
+                            } catch (error) {
+                              console.error('Error al cerrar sesión:', error);
+                            }
+                          }}
+                          className="w-full bg-transparent border-2 border-red-400 text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-400 hover:text-white transition-colors duration-200"
+                        >
+                          {t('Cerrar sesión')}
                         </button>
-                        <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
-                          {t('Registrarse')}
-                        </button>
                       </div>
-                    </div>
-                    
-                    <div className="mt-auto p-6 border-t border-white/20">
-                      <p className="text-gray-300 text-xs text-center">
-                        {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
-                      </p>
-                    </div>
+                    ) : (
+                      // Usuario no logueado
+                      <div className="p-6 text-center">
+                        <div className="mb-6">
+                          <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
+                          <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu cuenta')}</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <Link 
+                            href="/login"
+                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center no-underline"
+                          >
+                            {t('Iniciar sesión')}
+                          </Link>
+                          <Link 
+                            href="/register"
+                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center no-underline"
+                          >
+                            {t('Registrarse')}
+                          </Link>
+                        </div>
+                        
+                        <div className="mt-8 pt-6 border-t border-white/20">
+                          <p className="text-gray-300 text-xs text-center">
+                            {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -717,73 +779,29 @@ const CatalogoScreen: NextPage = () => {
                 
                 {/* Search Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('BÚSQUEDA')}</h3>
-                        <p className="text-gray-300 text-sm">{t('Encuentra los productos que buscas')}</p>
+                      <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onKeyPress={handleSearchKeyPress}
+                          placeholder={t('¿Qué estás buscando?')}
+                          className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                        />
+                        <button 
+                          onClick={handleSearch}
+                          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          {t('Buscar')}
+                        </button>
                       </div>
-                      
-                      <div className="space-y-4">
-                        <div className="flex justify-center">
-                          <input
-                            type="text"
-                            placeholder={t('¿Qué estás buscando?')}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={handleSearchKeyPress}
-                            className="w-4/5 bg-white/20 border border-white/30 rounded-lg py-3 px-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
-                          />
-                        </div>
-                        <div className="flex justify-center">
-                          <button 
-                            onClick={handleSearch}
-                            className="w-4/5 bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            {t('Buscar')}
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-8 pt-6 border-t border-white/20">
-                        <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Camisas'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Camisas')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Pantalones'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Pantalones')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Vestidos'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Vestidos')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Zapatos'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Zapatos')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-auto p-6 border-t border-white/20">
-                      <p className="text-gray-300 text-xs text-center">
-                        {t('Utiliza filtros para encontrar exactamente lo que necesitas.')}
+                      <p className="text-gray-300 text-sm">
+                        {t('Encuentra exactamente lo que buscas en nuestra colección.')}
                       </p>
                     </div>
                   </div>
@@ -807,12 +825,13 @@ const CatalogoScreen: NextPage = () => {
                     2
                   </span>
                 </button>
-                
-                {/* Cart Dropdown */}
-                <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-                } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
-                  <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Contenido principal del catálogo */}
                     <div className="p-6 flex-1 flex flex-col">
                       <div className="mb-6">
                         <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
