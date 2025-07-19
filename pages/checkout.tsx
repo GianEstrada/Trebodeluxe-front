@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
-import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/Layout';
 
 interface CartItem {
   id: number;
@@ -15,220 +15,82 @@ interface CartItem {
   size: string;
   color: string;
   quantity: number;
-  inStock: boolean;
 }
 
-interface ShippingMethod {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  deliveryTime: string;
+interface ShippingAddress {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+interface PaymentMethod {
+  type: 'credit_card' | 'debit_card' | 'paypal' | 'bank_transfer';
+  cardNumber?: string;
+  expiryDate?: string;
+  cvv?: string;
+  cardHolder?: string;
 }
 
 const CheckoutPage: NextPage = () => {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  
-  // Estados para dropdowns del header
-  const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [showLoginDropdown, setShowLoginDropdown] = useState(false);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [showCartDropdown, setShowCartDropdown] = useState(false);
-  
-  // Estados para el carrusel promocional
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  // Refs para los dropdowns
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const loginDropdownRef = useRef<HTMLDivElement>(null);
-  const searchDropdownRef = useRef<HTMLDivElement>(null);
-  const cartDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Textos del carrusel promocional
-  const promoTexts = ['ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN', 'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'];
-  
-  // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
   
   // Sistema de traducción universal
-  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  const { t } = useUniversalTranslate(currentLanguage);
 
-  // Estados del checkout
+  // Estado del carrito (simulado - en producción vendría de un contexto de carrito)
   const [cartItems] = useState<CartItem[]>([
     {
       id: 1,
-      name: "Camiseta Básica Premium",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      name: "Camiseta Casual Premium",
+      price: 25.99,
+      originalPrice: 35.99,
+      image: "/sin-ttulo1-2@2x.png",
       size: "M",
-      color: "Blanco",
-      quantity: 2,
-      inStock: true
+      color: "Azul",
+      quantity: 2
     },
     {
       id: 2,
-      name: "Polo Clásico Elegante",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      size: "L",
-      color: "Azul",
-      quantity: 1,
-      inStock: true
+      name: "Gorra Deportiva",
+      price: 18.99,
+      originalPrice: 24.99,
+      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      size: "Única",
+      color: "Negro",
+      quantity: 1
     }
   ]);
 
-  // Información personal
-  const [personalInfo, setPersonalInfo] = useState({
+  // Estados del formulario
+  const [currentStep, setCurrentStep] = useState(1);
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
-  });
-
-  // Información de envío
-  const [shippingInfo, setShippingInfo] = useState({
+    phone: '',
     address: '',
     city: '',
     state: '',
-    zipCode: '',
-    country: 'México'
+    postalCode: '',
+    country: 'MX'
   });
 
-  // Métodos de envío disponibles
-  const shippingMethods: ShippingMethod[] = [
-    {
-      id: 'standard',
-      name: 'Envío Estándar',
-      description: 'Entrega en 5-7 días hábiles',
-      price: 50,
-      deliveryTime: '5-7 días'
-    },
-    {
-      id: 'express',
-      name: 'Envío Express',
-      description: 'Entrega en 2-3 días hábiles',
-      price: 120,
-      deliveryTime: '2-3 días'
-    },
-    {
-      id: 'overnight',
-      name: 'Envío Nocturno',
-      description: 'Entrega al día siguiente',
-      price: 200,
-      deliveryTime: '1 día'
-    }
-  ];
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>({
+    type: 'credit_card'
+  });
 
-  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
-  const [acceptPromotions, setAcceptPromotions] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Funciones para cambiar idioma y moneda
-  const changeLanguage = (newLanguage: string) => {
-    setCurrentLanguage(newLanguage);
-    localStorage.setItem('preferred-language', newLanguage);
-    setShowLanguageDropdown(false);
-  };
-
-  const changeCurrency = (newCurrency: string) => {
-    setCurrentCurrency(newCurrency);
-    localStorage.setItem('preferred-currency', newCurrency);
-    setShowLanguageDropdown(false);
-  };
-
-  // Función para formatear precios
-  const formatPrice = (price: number): string => {
-    const rates = { MXN: 1, USD: 0.056, EUR: 0.051 };
-    const symbols = { MXN: '$', USD: '$', EUR: '€' };
-    
-    const convertedPrice = (price * rates[currentCurrency as keyof typeof rates]).toFixed(2);
-    const symbol = symbols[currentCurrency as keyof typeof symbols];
-    
-    return `${symbol}${convertedPrice}`;
-  };
-
-  // Función para manejar la búsqueda
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
-    }
-  };
-
-  // Función para manejar Enter en el input
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  // Función para cambiar manualmente el texto del carrusel
-  const handleDotClick = (index: number) => {
-    if (index !== currentTextIndex) {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex(index);
-        setIsAnimating(false);
-      }, 300);
-    }
-  };
-
-  // Cálculos del pedido
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const calculateShipping = () => {
-    const subtotal = calculateSubtotal();
-    if (subtotal >= 500) return 0; // Envío gratis
-    const selectedMethod = shippingMethods.find(method => method.id === selectedShippingMethod);
-    return selectedMethod ? selectedMethod.price : 0;
-  };
-
-  const calculateTax = () => {
-    return calculateSubtotal() * 0.16; // 16% IVA
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax();
-  };
-
-  // Función para procesar el pago
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    
-    // Simulación de procesamiento de pago
-    setTimeout(() => {
-      setIsProcessing(false);
-      alert(t('¡Pago procesado exitosamente! Pronto recibirás una confirmación por email.'));
-      router.push('/');
-    }, 3000);
-  };
-
-  // Validación del formulario
-  const isFormValid = () => {
-    return (
-      personalInfo.firstName &&
-      personalInfo.lastName &&
-      personalInfo.email &&
-      personalInfo.phone &&
-      shippingInfo.address &&
-      shippingInfo.city &&
-      shippingInfo.state &&
-      shippingInfo.zipCode &&
-      selectedShippingMethod
-    );
-  };
-
-  // Cargar preferencias guardadas
+  // Cargar configuración guardada
   useEffect(() => {
     const savedLanguage = localStorage.getItem('preferred-language');
     const savedCurrency = localStorage.getItem('preferred-currency');
@@ -236,564 +98,565 @@ const CheckoutPage: NextPage = () => {
     if (savedCurrency) setCurrentCurrency(savedCurrency);
   }, []);
 
-  // Efecto para el carrusel de texto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
-        setIsAnimating(false);
-      }, 300);
-      
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [promoTexts.length]);
-
-  // Event listeners para cerrar dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCategoriesDropdown(false);
-      }
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
-        setShowLanguageDropdown(false);
-      }
-      if (loginDropdownRef.current && !loginDropdownRef.current.contains(event.target as Node)) {
-        setShowLoginDropdown(false);
-      }
-      if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
-        setShowSearchDropdown(false);
-      }
-      if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
-        setShowCartDropdown(false);
-      }
+  // Función para formatear precio
+  const formatPrice = (price: number) => {
+    const exchangeRates = {
+      'EUR': 1,
+      'USD': 1.1,
+      'MXN': 20.5
     };
-
-    const handleScroll = () => {
-      setShowCategoriesDropdown(false);
-      setShowLanguageDropdown(false);
-      setShowLoginDropdown(false);
-      setShowSearchDropdown(false);
-      setShowCartDropdown(false);
+    
+    const symbols = {
+      'EUR': '€',
+      'USD': '$',
+      'MXN': '$'
     };
+    
+    const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
+    const symbol = symbols[currentCurrency as keyof typeof symbols];
+    
+    return `${symbol}${convertedPrice}`;
+  };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll);
+  // Cálculos
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = subtotal > 500 ? 0 : 50;
+  const tax = subtotal * 0.16; // 16% IVA
+  const total = subtotal + shipping + tax;
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+  // Validaciones
+  const isShippingValid = () => {
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'state', 'postalCode'];
+    return requiredFields.every(field => shippingAddress[field as keyof ShippingAddress]?.toString().trim());
+  };
+
+  const isPaymentValid = () => {
+    if (paymentMethod.type === 'paypal' || paymentMethod.type === 'bank_transfer') {
+      return true;
+    }
+    return paymentMethod.cardNumber && paymentMethod.expiryDate && paymentMethod.cvv && paymentMethod.cardHolder;
+  };
+
+  // Handlers
+  const handleShippingChange = (field: keyof ShippingAddress, value: string) => {
+    setShippingAddress(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePaymentChange = (field: keyof PaymentMethod, value: string) => {
+    setPaymentMethod(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleNextStep = () => {
+    if (currentStep === 1 && !isShippingValid()) {
+      alert(t('Por favor completa todos los campos obligatorios de envío'));
+      return;
+    }
+    if (currentStep === 2 && !isPaymentValid()) {
+      alert(t('Por favor completa la información de pago'));
+      return;
+    }
+    setCurrentStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmitOrder = async () => {
+    if (!agreeToTerms) {
+      alert(t('Debes aceptar los términos y condiciones'));
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    // Simular procesamiento del pedido
+    setTimeout(() => {
+      alert(t('¡Pedido procesado exitosamente! Te enviaremos un email de confirmación.'));
+      router.push('/');
+      setIsProcessing(false);
+    }, 2000);
+  };
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
-         style={{
-           background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
-         }}>
-      
-      {/* Indicador de traducción */}
-      {isTranslating && (
-        <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-green-600 to-green-400 z-50">
-          <div className="h-full bg-white opacity-50 animate-pulse"></div>
-        </div>
-      )}
-      
-      {/* Header igual al del index */}
-      <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
-        <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-              <span className="text-white">{t('TREBOLUXE')}</span>
-            </div>
-            
-            {/* Contenido central - texto del carrusel */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
-              <Image
-                className="w-[12.2px] relative max-h-full object-contain"
-                width={12.2}
-                height={10.9}
-                sizes="100vw"
-                alt=""
-                src="/petalo-1@2x.png"
-              />
-              <div className={`relative tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out whitespace-nowrap ${
-                isAnimating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
-              }`}>
-                {t(promoTexts[currentTextIndex])}
-              </div>
-            </div>
-
-            <div className="flex-[-0.0187] [backdrop-filter:blur(40px)] rounded-[50px] flex flex-row items-center justify-end !pt-2 !pb-2 !pl-[402px] !pr-3 relative gap-2">
-              <div className="w-full absolute !!m-[0 important] h-full top-[0px] right-[0px] bottom-[0px] left-[0px] rounded-[100px] overflow-hidden hidden z-[0]">
-                <div className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] [backdrop-filter:blur(50px)] [background:linear-gradient(#0d0d0d,_#0d0d0d),_rgba(191,_191,_191,_0.44)]" />
-              </div>
-              <div className={`w-2 relative shadow-[0px_4px_4px_rgba(0,_0,_0,_0.25),_0px_-1px_1.3px_#fff_inset] rounded-[50px] h-2 z-[1] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 0 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
-              }`} 
-              onClick={() => handleDotClick(0)} />
-              <div className={`w-2 relative shadow-[0px_2px_4px_#000_inset] rounded-[50px] h-2 z-[2] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 1 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
-              }`}
-              onClick={() => handleDotClick(1)} />
-            </div>
-          </div>
-          <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
-            <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
-              <div 
-                className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
-                ref={dropdownRef}
-                onMouseEnter={() => setShowCategoriesDropdown(true)}
-                onMouseLeave={() => setShowCategoriesDropdown(false)}
-              >
-                <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                  {t('CATEGORIAS')}
-                </div>
-              </div>
-              <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('POPULARES')}
-                  </div>
-                </div>
-              </Link>
-              <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('NUEVOS')}
-                  </div>
-                </div>
-              </Link>
-              <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('BASICOS')}
-                  </div>
-                </div>
-              </Link>
-            </div>
-            
-            {/* Logo centrado con posicionamiento absoluto */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <Link href="/" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[50px] h-[50px] cursor-pointer flex items-center justify-center my-2">
-                  <Image
-                    className="w-full h-full object-cover"
-                    width={50}
-                    height={50}
-                    sizes="100vw"
-                    alt="Logo Treboluxe - Ir a página principal"
-                    src="/sin-ttulo1-2@2x.png"
-                  />
-                </div>
-              </Link>
-            </div>
-            
-            <div className="flex-1 flex flex-row items-center justify-end gap-[31px]">
-              <div 
-                className="w-5 relative h-5 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
-                ref={languageDropdownRef}
-                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-              >
-                <Image
-                  className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] max-w-full overflow-hidden max-h-full"
-                  width={20}
-                  height={20}
-                  sizes="100vw"
-                  alt="Selector de idioma y moneda"
-                  src="/icon.svg"
-                />
-              </div>
-              <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
-                <button 
-                  onClick={() => setShowLoginDropdown(!showLoginDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={16}
-                    height={18}
-                    sizes="100vw"
-                    alt="Login"
-                    src="/icon1.svg"
-                  />
-                </button>
-              </div>
-              <div className="w-[15px] relative h-[15px]" ref={searchDropdownRef}>
-                <button 
-                  onClick={() => setShowSearchDropdown(!showSearchDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={15}
-                    height={15}
-                    sizes="100vw"
-                    alt="Búsqueda"
-                    src="/icon2.svg"
-                  />
-                </button>
-              </div>
-              <div className="w-[19.2px] relative h-[17.5px]" ref={cartDropdownRef}>
-                <button 
-                  onClick={() => setShowCartDropdown(!showCartDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={19.2}
-                    height={17.5}
-                    sizes="100vw"
-                    alt="Carrito de compras"
-                    src="/icon3.svg"
-                  />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {cartItems.length}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contenido principal del checkout */}
-      <div className="flex-1 container mx-auto px-4 py-8">
+    <Layout>
+      <div className="w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-          <Link href="/" className="hover:text-white transition-colors no-underline text-gray-400">{t('Inicio')}</Link>
-          <span>/</span>
-          <Link href="/carrito" className="hover:text-white transition-colors no-underline text-gray-400">{t('Carrito')}</Link>
-          <span>/</span>
-          <span className="text-white">{t('Checkout')}</span>
+        <div className="bg-gray-100 py-4 px-4 md:px-8 lg:px-16">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center space-x-2 text-sm">
+              <Link href="/" className="text-gray-600 hover:text-black no-underline">
+                {t('Inicio')}
+              </Link>
+              <span className="text-gray-400">/</span>
+              <Link href="/carrito" className="text-gray-600 hover:text-black no-underline">
+                {t('Carrito')}
+              </Link>
+              <span className="text-gray-400">/</span>
+              <span className="text-black font-medium">{t('Checkout')}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Formulario de checkout */}
-          <div className="lg:col-span-2 space-y-8">
-            <h1 className="text-3xl font-bold text-white">{t('Finalizar Compra')}</h1>
+        {/* Contenido principal */}
+        <div className="py-8 px-4 md:px-8 lg:px-16">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wider mb-8">
+              {t('FINALIZAR COMPRA')}
+            </h1>
 
-            {/* Información Personal */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-6">{t('Información Personal')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    {t('Nombre')} *
-                  </label>
-                  <input
-                    type="text"
-                    value={personalInfo.firstName}
-                    onChange={(e) => setPersonalInfo({...personalInfo, firstName: e.target.value})}
-                    className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                    placeholder={t('Ingresa tu nombre')}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    {t('Apellido')} *
-                  </label>
-                  <input
-                    type="text"
-                    value={personalInfo.lastName}
-                    onChange={(e) => setPersonalInfo({...personalInfo, lastName: e.target.value})}
-                    className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                    placeholder={t('Ingresa tu apellido')}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    {t('Email')} *
-                  </label>
-                  <input
-                    type="email"
-                    value={personalInfo.email}
-                    onChange={(e) => setPersonalInfo({...personalInfo, email: e.target.value})}
-                    className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                    placeholder={t('correo@ejemplo.com')}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    {t('Teléfono')} *
-                  </label>
-                  <input
-                    type="tel"
-                    value={personalInfo.phone}
-                    onChange={(e) => setPersonalInfo({...personalInfo, phone: e.target.value})}
-                    className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                    placeholder={t('+52 123 456 7890')}
-                    required
-                  />
-                </div>
+            {/* Indicador de pasos */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= step 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {step}
+                    </div>
+                    <div className={`text-sm ml-2 ${
+                      currentStep >= step ? 'text-black font-medium' : 'text-gray-600'
+                    }`}>
+                      {step === 1 && t('Envío')}
+                      {step === 2 && t('Pago')}
+                      {step === 3 && t('Confirmación')}
+                    </div>
+                    {step < 3 && (
+                      <div className={`w-8 h-px ml-4 ${
+                        currentStep > step ? 'bg-black' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Información de Envío */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-6">{t('Dirección de Envío')}</h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    {t('Dirección')} *
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingInfo.address}
-                    onChange={(e) => setShippingInfo({...shippingInfo, address: e.target.value})}
-                    className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                    placeholder={t('Calle y número')}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-3">
-                      {t('Ciudad')} *
-                    </label>
-                    <input
-                      type="text"
-                      value={shippingInfo.city}
-                      onChange={(e) => setShippingInfo({...shippingInfo, city: e.target.value})}
-                      className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                      placeholder={t('Ciudad')}
-                      required
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Formularios */}
+              <div className="lg:col-span-2">
+                {/* Paso 1: Información de envío */}
+                {currentStep === 1 && (
+                  <div className="bg-white rounded-lg shadow-sm border">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold mb-6">{t('Información de Envío')}</h2>
+                      
+                      <form className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Nombre')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={shippingAddress.firstName}
+                              onChange={(e) => handleShippingChange('firstName', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Apellidos')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={shippingAddress.lastName}
+                              onChange={(e) => handleShippingChange('lastName', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Email')} *
+                            </label>
+                            <input
+                              type="email"
+                              value={shippingAddress.email}
+                              onChange={(e) => handleShippingChange('email', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Teléfono')} *
+                            </label>
+                            <input
+                              type="tel"
+                              value={shippingAddress.phone}
+                              onChange={(e) => handleShippingChange('phone', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {t('Dirección')} *
+                          </label>
+                          <input
+                            type="text"
+                            value={shippingAddress.address}
+                            onChange={(e) => handleShippingChange('address', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                            placeholder={t('Calle, número, colonia')}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Ciudad')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={shippingAddress.city}
+                              onChange={(e) => handleShippingChange('city', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Estado')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={shippingAddress.state}
+                              onChange={(e) => handleShippingChange('state', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Código Postal')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={shippingAddress.postalCode}
+                              onChange={(e) => handleShippingChange('postalCode', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </form>
+                      
+                      <div className="flex justify-end mt-8">
+                        <button
+                          onClick={handleNextStep}
+                          className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
+                        >
+                          {t('Continuar al Pago')}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-3">
-                      {t('Estado')} *
-                    </label>
-                    <input
-                      type="text"
-                      value={shippingInfo.state}
-                      onChange={(e) => setShippingInfo({...shippingInfo, state: e.target.value})}
-                      className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                      placeholder={t('Estado')}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-3">
-                      {t('Código Postal')} *
-                    </label>
-                    <input
-                      type="text"
-                      value={shippingInfo.zipCode}
-                      onChange={(e) => setShippingInfo({...shippingInfo, zipCode: e.target.value})}
-                      className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                      placeholder={t('12345')}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-3">
-                      {t('País')} *
-                    </label>
-                    <select
-                      value={shippingInfo.country}
-                      onChange={(e) => setShippingInfo({...shippingInfo, country: e.target.value})}
-                      className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400/50 transition-colors"
-                    >
-                      <option value="México">{t('México')}</option>
-                      <option value="Estados Unidos">{t('Estados Unidos')}</option>
-                      <option value="Canadá">{t('Canadá')}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Método de Envío */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-6">{t('Método de Envío')}</h2>
-              <div className="space-y-4">
-                {shippingMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all duration-300 ${
-                      selectedShippingMethod === method.id
-                        ? 'bg-black/60 border-green-400 shadow-lg shadow-green-400/20'
-                        : 'bg-black/40 border-white/20 hover:bg-black/60 hover:border-green-400/50'
-                    }`}
-                    onClick={() => setSelectedShippingMethod(method.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          selectedShippingMethod === method.id
-                            ? 'border-green-400 bg-green-400'
-                            : 'border-white/50'
-                        }`}>
-                          {selectedShippingMethod === method.id && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                {/* Paso 2: Método de pago */}
+                {currentStep === 2 && (
+                  <div className="bg-white rounded-lg shadow-sm border">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold mb-6">{t('Método de Pago')}</h2>
+                      
+                      {/* Selector de método de pago */}
+                      <div className="mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { id: 'credit_card', label: t('Tarjeta de Crédito'), icon: '💳' },
+                            { id: 'debit_card', label: t('Tarjeta de Débito'), icon: '💳' },
+                            { id: 'paypal', label: 'PayPal', icon: '🅿️' },
+                            { id: 'bank_transfer', label: t('Transferencia Bancaria'), icon: '🏦' }
+                          ].map((method) => (
+                            <label key={method.id} className="cursor-pointer">
+                              <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={method.id}
+                                checked={paymentMethod.type === method.id}
+                                onChange={(e) => handlePaymentChange('type', e.target.value)}
+                                className="sr-only"
+                              />
+                              <div className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-all duration-200 ${
+                                paymentMethod.type === method.id 
+                                  ? 'border-black bg-gray-50' 
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}>
+                                <span className="text-2xl">{method.icon}</span>
+                                <span className="font-medium">{method.label}</span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Formulario de tarjeta */}
+                      {(paymentMethod.type === 'credit_card' || paymentMethod.type === 'debit_card') && (
+                        <form className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Número de Tarjeta')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentMethod.cardNumber || ''}
+                              onChange={(e) => handlePaymentChange('cardNumber', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              placeholder="1234 5678 9012 3456"
+                              maxLength={19}
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('Nombre del Titular')} *
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentMethod.cardHolder || ''}
+                              onChange={(e) => handlePaymentChange('cardHolder', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                              placeholder={t('Como aparece en la tarjeta')}
+                              required
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {t('Fecha de Vencimiento')} *
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentMethod.expiryDate || ''}
+                                onChange={(e) => handlePaymentChange('expiryDate', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                                placeholder="MM/AA"
+                                maxLength={5}
+                                required
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                CVV *
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentMethod.cvv || ''}
+                                onChange={(e) => handlePaymentChange('cvv', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                                placeholder="123"
+                                maxLength={4}
+                                required
+                              />
+                            </div>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Información para otros métodos */}
+                      {paymentMethod.type === 'paypal' && (
+                        <div className="p-4 bg-blue-50 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            {t('Serás redirigido a PayPal para completar tu pago de forma segura.')}
+                          </p>
+                        </div>
+                      )}
+
+                      {paymentMethod.type === 'bank_transfer' && (
+                        <div className="p-4 bg-yellow-50 rounded-lg">
+                          <p className="text-sm text-yellow-800">
+                            {t('Te enviaremos los datos bancarios por email una vez confirmado el pedido.')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between mt-8">
+                        <button
+                          onClick={handlePrevStep}
+                          className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200"
+                        >
+                          {t('Volver')}
+                        </button>
+                        <button
+                          onClick={handleNextStep}
+                          className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
+                        >
+                          {t('Revisar Pedido')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Paso 3: Confirmación */}
+                {currentStep === 3 && (
+                  <div className="bg-white rounded-lg shadow-sm border">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold mb-6">{t('Revisar y Confirmar')}</h2>
+                      
+                      {/* Información de envío */}
+                      <div className="mb-6">
+                        <h3 className="font-bold text-lg mb-3">{t('Información de Envío')}</h3>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p className="font-medium">
+                            {shippingAddress.firstName} {shippingAddress.lastName}
+                          </p>
+                          <p>{shippingAddress.address}</p>
+                          <p>
+                            {shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}
+                          </p>
+                          <p>{shippingAddress.phone}</p>
+                          <p>{shippingAddress.email}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Método de pago */}
+                      <div className="mb-6">
+                        <h3 className="font-bold text-lg mb-3">{t('Método de Pago')}</h3>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p>
+                            {paymentMethod.type === 'credit_card' && t('Tarjeta de Crédito')}
+                            {paymentMethod.type === 'debit_card' && t('Tarjeta de Débito')}
+                            {paymentMethod.type === 'paypal' && 'PayPal'}
+                            {paymentMethod.type === 'bank_transfer' && t('Transferencia Bancaria')}
+                          </p>
+                          {paymentMethod.cardNumber && (
+                            <p>**** **** **** {paymentMethod.cardNumber.slice(-4)}</p>
                           )}
                         </div>
-                        <div>
-                          <h3 className="text-white font-medium">{t(method.name)}</h3>
-                          <p className="text-gray-400 text-sm">{t(method.description)}</p>
-                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-white font-bold">
-                          {method.price === 0 ? t('Gratis') : formatPrice(method.price)}
-                        </div>
-                        <div className="text-gray-400 text-sm">{method.deliveryTime}</div>
+                      
+                      {/* Términos y condiciones */}
+                      <div className="mb-6">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={agreeToTerms}
+                            onChange={(e) => setAgreeToTerms(e.target.checked)}
+                            className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
+                          />
+                          <span className="text-sm">
+                            {t('Acepto los')}{' '}
+                            <Link href="/terminos" className="text-black underline">
+                              {t('términos y condiciones')}
+                            </Link>
+                            {' '}{t('y la')}{' '}
+                            <Link href="/privacidad" className="text-black underline">
+                              {t('política de privacidad')}
+                            </Link>
+                          </span>
+                        </label>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <button
+                          onClick={handlePrevStep}
+                          className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200"
+                        >
+                          {t('Volver')}
+                        </button>
+                        <button
+                          onClick={handleSubmitOrder}
+                          disabled={!agreeToTerms || isProcessing}
+                          className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {isProcessing ? t('Procesando...') : t('CONFIRMAR PEDIDO')}
+                        </button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Método de Pago */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <h2 className="text-xl font-bold text-white mb-6">{t('Método de Pago')}</h2>
-              <div className="bg-black/40 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-4">
-                  <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M1 4c0-1.1.9-2 2-2h18c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4zm2 0v16h18V4H3z"/>
-                    <path d="M5 6h14c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
-                    <path d="M5 10h6c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
-                  </svg>
-                  <div>
-                    <h3 className="text-white font-medium">{t('Stripe - Pago Seguro')}</h3>
-                    <p className="text-gray-400 text-sm">{t('Tarjeta de crédito/débito segura')}</p>
-                  </div>
-                </div>
-                <div className="bg-black/30 border border-white/10 rounded p-3 text-center text-gray-400">
-                  <p>{t('🔒 Procesamiento seguro con Stripe')}</p>
-                  <p className="text-xs mt-1">{t('Placeholder - Integración de Stripe próximamente')}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Checkbox de promociones */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acceptPromotions}
-                  onChange={(e) => setAcceptPromotions(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-green-400 bg-black/50 border-white/20 rounded focus:ring-green-400 focus:ring-2"
-                />
-                <div>
-                  <span className="text-white font-medium">
-                    {t('Recibir ofertas y promociones por email')}
-                  </span>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {t('Mantente informado sobre nuestras últimas ofertas, nuevos productos y promociones exclusivas.')}
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Resumen del pedido */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 sticky top-4">
-              <h2 className="text-xl font-bold text-white mb-6">{t('Resumen del Pedido')}</h2>
-              
-              {/* Lista de productos */}
-              <div className="space-y-4 mb-6">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
-                    <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white text-sm font-medium truncate">{t(item.name)}</h3>
-                      <p className="text-gray-400 text-xs">
-                        {item.size} | {t(item.color)} | {t('Cantidad')}: {item.quantity}
-                      </p>
-                      <p className="text-green-400 text-sm font-bold">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="space-y-3 mb-6 border-t border-white/20 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">{t('Subtotal')}</span>
-                  <span className="text-white font-medium">{formatPrice(calculateSubtotal())}</span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">{t('Envío')}</span>
-                  <span className={`font-medium ${calculateShipping() === 0 ? 'text-green-400' : 'text-white'}`}>
-                    {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping())}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">{t('IVA (16%)')}</span>
-                  <span className="text-white font-medium">{formatPrice(calculateTax())}</span>
-                </div>
-                
-                <div className="border-t border-white/20 pt-3">
-                  <div className="flex justify-between items-center text-lg">
-                    <span className="text-white font-bold">{t('Total')}</span>
-                    <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handlePayment}
-                disabled={!isFormValid() || isProcessing}
-                className="w-full bg-black/60 backdrop-blur-md border border-green-400/40 disabled:bg-black/30 disabled:border-white/20 disabled:cursor-not-allowed text-white disabled:text-gray-500 py-4 px-6 rounded-lg font-medium transition-all duration-300 text-lg hover:bg-black/80 hover:border-green-400/60 hover:text-green-300"
-              >
-                {isProcessing ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>{t('Procesando...')}</span>
-                  </div>
-                ) : (
-                  `${t('Pagar')} ${formatPrice(calculateTotal())}`
                 )}
-              </button>
+              </div>
 
-              {/* Información de seguridad */}
-              <div className="mt-6 pt-6 border-t border-white/20 text-xs text-gray-400 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span>{t('Pago 100% seguro con SSL')}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{t('Garantía de devolución de 30 días')}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span>{t('Confirmación por email')}</span>
+              {/* Resumen del pedido */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm border sticky top-4">
+                  <div className="p-6">
+                    <h2 className="text-xl font-bold mb-6">{t('Resumen del Pedido')}</h2>
+                    
+                    {/* Productos */}
+                    <div className="space-y-4 mb-6">
+                      {cartItems.map((item) => (
+                        <div key={item.id} className="flex gap-3">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            width={60}
+                            height={60}
+                            className="w-15 h-15 object-cover rounded-md"
+                          />
+                          <div className="flex-1">
+                            <h3 className="font-medium text-sm">{t(item.name)}</h3>
+                            <p className="text-gray-600 text-xs">
+                              {t('Talla')}: {item.size} • {t('Color')}: {t(item.color)}
+                            </p>
+                            <p className="text-xs">
+                              {t('Cantidad')}: {item.quantity}
+                            </p>
+                            <p className="font-bold text-sm">
+                              {formatPrice(item.price * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Totales */}
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="flex justify-between text-sm">
+                        <span>{t('Subtotal')}</span>
+                        <span>{formatPrice(subtotal)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>{t('Envío')}</span>
+                        <span>
+                          {shipping === 0 ? (
+                            <span className="text-green-600">{t('GRATIS')}</span>
+                          ) : (
+                            formatPrice(shipping)
+                          )}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>{t('IVA')} (16%)</span>
+                        <span>{formatPrice(tax)}</span>
+                      </div>
+                      
+                      <div className="border-t pt-3">
+                        <div className="flex justify-between items-center text-lg font-bold">
+                          <span>{t('Total')}</span>
+                          <span>{formatPrice(total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

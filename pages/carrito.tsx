@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
-import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/Layout';
 
 interface CartItem {
   id: number;
@@ -20,121 +20,64 @@ interface CartItem {
 
 const CarritoPage: NextPage = () => {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  
-  // Estados para dropdowns del header
-  const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [showLoginDropdown, setShowLoginDropdown] = useState(false);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [showCartDropdown, setShowCartDropdown] = useState(false);
-  
-  // Estados para el carrusel promocional
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  // Refs para los dropdowns
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const loginDropdownRef = useRef<HTMLDivElement>(null);
-  const searchDropdownRef = useRef<HTMLDivElement>(null);
-  const cartDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Textos del carrusel promocional
-  const promoTexts = ['ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN', 'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'];
-  
-  // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
   
   // Sistema de traducción universal
-  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  const { t } = useUniversalTranslate(currentLanguage);
 
-  // Estados del carrito
+  // Estado del carrito (simulado - en producción vendría de un contexto de carrito)
   const [cartItems, setCartItems] = useState<CartItem[]>([
     {
       id: 1,
-      name: "Camiseta Básica Premium",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      name: "Camiseta Casual Premium",
+      price: 25.99,
+      originalPrice: 35.99,
+      image: "/sin-ttulo1-2@2x.png",
       size: "M",
-      color: "Blanco",
+      color: "Azul",
       quantity: 2,
       inStock: true
     },
     {
       id: 2,
-      name: "Polo Clásico Elegante",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      size: "L",
-      color: "Azul",
-      quantity: 1,
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Chaqueta Moderna Sport",
-      price: 89.99,
-      image: "/image@2x.png",
-      size: "M",
+      name: "Gorra Deportiva",
+      price: 18.99,
+      originalPrice: 24.99,
+      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      size: "Única",
       color: "Negro",
       quantity: 1,
-      inStock: false
+      inStock: true
     }
   ]);
 
-  // Funciones para cambiar idioma y moneda
-  const changeLanguage = (newLanguage: string) => {
-    setCurrentLanguage(newLanguage);
-    localStorage.setItem('preferred-language', newLanguage);
-    setShowLanguageDropdown(false);
-  };
+  // Cargar configuración guardada
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('preferred-language');
+    const savedCurrency = localStorage.getItem('preferred-currency');
+    if (savedLanguage) setCurrentLanguage(savedLanguage);
+    if (savedCurrency) setCurrentCurrency(savedCurrency);
+  }, []);
 
-  const changeCurrency = (newCurrency: string) => {
-    setCurrentCurrency(newCurrency);
-    localStorage.setItem('preferred-currency', newCurrency);
-    setShowLanguageDropdown(false);
-  };
-
-  // Función para formatear precios
-  const formatPrice = (price: number): string => {
-    const rates = { MXN: 1, USD: 0.056, EUR: 0.051 };
-    const symbols = { MXN: '$', USD: '$', EUR: '€' };
+  // Función para formatear precio
+  const formatPrice = (price: number) => {
+    const exchangeRates = {
+      'EUR': 1,
+      'USD': 1.1,
+      'MXN': 20.5
+    };
     
-    const convertedPrice = (price * rates[currentCurrency as keyof typeof rates]).toFixed(2);
+    const symbols = {
+      'EUR': '€',
+      'USD': '$',
+      'MXN': '$'
+    };
+    
+    const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
     const symbol = symbols[currentCurrency as keyof typeof symbols];
     
     return `${symbol}${convertedPrice}`;
-  };
-
-  // Función para manejar la búsqueda
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
-    }
-  };
-
-  // Función para manejar Enter en el input
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  // Función para cambiar manualmente el texto del carrusel
-  const handleDotClick = (index: number) => {
-    if (index !== currentTextIndex) {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex(index);
-        setIsAnimating(false);
-      }, 300);
-    }
   };
 
   // Funciones del carrito
@@ -154,526 +97,208 @@ const CarritoPage: NextPage = () => {
     setCartItems(items => items.filter(item => item.id !== id));
   };
 
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const calculateShipping = () => {
-    const subtotal = calculateSubtotal();
-    return subtotal >= 500 ? 0 : 50; // Envío gratis arriba de $500
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping();
-  };
-
-  // Cargar preferencias guardadas
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('preferred-language');
-    const savedCurrency = localStorage.getItem('preferred-currency');
-    if (savedLanguage) setCurrentLanguage(savedLanguage);
-    if (savedCurrency) setCurrentCurrency(savedCurrency);
-  }, []);
-
-  // Efecto para el carrusel de texto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      
-      setTimeout(() => {
-        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
-        setIsAnimating(false);
-      }, 300);
-      
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [promoTexts.length]);
-
-  // Event listeners para cerrar dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCategoriesDropdown(false);
-      }
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
-        setShowLanguageDropdown(false);
-      }
-      if (loginDropdownRef.current && !loginDropdownRef.current.contains(event.target as Node)) {
-        setShowLoginDropdown(false);
-      }
-      if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
-        setShowSearchDropdown(false);
-      }
-      if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
-        setShowCartDropdown(false);
-      }
-    };
-
-    const handleScroll = () => {
-      setShowCategoriesDropdown(false);
-      setShowLanguageDropdown(false);
-      setShowLoginDropdown(false);
-      setShowSearchDropdown(false);
-      setShowCartDropdown(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+  // Cálculos
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = subtotal > 500 ? 0 : 50; // Envío gratis en pedidos > $500
+  const total = subtotal + shipping;
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
-         style={{
-           background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
-         }}>
-      
-      {/* Indicador de traducción */}
-      {isTranslating && (
-        <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-green-600 to-green-400 z-50">
-          <div className="h-full bg-white opacity-50 animate-pulse"></div>
-        </div>
-      )}
-      
-      {/* Header igual al del index */}
-      <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
-        <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-              <span className="text-white">{t('TREBOLUXE')}</span>
-            </div>
-            
-            {/* Contenido central - texto del carrusel */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
-              <Image
-                className="w-[12.2px] relative max-h-full object-contain"
-                width={12.2}
-                height={10.9}
-                sizes="100vw"
-                alt=""
-                src="/petalo-1@2x.png"
-              />
-              <div className={`relative tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out whitespace-nowrap ${
-                isAnimating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
-              }`}>
-                {t(promoTexts[currentTextIndex])}
-              </div>
-            </div>
-
-            <div className="flex-[-0.0187] [backdrop-filter:blur(40px)] rounded-[50px] flex flex-row items-center justify-end !pt-2 !pb-2 !pl-[402px] !pr-3 relative gap-2">
-              <div className="w-full absolute !!m-[0 important] h-full top-[0px] right-[0px] bottom-[0px] left-[0px] rounded-[100px] overflow-hidden hidden z-[0]">
-                <div className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] [backdrop-filter:blur(50px)] [background:linear-gradient(#0d0d0d,_#0d0d0d),_rgba(191,_191,_191,_0.44)]" />
-              </div>
-              <div className={`w-2 relative shadow-[0px_4px_4px_rgba(0,_0,_0,_0.25),_0px_-1px_1.3px_#fff_inset] rounded-[50px] h-2 z-[1] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 0 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
-              }`} 
-              onClick={() => handleDotClick(0)} />
-              <div className={`w-2 relative shadow-[0px_2px_4px_#000_inset] rounded-[50px] h-2 z-[2] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 1 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
-              }`}
-              onClick={() => handleDotClick(1)} />
+    <Layout>
+      <div className="w-full">
+        {/* Breadcrumb */}
+        <div className="bg-gray-100 py-4 px-4 md:px-8 lg:px-16">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center space-x-2 text-sm">
+              <Link href="/" className="text-gray-600 hover:text-black no-underline">
+                {t('Inicio')}
+              </Link>
+              <span className="text-gray-400">/</span>
+              <span className="text-black font-medium">{t('Carrito de Compras')}</span>
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
-            <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
-              <div 
-                className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
-                ref={dropdownRef}
-                onMouseEnter={() => setShowCategoriesDropdown(true)}
-                onMouseLeave={() => setShowCategoriesDropdown(false)}
-              >
-                <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                  {t('CATEGORIAS')}
-                </div>
-                
-                {/* Dropdown Menu - Starts below CATEGORIAS */}
-                <div 
-                  className={`fixed top-[82px] left-0 w-80 sm:w-72 md:w-80 lg:w-80 h-[calc(100vh-82px)] bg-black/30 shadow-2xl z-50 transform transition-all duration-300 ease-out ${
-                    showCategoriesDropdown 
-                      ? 'translate-x-0 opacity-100' 
-                      : '-translate-x-full opacity-0 pointer-events-none'
-                  }`}
-                >
-                    <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
-                      <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
-                      <div className="space-y-1">
-                        <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Camisas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Pantalones')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Vestidos')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Abrigos y Chaquetas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Faldas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Jeans')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Ropa Interior')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Trajes de Baño')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Accesorios de Moda')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=calzado" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Calzado')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                      </div>
+        </div>
+
+        {/* Contenido principal */}
+        <div className="py-8 px-4 md:px-8 lg:px-16">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wider mb-8">
+              {t('CARRITO DE COMPRAS')}
+            </h1>
+
+            {cartItems.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Lista de productos */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-lg shadow-sm border">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold mb-6">{t('Productos en tu carrito')}</h2>
                       
-                      <div className="mt-8 pt-6 border-t border-gray-700">
-                        <p className="text-gray-400 text-sm">
-                          {t('Descubre nuestra amplia colección de moda y encuentra el estilo perfecto para ti.')}
-                        </p>
+                      <div className="space-y-6">
+                        {cartItems.map((item) => (
+                          <div key={item.id} className="flex flex-col sm:flex-row gap-4 pb-6 border-b last:border-b-0">
+                            <div className="flex-shrink-0">
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                width={120}
+                                height={120}
+                                className="w-24 h-24 sm:w-30 sm:h-30 object-cover rounded-lg"
+                              />
+                            </div>
+                            
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start mb-2">
+                                <h3 className="font-bold text-lg">{t(item.name)}</h3>
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  className="text-red-500 hover:text-red-700 transition-colors duration-200"
+                                  title={t('Eliminar producto')}
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                              
+                              <p className="text-gray-600 text-sm mb-3">
+                                {t('Talla')}: {item.size} • {t('Color')}: {t(item.color)}
+                              </p>
+                              
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-12 text-center font-medium">{item.quantity}</span>
+                                  <button
+                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                
+                                <div className="text-right">
+                                  <div className="font-bold text-lg">
+                                    {formatPrice(item.price * item.quantity)}
+                                  </div>
+                                  {item.originalPrice && item.originalPrice > item.price && (
+                                    <div className="text-gray-400 text-sm line-through">
+                                      {formatPrice(item.originalPrice * item.quantity)}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-              </div>
-              <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('POPULARES')}
+
+                  {/* Continuar comprando */}
+                  <div className="mt-6">
+                    <Link 
+                      href="/catalogo"
+                      className="inline-flex items-center gap-2 text-black hover:text-gray-600 transition-colors duration-200 no-underline"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      {t('Continuar comprando')}
+                    </Link>
                   </div>
                 </div>
-              </Link>
-              <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('NUEVOS')}
-                  </div>
-                </div>
-              </Link>
-              <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('BASICOS')}
-                  </div>
-                </div>
-              </Link>
-            </div>
-            
-            {/* Logo centrado con posicionamiento absoluto */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <Link href="/" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[50px] h-[50px] cursor-pointer flex items-center justify-center my-2">
-                  <Image
-                    className="w-full h-full object-cover"
-                    width={50}
-                    height={50}
-                    sizes="100vw"
-                    alt="Logo Treboluxe - Ir a página principal"
-                    src="/sin-ttulo1-2@2x.png"
-                  />
-                </div>
-              </Link>
-            </div>
-            
-            <div className="flex-1 flex flex-row items-center justify-end gap-[31px]">
-              <div 
-                className="w-5 relative h-5 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
-                ref={languageDropdownRef}
-                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-              >
-                <Image
-                  className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] max-w-full overflow-hidden max-h-full"
-                  width={20}
-                  height={20}
-                  sizes="100vw"
-                  alt="Selector de idioma y moneda"
-                  src="/icon.svg"
-                />
-              </div>
-              <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
-                <button 
-                  onClick={() => setShowLoginDropdown(!showLoginDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={16}
-                    height={18}
-                    sizes="100vw"
-                    alt="Login"
-                    src="/icon1.svg"
-                  />
-                </button>
-              </div>
-              <div className="w-[15px] relative h-[15px]" ref={searchDropdownRef}>
-                <button 
-                  onClick={() => setShowSearchDropdown(!showSearchDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={15}
-                    height={15}
-                    sizes="100vw"
-                    alt="Búsqueda"
-                    src="/icon2.svg"
-                  />
-                </button>
-              </div>
-              <div className="w-[19.2px] relative h-[17.5px]" ref={cartDropdownRef}>
-                <button 
-                  onClick={() => setShowCartDropdown(!showCartDropdown)}
-                  className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
-                >
-                  <Image
-                    className="h-full w-full object-contain"
-                    width={19.2}
-                    height={17.5}
-                    sizes="100vw"
-                    alt="Carrito de compras"
-                    src="/icon3.svg"
-                  />
-                  {/* Badge de cantidad */}
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {cartItems.length}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Contenido principal del carrito */}
-      <div className="flex-1 container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-          <Link href="/" className="hover:text-white transition-colors no-underline text-gray-400">{t('Inicio')}</Link>
-          <span>/</span>
-          <span className="text-white">{t('Carrito de Compras')}</span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Lista de productos */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold text-white">{t('Tu Carrito')}</h1>
-              {cartItems.length > 0 && (
-                <button
-                  onClick={clearCart}
-                  className="text-red-400 hover:text-red-300 transition-colors text-sm"
-                >
-                  {t('Vaciar carrito')}
-                </button>
-              )}
-            </div>
-
-            {cartItems.length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 border border-white/20 text-center">
-                <div className="text-6xl mb-4">🛒</div>
-                <h3 className="text-xl font-medium text-white mb-2">{t('Tu carrito está vacío')}</h3>
-                <p className="text-gray-400 mb-6">{t('Agrega algunos productos para continuar')}</p>
-                <Link
-                  href="/catalogo"
-                  className="inline-block bg-black/50 backdrop-blur-md border border-white/30 text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-black/70 no-underline"
-                >
-                  {t('Explorar Productos')}
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-                    <div className="flex items-start gap-4">
-                      {/* Imagen del producto */}
-                      <div className="w-24 h-24 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      {/* Información del producto */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-lg font-medium text-white mb-1">{t(item.name)}</h3>
-                            <p className="text-sm text-gray-400 mb-2">
-                              {t('Talla')}: {item.size} | {t('Color')}: {t(item.color)}
-                            </p>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-lg font-bold text-green-400">
-                                {formatPrice(item.price)}
-                              </span>
-                              {item.originalPrice && (
-                                <span className="text-sm text-gray-500 line-through">
-                                  {formatPrice(item.originalPrice)}
-                                </span>
-                              )}
-                            </div>
-                            {!item.inStock && (
-                              <p className="text-red-400 text-sm mt-1">{t('Producto agotado')}</p>
+                {/* Resumen del pedido */}
+                <div className="lg:col-span-1">
+                  <div className="bg-white rounded-lg shadow-sm border sticky top-4">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold mb-6">{t('Resumen del pedido')}</h2>
+                      
+                      <div className="space-y-4 mb-6">
+                        <div className="flex justify-between">
+                          <span>{t('Subtotal')} ({cartItems.length} {t('productos')})</span>
+                          <span className="font-medium">{formatPrice(subtotal)}</span>
+                        </div>
+                        
+                        <div className="flex justify-between">
+                          <span>{t('Envío')}</span>
+                          <span className="font-medium">
+                            {shipping === 0 ? (
+                              <span className="text-green-600">{t('GRATIS')}</span>
+                            ) : (
+                              formatPrice(shipping)
                             )}
+                          </span>
+                        </div>
+                        
+                        {shipping > 0 && (
+                          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                            {t('¡Agrega')} {formatPrice(500 - subtotal)} {t('más y obtén envío GRATIS!')}
                           </div>
-
-                          {/* Controles de cantidad */}
-                          <div className="flex items-center space-x-3">
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white"
-                              >
-                                -
-                              </button>
-                              <span className="w-12 text-center text-white font-medium">
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white"
-                              >
-                                +
-                              </button>
-                            </div>
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors p-2"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                        )}
+                        
+                        <div className="border-t pt-4">
+                          <div className="flex justify-between items-center text-lg font-bold">
+                            <span>{t('Total')}</span>
+                            <span>{formatPrice(total)}</span>
                           </div>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => router.push('/checkout')}
+                        className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 mb-4"
+                      >
+                        {t('PROCEDER AL CHECKOUT')}
+                      </button>
+                      
+                      <div className="text-center">
+                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          {t('Compra 100% segura')}
+                        </div>
+                        
+                        <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+                          <span>{t('SSL')}</span>
+                          <span>•</span>
+                          <span>{t('Encriptación')}</span>
+                          <span>•</span>
+                          <span>{t('Seguridad garantizada')}</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+            ) : (
+              // Carrito vacío
+              <div className="text-center py-16">
+                <div className="text-gray-400 text-8xl mb-6">🛒</div>
+                <h2 className="text-2xl font-bold text-gray-600 mb-4">
+                  {t('Tu carrito está vacío')}
+                </h2>
+                <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                  {t('Parece que aún no has agregado ningún producto a tu carrito. ¡Explora nuestro catálogo y encuentra algo que te encante!')}
+                </p>
+                <Link 
+                  href="/catalogo"
+                  className="inline-block bg-black text-white px-8 py-3 text-lg font-medium rounded-lg hover:bg-gray-800 transition-colors duration-200 no-underline"
+                >
+                  {t('EXPLORAR PRODUCTOS')}
+                </Link>
               </div>
             )}
           </div>
-
-          {/* Resumen del pedido */}
-          {cartItems.length > 0 && (
-            <div className="lg:col-span-1">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 sticky top-4 overflow-hidden">
-                <div className="p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">{t('Resumen del Pedido')}</h2>
-                  
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">{t('Subtotal')} ({cartItems.reduce((total, item) => total + item.quantity, 0)} {t('productos')})</span>
-                      <span className="text-white font-medium">{formatPrice(calculateSubtotal())}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">{t('Envío')}</span>
-                      <span className={`font-medium ${calculateShipping() === 0 ? 'text-green-400' : 'text-white'}`}>
-                        {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping())}
-                      </span>
-                    </div>
-                    
-                    {calculateShipping() > 0 && (
-                      <div className="text-xs text-gray-400 bg-green-400/10 border border-green-400/20 rounded p-2">
-                        {t('Agrega')} {formatPrice(500 - calculateSubtotal())} {t('más para envío gratis')}
-                      </div>
-                    )}
-                    
-                    <div className="border-t border-white/20 pt-4">
-                      <div className="flex justify-between items-center text-lg">
-                        <span className="text-white font-bold">{t('Total')}</span>
-                        <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6 w-full">
-                    <Link
-                      href="/checkout"
-                      className="display-block w-full bg-black/60 backdrop-blur-md border border-green-400/40 text-white py-3 px-6 rounded-lg font-medium transition-colors hover:bg-black/80 hover:border-green-400/60 hover:text-green-300 text-center no-underline"
-                    >
-                      {t('Proceder al Checkout')}
-                    </Link>
-                    
-                    <Link
-                      href="/catalogo"
-                      className="display-block w-full bg-black/50 backdrop-blur-md border border-white/30 text-white py-3 px-6 rounded-lg font-medium transition-colors hover:bg-black/70 text-center no-underline"
-                    >
-                      {t('Continuar Comprando')}
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Información adicional */}
-                <div className="px-6 pb-6 pt-4 border-t border-white/20 text-xs text-gray-400 space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{t('Pago 100% seguro')}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{t('Envío en 24-48 horas')}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{t('Devoluciones gratuitas')}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
