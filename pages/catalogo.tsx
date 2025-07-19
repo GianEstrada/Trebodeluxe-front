@@ -825,6 +825,108 @@ const CatalogoScreen: NextPage = () => {
                     2
                   </span>
                 </button>
+                
+                {/* Cart Dropdown */}
+                <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
+                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
+                  <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
+                    <div className="p-6 flex-1 flex flex-col">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+                        <p className="text-gray-300 text-sm">2 {t('productos en tu carrito')}</p>
+                      </div>
+                      
+                      {/* Lista de productos */}
+                      <div className="space-y-4 flex-1 overflow-y-auto">
+                        {/* Producto 1 */}
+                        <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                          <div className="flex items-start gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0"></div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-white font-medium truncate">{t('Camisa Polo Clásica')}</h4>
+                              <p className="text-gray-300 text-sm">{t('Talla: M, Color: Azul')}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-white font-bold">{formatPrice(29.99)}</span>
+                                <div className="flex items-center gap-2">
+                                  <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
+                                    -
+                                  </button>
+                                  <span className="text-white text-sm w-8 text-center">1</span>
+                                  <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <button className="text-red-400 hover:text-red-300 transition-colors">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Producto 2 */}
+                        <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                          <div className="flex items-start gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0"></div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-white font-medium truncate">{t('Pantalón Chino')}</h4>
+                              <p className="text-gray-300 text-sm">{t('Talla: 32, Color: Negro')}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-white font-bold">{formatPrice(45.99)}</span>
+                                <div className="flex items-center gap-2">
+                                  <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
+                                    -
+                                  </button>
+                                  <span className="text-white text-sm w-8 text-center">1</span>
+                                  <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <button className="text-red-400 hover:text-red-300 transition-colors">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Resumen del carrito */}
+                      <div className="mt-6 pt-4 border-t border-white/20">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-gray-300">{t('Subtotal:')}</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-gray-300">{t('Envío:')}</span>
+                          <span className="text-green-400 font-medium">{t('Gratis')}</span>
+                        </div>
+                        <div className="flex justify-between items-center mb-6 text-lg">
+                          <span className="text-white font-bold">{t('Total:')}</span>
+                          <span className="text-white font-bold">{formatPrice(75.98)}</span>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <Link href="/checkout" className="block">
+                            <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
+                              {t('Finalizar Compra')}
+                            </button>
+                          </Link>
+                          <Link href="/carrito" className="block">
+                            <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
+                              {t('Ver Carrito Completo')}
+                            </button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
