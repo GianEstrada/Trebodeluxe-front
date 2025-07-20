@@ -5,7 +5,7 @@ import { apiRequest } from './api';
 /**
  * API para manejo de productos con la nueva estructura de BD
  */
-export const productsAPI = {
+export const productsApi = {
   // Obtener todos los productos con filtros opcionales
   async getAll(filters = {}) {
     const queryParams = new URLSearchParams();
@@ -81,6 +81,36 @@ export const productsAPI = {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(productData)
+    });
+  },
+
+  // Actualizar producto existente
+  async update(productId, productData, token) {
+    return apiRequest(`/api/products/${productId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(productData)
+    });
+  },
+
+  // Eliminar producto
+  async delete(productId, token) {
+    return apiRequest(`/api/products/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+
+  // Obtener productos para administradores (con info completa)
+  async getAllForAdmin(token) {
+    return apiRequest('/api/products/admin', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
   },
 
@@ -212,4 +242,4 @@ export const productUtils = {
   }
 };
 
-export default productsAPI;
+export default productsApi;
