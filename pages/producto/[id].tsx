@@ -5,7 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
 import { useAuth } from '../../contexts/AuthContext';
+import { productsAPI, productUtils } from '../../utils/productsApi';
 
+// Definimos el tipo Product para este archivo
 interface Product {
   id: number;
   name: string;
@@ -14,14 +16,19 @@ interface Product {
   image: string;
   category: string;
   brand: string;
-  color: string;
-  size: string;
+  color?: string;
+  size?: string;
   inStock: boolean;
   description?: string;
   features?: string[];
   materials?: string[];
   sizes?: string[];
   colors?: string[];
+  // Nuevas propiedades de la API
+  variantes?: any[];
+  tallas_disponibles?: any[];
+  stock?: any[];
+  sistema_talla?: string;
 }
 
 const ProductPage: NextPage = () => {
@@ -179,20 +186,44 @@ const ProductPage: NextPage = () => {
     }
   };
 
-  // Cargar producto basado en el ID
+  // Cargar producto desde la API
   useEffect(() => {
-    if (id) {
+    const loadProduct = async () => {
+      if (!id || Array.isArray(id)) return;
+      
       setLoading(true);
-      setTimeout(() => {
-        const foundProduct = products.find(p => p.id === parseInt(id as string));
-        if (foundProduct) {
-          setProduct(foundProduct);
-          setSelectedSize(foundProduct.size);
-          setSelectedColor(foundProduct.color);
+      
+      try {
+        const response = await productsAPI.getById(parseInt(id)) as any;
+        if (response.success && response.product) {
+          const transformedProduct = productUtils.transformToLegacyFormat(response.product);
+          if (transformedProduct) {
+            setProduct(transformedProduct);
+            
+            // Configurar talla por defecto desde tallas_disponibles
+            if (transformedProduct.tallas_disponibles && transformedProduct.tallas_disponibles.length > 0) {
+              setSelectedSize(transformedProduct.tallas_disponibles[0].nombre);
+            }
+            
+            // Configurar color por defecto desde la primera variante
+            if (transformedProduct.variantes && transformedProduct.variantes.length > 0) {
+              setSelectedColor(transformedProduct.variantes[0].nombre);
+            }
+          } else {
+            setProduct(null);
+          }
+        } else {
+          setProduct(null);
         }
+      } catch (err: any) {
+        console.error('Error cargando producto:', err);
+        setProduct(null);
+      } finally {
         setLoading(false);
-      }, 500);
-    }
+      }
+    };
+
+    loadProduct();
   }, [id]);
 
   // Cargar preferencias guardadas

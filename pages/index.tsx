@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { canAccessAdminPanel } from "../utils/roles";
+import { productsAPI, productUtils } from "../utils/productsApi";
 
 // Definir el tipo para los productos
 interface Product {
@@ -31,6 +32,12 @@ const HomeScreen: NextPage = () => {
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
   const [selectedCategory, setSelectedCategory] = useState("Camisetas");
+  
+  // Estados para productos de la API
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const loginDropdownRef = useRef<HTMLDivElement>(null);
@@ -96,204 +103,58 @@ const HomeScreen: NextPage = () => {
     return featuredProducts.filter(product => product.category === selectedCategory);
   };
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Camiseta Básica Premium",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "Treboluxe",
-      color: "Azul",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Polo Clásico Elegante",
-      price: 49.99,
-      originalPrice: 59.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "Treboluxe",
-      color: "Blanco",
-      size: "L",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Camiseta Deportiva Pro",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "SportLine",
-      color: "Negro",
-      size: "S",
-      inStock: true
-    },
-    {
-      id: 4,
-      name: "Camisa Casual Moderna",
-      price: 55.99,
-      originalPrice: 69.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Camisas",
-      brand: "Premium",
-      color: "Azul",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 5,
-      name: "Polo Vintage Retro",
-      price: 42.99,
-      originalPrice: 52.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Polos",
-      brand: "Treboluxe",
-      color: "Verde",
-      size: "L",
-      inStock: false
-    },
-    {
-      id: 6,
-      name: "Camiseta Gráfica Limitada",
-      price: 38.99,
-      originalPrice: 48.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Camisetas",
-      brand: "Limited",
-      color: "Blanco",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 7,
-      name: "Camisa Oxford Formal",
-      price: 62.99,
-      originalPrice: 79.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisas",
-      brand: "Premium",
-      color: "Blanco",
-      size: "L",
-      inStock: true
-    },
-    {
-      id: 8,
-      name: "Polo Deportivo Tech",
-      price: 45.99,
-      originalPrice: 55.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "SportLine",
-      color: "Azul",
-      size: "XL",
-      inStock: true
-    },
-    // Zapatos
-    {
-      id: 9,
-      name: "Zapatos Deportivos Running",
-      price: 89.99,
-      originalPrice: 109.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Zapatos",
-      brand: "RunTech",
-      color: "Negro",
-      size: "42",
-      inStock: true
-    },
-    {
-      id: 10,
-      name: "Zapatos Casuales Urban",
-      price: 75.99,
-      originalPrice: 95.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Zapatos",
-      brand: "UrbanStyle",
-      color: "Marrón",
-      size: "41",
-      inStock: true
-    },
-    // Gorras
-    {
-      id: 11,
-      name: "Gorra Baseball Classic",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Gorras",
-      brand: "SportCap",
-      color: "Negro",
-      size: "Ajustable",
-      inStock: true
-    },
-    {
-      id: 12,
-      name: "Gorra Snapback Street",
-      price: 28.99,
-      originalPrice: 35.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Gorras",
-      brand: "StreetWear",
-      color: "Azul",
-      size: "Ajustable",
-      inStock: false
-    },
-    // Accesorios
-    {
-      id: 13,
-      name: "Reloj Deportivo Smart",
-      price: 159.99,
-      originalPrice: 199.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Accesorios",
-      brand: "TechTime",
-      color: "Negro",
-      size: "Universal",
-      inStock: true
-    },
-    {
-      id: 14,
-      name: "Mochila Urban Explorer",
-      price: 65.99,
-      originalPrice: 79.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Accesorios",
-      brand: "Explorer",
-      color: "Gris",
-      size: "Grande",
-      inStock: true
-    },
-    // Pantalones
-    {
-      id: 15,
-      name: "Jeans Slim Fit",
-      price: 55.99,
-      originalPrice: 69.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Pantalones",
-      brand: "DenimCo",
-      color: "Azul",
-      size: "32",
-      inStock: true
-    },
-    {
-      id: 16,
-      name: "Pantalón Chino Classic",
-      price: 48.99,
-      originalPrice: 59.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Pantalones",
-      brand: "ClassicFit",
-      color: "Beige",
-      size: "34",
-      inStock: true
-    }
-  ];
+  // Cargar productos destacados desde la API
+  useEffect(() => {
+    const loadFeaturedProducts = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await productsAPI.getFeatured(12) as any;
+        if (response.success) {
+          const transformedProducts = response.products.map(productUtils.transformToLegacyFormat);
+          setFeaturedProducts(transformedProducts);
+        } else {
+          throw new Error('Error en la respuesta de la API');
+        }
+      } catch (err: any) {
+        console.error('Error cargando productos destacados:', err);
+        setError(err.message);
+        
+        // Productos de fallback en caso de error
+        setFeaturedProducts([
+          {
+            id: 1,
+            name: "Camiseta Básica Premium",
+            price: 29.99,
+            originalPrice: 39.99,
+            image: "/look-polo-2-1@2x.png",
+            category: "Camisetas",
+            brand: "Treboluxe",
+            color: "Azul",
+            size: "M",
+            inStock: true
+          },
+          {
+            id: 2,
+            name: "Polo Clásico Elegante",
+            price: 49.99,
+            originalPrice: 59.99,
+            image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+            category: "Polos",
+            brand: "Treboluxe",
+            color: "Blanco",
+            size: "L",
+            inStock: true
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeaturedProducts();
+  }, []);
 
   // Cargar preferencias guardadas
   useEffect(() => {
@@ -1328,7 +1189,21 @@ const HomeScreen: NextPage = () => {
             <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t(selectedCategory.toLowerCase())}</p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+          {/* Manejo de estados de carga y error */}
+          {loading && (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-white text-lg">Cargando productos...</div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6">
+              <p className="text-red-200 text-center">Error: {error}</p>
+            </div>
+          )}
+          
+          {!loading && !error && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
             {getFilteredProducts().slice(0, 6).map((product) => (
               <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
@@ -1383,9 +1258,10 @@ const HomeScreen: NextPage = () => {
                 </div>
               </Link>
             ))}
-          </div>
+            </div>
+          )}
           
-          {getFilteredProducts().length === 0 && (
+          {!loading && getFilteredProducts().length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-300 text-lg">{t('No hay productos disponibles en esta categoría.')}</p>
             </div>

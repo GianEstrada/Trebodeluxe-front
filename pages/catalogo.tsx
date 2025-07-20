@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { canAccessAdminPanel } from "../utils/roles";
+import { productsAPI, productUtils } from "../utils/productsApi";
 
 const CatalogoScreen: NextPage = () => {
   const router = useRouter();
@@ -33,6 +34,13 @@ const CatalogoScreen: NextPage = () => {
   const [selectedColor, setSelectedColor] = useState("Todos");
   const [selectedSize, setSelectedSize] = useState("Todas");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  
+  // Estados para datos del API
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Efecto para manejar los parámetros URL
   useEffect(() => {
@@ -189,57 +197,111 @@ const CatalogoScreen: NextPage = () => {
     };
   }, []);
 
-  // Productos de ejemplo
-  const allProducts = [
-    {
-      id: 1,
-      name: "Camiseta Básica",
-      price: 29.99,
-      originalPrice: 39.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "Treboluxe",
-      color: "Azul",
-      size: "M",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Polo Clásico",
-      price: 49.99,
-      originalPrice: 59.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "Treboluxe",
-      color: "Blanco",
-      size: "L",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Camiseta Deportiva",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      category: "Camisetas",
-      brand: "SportLine",
-      color: "Negro",
-      size: "S",
-      inStock: false
-    },
-    {
-      id: 4,
-      name: "Polo Premium",
-      price: 69.99,
-      originalPrice: 79.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      category: "Polos",
-      brand: "Premium",
-      color: "Azul",
-      size: "XL",
-      inStock: true
+  // Cargar datos del API
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Determinar filtros basados en el estado actual
+        const filters: any = {};
+        
+        if (activeFilter === 'promociones') {
+          // Para promociones, usar el endpoint específico
+          const promoResponse = await productsAPI.getPromotions(20) as any;
+          if (promoResponse.success) {
+            setAllProducts(promoResponse.products.map(productUtils.transformToLegacyFormat));
+          }
+        } else if (selectedCategory && selectedCategory !== 'Todas') {
+          filters.categoria = selectedCategory;
+        }
+        
+        if (searchTerm) {
+          filters.busqueda = searchTerm;
+        }
+        
+        // Si no es promociones, cargar productos normales
+        if (activeFilter !== 'promociones') {
+          const productsResponse = await productsAPI.getAll(filters) as any;
+          if (productsResponse.success) {
+            setAllProducts(productsResponse.products.map(productUtils.transformToLegacyFormat));
+          }
+        }
+        
+        // Cargar categorías y marcas disponibles
+        const [categoriesResponse, brandsResponse] = await Promise.all([
+          productsAPI.getCategories() as any,
+          productsAPI.getBrands() as any
+        ]);
+        
+        if (categoriesResponse.success) {
+          setCategories(categoriesResponse.categories);
+        }
+        
+        if (brandsResponse.success) {
+          setBrands(brandsResponse.brands);
+        }
+        
+      } catch (err: any) {
+        console.error('Error cargando datos:', err);
+        setError(err.message || 'Error al cargar productos');
+        
+        // Productos de fallback en caso de error
+        setAllProducts([
+          {
+            id: 1,
+            name: "Camiseta Básica",
+            price: 29.99,
+            originalPrice: 39.99,
+            image: "/look-polo-2-1@2x.png",
+            category: "Camisetas",
+            brand: "Treboluxe",
+            color: "Azul",
+            size: "M",
+            inStock: true
+          },
+          {
+            id: 2,
+            name: "Polo Clásico",
+            price: 49.99,
+            originalPrice: 59.99,
+            image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+            category: "Polos",
+            brand: "Treboluxe",
+            color: "Blanco",
+            size: "L",
+            inStock: true
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [activeFilter, selectedCategory, searchTerm]);
+  
+  // Recargar cuando cambian los filtros URL
+  useEffect(() => {
+    if (router.isReady) {
+      const filter = router.query.filter as string;
+      const categoria = router.query.categoria as string;
+      const busqueda = router.query.busqueda as string;
+      
+      if (filter !== activeFilter) {
+        setActiveFilter(filter || null);
+      }
+      
+      if (categoria && categoria !== selectedCategory) {
+        setSelectedCategory(categoria);
+      }
+      
+      if (busqueda && busqueda !== searchTerm) {
+        setSearchTerm(busqueda);
+      }
     }
-  ];
+  }, [router.isReady, router.query]);
 
   // Filtrar productos basado en los criterios seleccionados
   const filteredProducts = allProducts.filter(product => {
@@ -968,21 +1030,28 @@ const CatalogoScreen: NextPage = () => {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              disabled={loading}
             >
               <option value="Todas" className="text-black">{t('Todas las categorías')}</option>
-              <option value="Camisetas" className="text-black">{t('Camisetas')}</option>
-              <option value="Polos" className="text-black">{t('Polos')}</option>
+              {categories.map(category => (
+                <option key={category} value={category} className="text-black">
+                  {t(category)}
+                </option>
+              ))}
             </select>
             
             <select
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
               className="px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              disabled={loading}
             >
               <option value="Todas" className="text-black">{t('Todas las marcas')}</option>
-              <option value="Treboluxe" className="text-black">Treboluxe</option>
-              <option value="SportLine" className="text-black">SportLine</option>
-              <option value="Premium" className="text-black">Premium</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand} className="text-black">
+                  {brand}
+                </option>
+              ))}
             </select>
             
             <select
@@ -1010,8 +1079,42 @@ const CatalogoScreen: NextPage = () => {
           </div>
         </div>
 
+        {/* Indicador de error */}
+        {error && (
+          <div className="w-full max-w-7xl mb-6">
+            <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <span className="text-red-300 font-medium">
+                  {t('Error al cargar productos')}: {error}
+                </span>
+              </div>
+              <button 
+                onClick={() => window.location.reload()}
+                className="text-red-300 hover:text-white transition-colors text-sm"
+              >
+                {t('Reintentar')} ↻
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Indicador de carga */}
+        {loading && (
+          <div className="w-full max-w-7xl mb-6">
+            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4 flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-blue-300 font-medium">
+                  {t('Cargando productos...')}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Indicador de filtro activo */}
-        {activeFilter && (
+        {activeFilter && !loading && (
           <div className="w-full max-w-7xl mb-6">
             <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1035,59 +1138,106 @@ const CatalogoScreen: NextPage = () => {
 
         {/* Grid de productos */}
         <div className="w-full max-w-7xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                <div className="relative mb-4">
-                  <Image
-                    className="w-full h-64 object-cover rounded-lg"
-                    width={300}
-                    height={256}
-                    src={product.image}
-                    alt={product.name}
-                  />
-                  {!product.inStock && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                      <span className="text-white font-bold text-lg">{t('Agotado')}</span>
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                  </div>
-                </div>
-                
-                <h3 className="text-white font-semibold text-lg mb-2">{product.name}</h3>
-                <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {product.category}</p>
-                <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                <p className="text-gray-300 text-sm mb-2">{t('Color')}: {product.color}</p>
-                <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                    <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
-                  </div>
-                </div>
-                
-                <button
-                  disabled={!product.inStock}
-                  className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
-                    product.inStock 
-                      ? 'bg-white text-black hover:bg-gray-100' 
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {product.inStock ? t('Añadir al carrito') : t('Agotado')}
-                </button>
-              </div>
-            ))}
-          </div>
-          
-          {filteredProducts.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-300 text-lg">{t('No se encontraron productos que coincidan con tu búsqueda.')}</p>
             </div>
           )}
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => {
+              const discount = productUtils.calculateDiscount(product.originalPrice, product.price);
+              
+              return (
+                <div key={product.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                  <Link href={`/producto/${product.id}`}>
+                    <div className="cursor-pointer">
+                      <div className="relative mb-4">
+                        <Image
+                          className="w-full h-64 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                          width={300}
+                          height={256}
+                          src={product.image || '/sin-ttulo1-2@2x.png'}
+                          alt={product.name}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/sin-ttulo1-2@2x.png';
+                          }}
+                        />
+                        {!product.inStock && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                            <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                          </div>
+                        )}
+                        {discount > 0 && (
+                          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+                            {discount}% OFF
+                          </div>
+                        )}
+                        {product.variantes && product.variantes.length > 1 && (
+                          <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
+                            +{product.variantes.length - 1} {t('colores')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-green-300 transition-colors">
+                        {product.name}
+                      </h3>
+                      
+                      <div className="space-y-1 mb-3">
+                        <p className="text-gray-300 text-sm">{t('Categoría')}: {product.category}</p>
+                        <p className="text-gray-300 text-sm">{t('Marca')}: {product.brand}</p>
+                        {product.description && (
+                          <p className="text-gray-400 text-xs line-clamp-2">{product.description}</p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
+                          {discount > 0 && (
+                            <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                          )}
+                        </div>
+                        {product.sistema_talla && (
+                          <span className="text-gray-400 text-xs">{product.sistema_talla}</span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/producto/${product.id}`)}
+                      className="flex-1 py-3 rounded-lg font-medium transition-colors duration-200 bg-white/20 text-white hover:bg-white/30 border border-white/30"
+                    >
+                      {t('Ver detalles')}
+                    </button>
+                    
+                    <button
+                      disabled={!product.inStock}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (product.inStock) {
+                          // Aquí puedes agregar lógica para añadir al carrito directamente
+                          console.log('Agregando al carrito:', product);
+                          alert(t('Funcionalidad de carrito en desarrollo'));
+                        }
+                      }}
+                      className={`flex-1 py-3 rounded-lg font-medium transition-colors duration-200 ${
+                        product.inStock 
+                          ? 'bg-white text-black hover:bg-gray-100' 
+                          : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {product.inStock ? t('Al carrito') : t('Agotado')}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
