@@ -208,8 +208,8 @@ const CatalogoScreen: NextPage = () => {
         const filters: any = {};
         
         if (activeFilter === 'promociones') {
-          // Para promociones, usar el endpoint específico
-          const promoResponse = await productsAPI.getPromotions(20) as any;
+          // Para promociones, usar el endpoint de mejores promociones
+          const promoResponse = await productsAPI.getBestPromotions(20) as any;
           if (promoResponse.success) {
             setAllProducts(promoResponse.products.map(productUtils.transformToLegacyFormat));
           }

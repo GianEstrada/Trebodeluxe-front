@@ -31,9 +31,24 @@ export const productsAPI = {
     return apiRequest(`/api/products/featured?limit=${limit}`);
   },
 
+  // Obtener productos recientes (agregados recientemente)
+  async getRecent(limit = 12) {
+    return apiRequest(`/api/products/recent?limit=${limit}`);
+  },
+
+  // Obtener productos recientes por categoría
+  async getRecentByCategory(limit = 6) {
+    return apiRequest(`/api/products/recent-by-category?limit=${limit}`);
+  },
+
   // Obtener productos en promoción
   async getPromotions(limit = 12) {
     return apiRequest(`/api/products/promotions?limit=${limit}`);
+  },
+
+  // Obtener mejores promociones (mayor descuento)
+  async getBestPromotions(limit = 12) {
+    return apiRequest(`/api/products/best-promotions?limit=${limit}`);
   },
 
   // Obtener categorías disponibles
