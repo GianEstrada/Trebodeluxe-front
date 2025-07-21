@@ -69,7 +69,7 @@ const SizeManagement: React.FC = () => {
   const loadSizeSystems = async () => {
     try {
       setLoading(true);
-      const response = await sizesApi.getAllSystems() as ApiResponse<SizeSystem[]>;
+      const response = await sizesApi.getAllSystems() as any;
       if (response.success && response.size_systems) {
         setSizeSystems(response.size_systems);
       } else if (response.data && Array.isArray(response.data)) {
@@ -85,7 +85,7 @@ const SizeManagement: React.FC = () => {
 
   const loadSizes = async () => {
     try {
-      const response = await sizesApi.getAll() as ApiResponse<Size[]>;
+      const response = await sizesApi.getAll() as any;
       if (response.success && response.sizes) {
         setSizes(response.sizes);
       } else if (response.data && Array.isArray(response.data)) {
@@ -107,11 +107,11 @@ const SizeManagement: React.FC = () => {
     }
     
     try {
-      let response: ApiResponse;
+      let response: any;
       if (selectedSystem) {
-        response = await sizesApi.updateSystem(selectedSystem.id_sistema_talla, systemForm, user.token) as ApiResponse;
+        response = await sizesApi.updateSystem(selectedSystem.id_sistema_talla, systemForm, user.token) as any;
       } else {
-        response = await sizesApi.createSystem(systemForm, user.token) as ApiResponse;
+        response = await sizesApi.createSystem(systemForm, user.token) as any;
       }
 
       if (response.success) {
@@ -150,7 +150,7 @@ const SizeManagement: React.FC = () => {
 
     if (window.confirm('¿Estás seguro de que quieres eliminar este sistema de tallas?')) {
       try {
-        const response = await sizesApi.deleteSystem(systemId, user.token) as ApiResponse;
+        const response = await sizesApi.deleteSystem(systemId, user.token) as any;
         if (response.success) {
           loadSizeSystems();
         } else {
@@ -179,11 +179,11 @@ const SizeManagement: React.FC = () => {
         orden: parseInt(sizeForm.orden)
       };
 
-      let response: ApiResponse;
+      let response: any;
       if (selectedSize) {
-        response = await sizesApi.updateSize(selectedSize.id_talla, sizeData, user.token) as ApiResponse;
+        response = await sizesApi.updateSize(selectedSize.id_talla, sizeData, user.token) as any;
       } else {
-        response = await sizesApi.createSize(sizeData, user.token) as ApiResponse;
+        response = await sizesApi.createSize(sizeData, user.token) as any;
       }
 
       if (response.success) {
@@ -226,7 +226,7 @@ const SizeManagement: React.FC = () => {
 
     if (window.confirm('¿Estás seguro de que quieres eliminar esta talla?')) {
       try {
-        const response = await sizesApi.deleteSize(sizeId, user.token) as ApiResponse;
+        const response = await sizesApi.deleteSize(sizeId, user.token) as any;
         if (response.success) {
           loadSizes();
         } else {

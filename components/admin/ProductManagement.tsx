@@ -94,7 +94,7 @@ const ProductManagement: React.FC = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const response = await productsApi.getAllForAdmin(user?.token) as ApiResponse<Product[]>;
+      const response = await productsApi.getAllForAdmin(user?.token) as any;
       if (response.success && response.products) {
         setProducts(response.products);
       } else if (response.data && Array.isArray(response.data)) {
@@ -110,9 +110,16 @@ const ProductManagement: React.FC = () => {
 
   const loadSizeSystems = async () => {
     try {
-      const response = await sizesApi.getAllSystems();
-      if (response.success) {
+      const response = await sizesApi.getAllSystems() as any;
+      // Manejar diferentes formatos de respuesta del backend
+      if (response.success && response.size_systems) {
+        setSizeSystems(response.size_systems);
+      } else if (response.success && response.data) {
         setSizeSystems(response.data);
+      } else if (Array.isArray(response)) {
+        setSizeSystems(response);
+      } else {
+        console.warn('Formato de respuesta inesperado:', response);
       }
     } catch (error) {
       console.error('Error cargando sistemas de tallas:', error);
@@ -133,11 +140,11 @@ const ProductManagement: React.FC = () => {
         id_sistema_talla: productForm.id_sistema_talla ? parseInt(productForm.id_sistema_talla) : null
       };
 
-      let response: ApiResponse;
+      let response: any;
       if (selectedProduct) {
-        response = await productsApi.update(selectedProduct.id_producto, productData, user.token) as ApiResponse;
+        response = await productsApi.update(selectedProduct.id_producto, productData, user.token) as any;
       } else {
-        response = await productsApi.create(productData, user.token) as ApiResponse;
+        response = await productsApi.create(productData, user.token) as any;
       }
 
       if (response.success) {
@@ -182,7 +189,7 @@ const ProductManagement: React.FC = () => {
 
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
       try {
-        const response = await productsApi.delete(productId, user.token) as ApiResponse;
+        const response = await productsApi.delete(productId, user.token) as any;
         if (response.success) {
           loadProducts();
         } else {

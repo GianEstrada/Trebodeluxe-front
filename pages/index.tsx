@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { canAccessAdminPanel } from "../utils/roles";
-import { productsAPI, productUtils } from "../utils/productsApi";
+import { productsApi, productUtils } from "../utils/productsApi";
 
 // Definir el tipo para los productos
 interface Product {
@@ -112,14 +112,14 @@ const HomeScreen: NextPage = () => {
       
       try {
         // Cargar productos recientes para la sección principal
-        const recentResponse = await productsAPI.getRecent(12) as any;
+        const recentResponse = await productsApi.getRecent(12) as any;
         if (recentResponse.success) {
           const transformedProducts = recentResponse.products.map(productUtils.transformToLegacyFormat);
           setFeaturedProducts(transformedProducts);
         }
 
         // Cargar productos recientes por categoría para la segunda sección
-        const categoryResponse = await productsAPI.getRecentByCategory(4) as any;
+        const categoryResponse = await productsApi.getRecentByCategory(4) as any;
         if (categoryResponse.success) {
           const transformedByCategory: any = {};
           Object.keys(categoryResponse.productsByCategory).forEach(category => {

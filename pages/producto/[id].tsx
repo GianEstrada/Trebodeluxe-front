@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
 import { useAuth } from '../../contexts/AuthContext';
-import { productsAPI, productUtils } from '../../utils/productsApi';
+import { productsApi, productUtils } from '../../utils/productsApi';
 
 // Definimos el tipo Product para este archivo
 interface Product {
@@ -194,7 +194,7 @@ const ProductPage: NextPage = () => {
       setLoading(true);
       
       try {
-        const response = await productsAPI.getById(parseInt(id)) as any;
+        const response = await productsApi.getById(parseInt(id)) as any;
         if (response.success && response.product) {
           const transformedProduct = productUtils.transformToLegacyFormat(response.product);
           if (transformedProduct) {

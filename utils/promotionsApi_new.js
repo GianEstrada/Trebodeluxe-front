@@ -1,0 +1,123 @@
+// utils/promotionsApi.js - API específica para promociones
+
+import { apiRequest } from './api';
+
+/**
+ * API para manejo de promociones
+ */
+export const promotionsApi = {
+  // Obtener promociones activas (público)
+  async getActivePromotions() {
+    return apiRequest('/api/promotions/active');
+  },
+
+  // Obtener todas las promociones para administradores
+  async getAllForAdmin(token) {
+    return apiRequest('/api/promotions/admin', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+
+  // Obtener promociones aplicables a un producto
+  async getApplicablePromotions(productId, categoria) {
+    const params = new URLSearchParams();
+    if (categoria) params.append('categoria', categoria);
+    
+    const endpoint = `/api/promotions/applicable/${productId}${params.toString() ? '?' + params.toString() : ''}`;
+    return apiRequest(endpoint);
+  },
+
+  // Validar código de promoción
+  async validatePromotionCode(codigo) {
+    return apiRequest(`/api/promotions/validate/${codigo}`);
+  },
+
+  // === FUNCIONES PARA ADMINISTRADORES ===
+
+  // Crear promoción
+  async create(data, token) {
+    return apiRequest('/api/promotions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+  },
+
+  // Actualizar promoción
+  async update(id, data, token) {
+    return apiRequest(`/api/promotions/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+  },
+
+  // Eliminar promoción
+  async delete(id, token) {
+    return apiRequest(`/api/promotions/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+
+  // Aplicar promoción a productos
+  async applyToProducts(promotionId, productIds, token) {
+    return apiRequest(`/api/promotions/${promotionId}/apply`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ product_ids: productIds })
+    });
+  },
+
+  // Obtener productos aplicables a una promoción
+  async getPromotionProducts(promotionId, token) {
+    return apiRequest(`/api/promotions/${promotionId}/products`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+
+  // Remover promoción de productos
+  async removeFromProducts(promotionId, productIds, token) {
+    return apiRequest(`/api/promotions/${promotionId}/remove`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ product_ids: productIds })
+    });
+  },
+
+  // Calcular descuento para un producto
+  async calculateDiscount(productId, variantId, cantidad, codigo = null) {
+    return apiRequest('/api/promotions/calculate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id_producto: productId,
+        id_variante: variantId,
+        cantidad: cantidad,
+        codigo_promocion: codigo
+      })
+    });
+  }
+};
+
+export default promotionsApi;

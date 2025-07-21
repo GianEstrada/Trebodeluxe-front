@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { canAccessAdminPanel } from "../utils/roles";
-import { productsAPI, productUtils } from "../utils/productsApi";
+import { productsApi, productUtils } from "../utils/productsApi";
 
 const CatalogoScreen: NextPage = () => {
   const router = useRouter();
@@ -209,7 +209,7 @@ const CatalogoScreen: NextPage = () => {
         
         if (activeFilter === 'promociones') {
           // Para promociones, usar el endpoint de mejores promociones
-          const promoResponse = await productsAPI.getBestPromotions(20) as any;
+          const promoResponse = await productsApi.getBestPromotions(20) as any;
           if (promoResponse.success) {
             setAllProducts(promoResponse.products.map(productUtils.transformToLegacyFormat));
           }
@@ -223,7 +223,7 @@ const CatalogoScreen: NextPage = () => {
         
         // Si no es promociones, cargar productos normales
         if (activeFilter !== 'promociones') {
-          const productsResponse = await productsAPI.getAll(filters) as any;
+          const productsResponse = await productsApi.getAll(filters) as any;
           if (productsResponse.success) {
             setAllProducts(productsResponse.products.map(productUtils.transformToLegacyFormat));
           }
@@ -231,8 +231,8 @@ const CatalogoScreen: NextPage = () => {
         
         // Cargar categorías y marcas disponibles
         const [categoriesResponse, brandsResponse] = await Promise.all([
-          productsAPI.getCategories() as any,
-          productsAPI.getBrands() as any
+          productsApi.getCategories() as any,
+          productsApi.getBrands() as any
         ]);
         
         if (categoriesResponse.success) {

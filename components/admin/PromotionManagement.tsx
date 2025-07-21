@@ -68,7 +68,7 @@ const PromotionManagement: React.FC = () => {
   const loadPromotions = async () => {
     try {
       setLoading(true);
-      const response = await promotionsApi.getAllForAdmin(user?.token) as ApiResponse<Promotion[]>;
+      const response = await promotionsApi.getAllForAdmin(user?.token) as any;
       if (response.success && response.promotions) {
         setPromotions(response.promotions);
       } else if (response.data && Array.isArray(response.data)) {
@@ -84,7 +84,7 @@ const PromotionManagement: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const response = await productsApi.getAll() as ApiResponse<Product[]>;
+      const response = await productsApi.getAll() as any;
       if (response.success && response.products) {
         setProducts(response.products);
       } else if (response.data && Array.isArray(response.data)) {
@@ -110,11 +110,11 @@ const PromotionManagement: React.FC = () => {
         fecha_fin: promotionForm.usa_fecha_fin ? promotionForm.fecha_fin : null
       };
 
-      let response: ApiResponse;
+      let response: any;
       if (selectedPromotion) {
-        response = await promotionsApi.update(selectedPromotion.id_promocion, promotionData, user.token) as ApiResponse;
+        response = await promotionsApi.update(selectedPromotion.id_promocion, promotionData, user.token) as any;
       } else {
-        response = await promotionsApi.create(promotionData, user.token) as ApiResponse;
+        response = await promotionsApi.create(promotionData, user.token) as any;
       }
 
       if (response.success) {
@@ -165,7 +165,7 @@ const PromotionManagement: React.FC = () => {
 
     if (window.confirm('¿Estás seguro de que quieres eliminar esta promoción?')) {
       try {
-        const response = await promotionsApi.delete(promotionId, user.token) as ApiResponse;
+        const response = await promotionsApi.delete(promotionId, user.token) as any;
         if (response.success) {
           loadPromotions();
         } else {
