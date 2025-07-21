@@ -1138,8 +1138,64 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    category: '',
+    priceRange: { min: 0, max: 1000 },
+  });
+
+  const fetchFilteredProducts = async () => {
+    try {
+      const response = await fetch(`/api/products?search=${searchQuery}&category=${filters.category}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
+      const data = await response.json();
+      setProducts(data.products);
+    } catch (error) {
+      console.error('Error fetching filtered products:', error);
+    }
+  };
+
   const renderProducts = () => (
-    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20">
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar productos..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
+        />
+        <select
+          value={filters.category}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
+        >
+          <option value="">Todas las categorías</option>
+          <option value="ropa">Ropa</option>
+          <option value="accesorios">Accesorios</option>
+        </select>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            placeholder="Precio mínimo"
+            value={filters.priceRange.min}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, min: Number(e.target.value) } })}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+          <input
+            type="number"
+            placeholder="Precio máximo"
+            value={filters.priceRange.max}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, max: Number(e.target.value) } })}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <button
+          onClick={fetchFilteredProducts}
+          className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg mt-2"
+        >
+          Aplicar filtros
+        </button>
+      </div>
       <ProductManagement />
     </div>
   );
