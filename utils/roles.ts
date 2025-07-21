@@ -34,5 +34,5 @@ export const hasAdminAccess = (rol: number): boolean => {
 };
 
 export const canAccessAdminPanel = (rol: number): boolean => {
-  return rol === ROLES.ADMIN;
+  return rol === ROLES.ADMIN || rol === "admin";
 };
