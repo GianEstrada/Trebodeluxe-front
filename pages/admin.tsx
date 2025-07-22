@@ -48,6 +48,62 @@ interface SizeSystem {
   }>;
 }
 
+interface Promotion {
+  id: number;
+  title: string;
+  description: string;
+  type: 'percentage' | 'quantity' | 'promo_code';
+  discountPercentage?: number;
+  quantityRequired?: number;
+  quantityFree?: number;
+  promoCode?: string;
+  codeDiscountPercentage?: number;
+  codeDiscountAmount?: number;
+  applicationType: 'all_products' | 'specific_category' | 'specific_product';
+  targetCategoryId?: string;
+  targetProductId?: number;
+  validFrom: string;
+  validTo: string;
+  isActive: boolean;
+  image?: string;
+  usageLimit?: number;
+  currentUsage?: number;
+  minPurchaseAmount?: number;
+}
+
+interface Order {
+  id: number;
+  customerName: string;
+  email: string;
+  total: number;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  orderDate: string;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
+interface Note {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+interface HeaderTexts {
+  promoTexts: string[];
+  brandName: string;
+}
+
+interface HomeImages {
+  heroImage1: string;
+  heroImage2: string;
+  promosBannerImage: string;
+}
+
 interface VariantFormData {
   nombre: string;
   precio: number;
@@ -92,6 +148,65 @@ const AdminPage: NextPage = () => {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [additionalVariants, setAdditionalVariants] = useState<number>(0);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Estados para Header Texts
+  const [headerTexts, setHeaderTexts] = useState<HeaderTexts>({
+    promoTexts: [
+      'ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN',
+      'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'
+    ],
+    brandName: 'TREBOLUXE'
+  });
+
+  // Estados para Home Images
+  const [homeImages, setHomeImages] = useState<HomeImages>({
+    heroImage1: '/797e7904b64e13508ab322be3107e368-1@2x.png',
+    heroImage2: '/look-polo-2-1@2x.png',
+    promosBannerImage: '/promociones-playa.jpg'
+  });
+
+  // Estados para Promotions
+  const [promotions, setPromotions] = useState<Promotion[]>([
+    {
+      id: 1,
+      title: "Descuento de Verano",
+      description: "20% de descuento en toda la colección de verano",
+      type: "percentage",
+      discountPercentage: 20,
+      applicationType: "all_products",
+      validFrom: "2025-06-01",
+      validTo: "2025-08-31",
+      isActive: true,
+      currentUsage: 0
+    }
+  ]);
+
+  // Estados para Orders
+  const [orders, setOrders] = useState<Order[]>([
+    {
+      id: 1001,
+      customerName: "Juan Pérez",
+      email: "juan@email.com",
+      total: 149.97,
+      status: "processing",
+      orderDate: "2025-07-13",
+      items: [
+        { productName: "Camiseta Básica Premium", quantity: 2, price: 24.99 },
+        { productName: "Polo Clásico", quantity: 1, price: 34.99 }
+      ]
+    }
+  ]);
+
+  // Estados para Notes
+  const [notes, setNotes] = useState<Note[]>([
+    {
+      id: 1,
+      title: "Recordatorio importante",
+      content: "Revisar inventario de productos antes del fin de mes",
+      createdAt: "2025-07-13",
+      priority: "high"
+    }
+  ]);
 
   // Verificar si el usuario es administrador
   useEffect(() => {
@@ -891,22 +1006,82 @@ const AdminPage: NextPage = () => {
           <button
             onClick={() => setActiveSection('dashboard')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'dashboard' 
-                ? 'bg-green-600 text-white' 
+              activeSection === 'dashboard'
+                ? 'bg-green-600 text-white'
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             📊 {t('Dashboard')}
           </button>
           <button
-            onClick={() => setActiveSection('products')}
+            onClick={() => setActiveSection('header')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'products' 
-                ? 'bg-green-600 text-white' 
+              activeSection === 'header'
+                ? 'bg-green-600 text-white'
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
-            📦 {t('Productos')}
+            📝 {t('Textos del Header')}
+          </button>
+          <button
+            onClick={() => setActiveSection('images')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'images'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🖼️ {t('Imágenes Principales')}
+          </button>
+          <button
+            onClick={() => setActiveSection('products')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'products'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📦 {t('Productos y Variantes')}
+          </button>
+          <button
+            onClick={() => setActiveSection('promotions')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'promotions'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🎯 {t('Promociones')}
+          </button>
+          <button
+            onClick={() => setActiveSection('orders')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'orders'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            � {t('Pedidos')}
+          </button>
+          <button
+            onClick={() => setActiveSection('notes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'notes'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📝 {t('Notas')}
+          </button>
+          <button
+            onClick={() => setActiveSection('sizes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'sizes'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📏 {t('Sistemas de Tallas')}
           </button>
         </nav>
       </div>
@@ -918,19 +1093,308 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'products':
-        return renderVariantsList();
-      default:
-        return (
+  // Funciones para Header Texts
+  const updateHeaderTexts = async () => {
+    try {
+      console.log('Updating header texts:', headerTexts);
+      alert(t('Textos del header actualizados correctamente'));
+    } catch (error) {
+      console.error('Error updating header texts:', error);
+      alert(t('Error al actualizar los textos'));
+    }
+  };
+
+  // Funciones para Home Images  
+  const updateHomeImages = async () => {
+    try {
+      console.log('Updating home images:', homeImages);
+      alert(t('Imágenes actualizadas correctamente'));
+    } catch (error) {
+      console.error('Error updating images:', error);
+      alert(t('Error al actualizar las imágenes'));
+    }
+  };
+
+  // Funciones para Orders Management
+  const updateOrderStatus = async (orderId: number, newStatus: Order['status']) => {
+    try {
+      const updatedOrders = orders.map(order =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      );
+      setOrders(updatedOrders);
+      console.log('Updating order status:', orderId, newStatus);
+      alert(t('Estado del pedido actualizado'));
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert(t('Error al actualizar el estado'));
+    }
+  };
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Total Variantes')}</h3>
+          <p className="text-3xl font-bold text-green-400">{variants.length}</p>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Promociones Activas')}</h3>
+          <p className="text-3xl font-bold text-blue-400">{promotions.filter(p => p.isActive).length}</p>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Pedidos Pendientes')}</h3>
+          <p className="text-3xl font-bold text-yellow-400">{orders.filter(o => o.status === 'pending').length}</p>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Notas')}</h3>
+          <p className="text-3xl font-bold text-purple-400">{notes.length}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHeaderTexts = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Textos del Header')}</h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3>
+
           <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              <p className="text-white">{t('Panel de administración de Trebodeluxe')}</p>
+            <div>
+              <label className="block text-white font-medium mb-3">{t('Nombre de la Marca')}</label>
+              <input
+                type="text"
+                value={headerTexts.brandName}
+                onChange={(e) => setHeaderTexts({...headerTexts, brandName: e.target.value})}
+                className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                placeholder={t('Nombre de la marca')}
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-white font-medium">{t('Textos Promocionales')}</label>
+                <button
+                  onClick={() => {
+                    setHeaderTexts({
+                      ...headerTexts,
+                      promoTexts: [...headerTexts.promoTexts, '']
+                    });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                >
+                  + {t('Agregar')}
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {headerTexts.promoTexts.map((text, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={text}
+                      onChange={(e) => {
+                        const newTexts = [...headerTexts.promoTexts];
+                        newTexts[index] = e.target.value;
+                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                      }}
+                      className="flex-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                      placeholder={t('Texto promocional {{number}}').replace('{{number}}', (index + 1).toString())}
+                    />
+                    <button
+                      onClick={() => {
+                        const newTexts = headerTexts.promoTexts.filter((_, i) => i !== index);
+                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition-colors"
+                      disabled={headerTexts.promoTexts.length <= 1}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={updateHeaderTexts}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              {t('Guardar Cambios')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHomeImages = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
+
+      <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl space-y-8">
+        <div className="bg-black/20 rounded-lg p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+            <label className="text-white font-semibold text-lg">{t('Imagen Principal 1')}</label>
+          </div>
+          <input
+            type="text"
+            value={homeImages.heroImage1}
+            onChange={(e) => setHomeImages({...homeImages, heroImage1: e.target.value})}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
+            placeholder={t('URL de la primera imagen')}
+          />
+          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+            <Image
+              src={homeImages.heroImage1}
+              alt="Imagen 1"
+              width={192}
+              height={96}
+              className="w-full h-full object-cover"
+              onError={() => console.log('Error loading image 1')}
+            />
+          </div>
+        </div>
+
+        <div className="bg-black/20 rounded-lg p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+            <label className="text-white font-semibold text-lg">{t('Imagen Principal 2')}</label>
+          </div>
+          <input
+            type="text"
+            value={homeImages.heroImage2}
+            onChange={(e) => setHomeImages({...homeImages, heroImage2: e.target.value})}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
+            placeholder={t('URL de la segunda imagen')}
+          />
+          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+            <Image
+              src={homeImages.heroImage2}
+              alt="Imagen 2"
+              width={192}
+              height={96}
+              className="w-full h-full object-cover"
+              onError={() => console.log('Error loading image 2')}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={updateHomeImages}
+          className="w-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
+        >
+          {t('💾 Actualizar Todas las Imágenes')}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderPromotions = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Promociones')}</h2>
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <p className="text-white">{t('Funcionalidad de promociones en desarrollo')}</p>
+      </div>
+    </div>
+  );
+
+  const renderOrders = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Pedidos')}</h2>
+
+      <div className="space-y-4">
+        {orders.map(order => (
+          <div key={order.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-white font-semibold text-lg">
+                  {t('Pedido')} #{order.id}
+                </h3>
+                <p className="text-gray-300">{order.customerName} - {order.email}</p>
+                <p className="text-gray-400 text-sm">{order.orderDate}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-green-400 font-bold text-xl">${order.total}</p>
+                <select
+                  value={order.status}
+                  onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
+                  className="mt-2 bg-black/50 border border-white/20 rounded px-3 py-1 text-white text-sm"
+                >
+                  <option value="pending">{t('Pendiente')}</option>
+                  <option value="processing">{t('Procesando')}</option>
+                  <option value="shipped">{t('Enviado')}</option>
+                  <option value="delivered">{t('Entregado')}</option>
+                  <option value="cancelled">{t('Cancelado')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="border-t border-white/20 pt-4">
+              <h4 className="text-white font-medium mb-2">{t('Productos:')}</h4>
+              <div className="space-y-2">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span className="text-gray-300">
+                      {item.productName} x{item.quantity}
+                    </span>
+                    <span className="text-white">${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        );
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderNotes = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Notas')}</h2>
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <p className="text-white">{t('Funcionalidad de notas en desarrollo')}</p>
+      </div>
+    </div>
+  );
+
+  const renderSizeSystems = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Sistemas de Tallas')}</h2>
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <p className="text-white">{t('Funcionalidad de sistemas de tallas en desarrollo')}</p>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'header':
+        return renderHeaderTexts();
+      case 'images':
+        return renderHomeImages();
+      case 'products':
+        return renderVariantsList();
+      case 'promotions':
+        return renderPromotions();
+      case 'orders':
+        return renderOrders();
+      case 'notes':
+        return renderNotes();
+      case 'sizes':
+        return renderSizeSystems();
+      default:
+        return renderDashboard();
     }
   };
 
