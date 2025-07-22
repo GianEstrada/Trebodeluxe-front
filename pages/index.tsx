@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useSiteSettings } from "../contexts/SiteSettingsContext";
+import { useMainImages } from "../contexts/MainImagesContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 
@@ -54,6 +55,9 @@ const HomeScreen: NextPage = () => {
   // Usar configuraciones del sitio desde la base de datos
   const { headerSettings, loading: settingsLoading } = useSiteSettings();
   
+  // Usar imágenes principales desde la base de datos
+  const { getImagesByType, loading: imagesLoading } = useMainImages();
+  
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -64,12 +68,10 @@ const HomeScreen: NextPage = () => {
     "2x1 en gorras"
   ];
 
-  // Estado para las imágenes del administrador (simulado - en producción vendría de una API)
-  const [adminImages] = useState({
-    heroImage1: '/797e7904b64e13508ab322be3107e368-1@2x.png',
-    heroImage2: '/look-polo-2-1@2x.png',
-    promosBannerImage: '/promociones-playa.jpg'
-  });
+  // Obtener imágenes por tipo desde la base de datos
+  const heroImages = getImagesByType('hero_banner');
+  const promoImages = getImagesByType('promocion_banner');
+  const categoryImages = getImagesByType('categoria_destacada');
 
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -988,22 +990,50 @@ const HomeScreen: NextPage = () => {
       {/* Main Images Section */}
       <div className="self-stretch flex flex-col items-center justify-start h-screen">
         <div className="self-stretch flex flex-row items-center justify-start h-full">
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/look-polo-2-1@2x.png"
-          />
-          <Image
-            className="flex-1 relative max-w-full h-full object-cover"
-            width={960}
-            height={904}
-            sizes="100vw"
-            alt=""
-            src="/797e7904b64e13508ab322be3107e368-1@2x.png"
-          />
+          {heroImages.length > 0 ? (
+            <>
+              {heroImages[0] && (
+                <Image
+                  className="flex-1 relative max-w-full h-full object-cover"
+                  width={960}
+                  height={904}
+                  sizes="100vw"
+                  alt={heroImages[0].titulo || "Imagen principal"}
+                  src={heroImages[0].url}
+                />
+              )}
+              {heroImages[1] && (
+                <Image
+                  className="flex-1 relative max-w-full h-full object-cover"
+                  width={960}
+                  height={904}
+                  sizes="100vw"
+                  alt={heroImages[1].titulo || "Imagen principal"}
+                  src={heroImages[1].url}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {/* Imágenes de fallback */}
+              <Image
+                className="flex-1 relative max-w-full h-full object-cover"
+                width={960}
+                height={904}
+                sizes="100vw"
+                alt="Imagen principal"
+                src="/look-polo-2-1@2x.png"
+              />
+              <Image
+                className="flex-1 relative max-w-full h-full object-cover"
+                width={960}
+                height={904}
+                sizes="100vw"
+                alt="Imagen principal"
+                src="/797e7904b64e13508ab322be3107e368-1@2x.png"
+              />
+            </>
+          )}
         </div>
       </div>
       
@@ -1013,13 +1043,23 @@ const HomeScreen: NextPage = () => {
           <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group">
             {/* Imagen de fondo */}
             <div className="absolute inset-0 rounded-[46px] overflow-hidden">
-              <Image
-                src={adminImages.promosBannerImage}
-                alt="Banner Promociones"
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                priority
-              />
+              {promoImages.length > 0 && promoImages[0] ? (
+                <Image
+                  src={promoImages[0].url}
+                  alt={promoImages[0].titulo || "Banner Promociones"}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  priority
+                />
+              ) : (
+                <Image
+                  src="/promociones-playa.jpg"
+                  alt="Banner Promociones"
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  priority
+                />
+              )}
             </div>
             
             {/* Overlay para mejor legibilidad del texto */}

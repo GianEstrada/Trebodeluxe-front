@@ -5,6 +5,7 @@ import "./global.css";
 import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import { SiteSettingsProvider } from "../contexts/SiteSettingsContext";
+import { MainImagesProvider } from "../contexts/MainImagesContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 // Componente unificado para manejo de carga
@@ -38,9 +39,11 @@ function MyApp({ Component, pageProps }: AppProps) {
       <AuthProvider>
         <LoadingProvider>
           <SiteSettingsProvider>
-            <LoadingManager>
-              <Component {...pageProps} />
-            </LoadingManager>
+            <MainImagesProvider>
+              <LoadingManager>
+                <Component {...pageProps} />
+              </LoadingManager>
+            </MainImagesProvider>
           </SiteSettingsProvider>
         </LoadingProvider>
       </AuthProvider>
