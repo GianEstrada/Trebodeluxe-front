@@ -83,7 +83,7 @@ const AdminPage: NextPage = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
-    if (!user || user.rol !== 1) { // 1 = admin
+    if (!user || user.rol !== 'admin') { // 'admin' es el rol correcto
       router.push('/login');
       return;
     }
@@ -787,7 +787,7 @@ const AdminPage: NextPage = () => {
     );
   };
 
-  if (!user || user.rol !== 1) { // 1 = admin
+  if (!user || user.rol !== 'admin') { // 'admin' es el rol correcto
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
