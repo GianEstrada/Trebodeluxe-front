@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import MainImagesAdmin from '../components/admin/MainImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
+import OrdersAdmin from '../components/admin/OrdersAdmin';
 
 interface Product {
   id_producto: number;
@@ -1468,55 +1469,7 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const renderOrders = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Pedidos')}</h2>
-
-      <div className="space-y-4">
-        {orders.map(order => (
-          <div key={order.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-white font-semibold text-lg">
-                  {t('Pedido')} #{order.id}
-                </h3>
-                <p className="text-gray-300">{order.customerName} - {order.email}</p>
-                <p className="text-gray-400 text-sm">{order.orderDate}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-green-400 font-bold text-xl">${order.total}</p>
-                <select
-                  value={order.status}
-                  onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
-                  className="mt-2 bg-black/50 border border-white/20 rounded px-3 py-1 text-white text-sm"
-                >
-                  <option value="pending">{t('Pendiente')}</option>
-                  <option value="processing">{t('Procesando')}</option>
-                  <option value="shipped">{t('Enviado')}</option>
-                  <option value="delivered">{t('Entregado')}</option>
-                  <option value="cancelled">{t('Cancelado')}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="border-t border-white/20 pt-4">
-              <h4 className="text-white font-medium mb-2">{t('Productos:')}</h4>
-              <div className="space-y-2">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span className="text-gray-300">
-                      {item.productName} x{item.quantity}
-                    </span>
-                    <span className="text-white">${(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const renderOrders = () => <OrdersAdmin />;
 
   const renderNotes = () => (
     <div className="space-y-6">
