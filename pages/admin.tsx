@@ -163,6 +163,17 @@ const AdminPage: NextPage = () => {
   const [additionalVariants, setAdditionalVariants] = useState<number>(0);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Estados para Sistema de Tallas
+  const [sizeSystemsData, setSizeSystemsData] = useState<SizeSystem[]>([]);
+  const [sizeSystemsLoading, setSizeSystemsLoading] = useState(false);
+  const [sizeSystemSearchQuery, setSizeSystemSearchQuery] = useState('');
+  const [showSizeSystemForm, setShowSizeSystemForm] = useState(false);
+  const [editingSizeSystem, setEditingSizeSystem] = useState<SizeSystem | null>(null);
+  const [sizeSystemFormData, setSizeSystemFormData] = useState({
+    nombre: '',
+    tallas: ['', '', ''] // Mínimo 3 tallas
+  });
+
   // Estados para Header Texts
   const [headerTexts, setHeaderTexts] = useState<HeaderTexts>({
     promoTexts: [
@@ -271,7 +282,7 @@ const AdminPage: NextPage = () => {
 
   const loadSizeSystems = async () => {
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/size-systems');
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/size-systems');
       const data = await response.json();
       if (data.success) {
         setSizeSystems(data.sizeSystems);
@@ -1453,19 +1464,9 @@ const AdminPage: NextPage = () => {
   );
 
   const renderSizeSystems = () => {
-    const [sizeSystemsData, setSizeSystemsData] = useState<SizeSystem[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showForm, setShowForm] = useState(false);
-    const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
-    const [formData, setFormData] = useState({
-      nombre: '',
-      tallas: ['', '', ''] // Mínimo 3 tallas
-    });
-
     // Cargar sistemas de tallas
     const loadSizeSystems = async (search = '') => {
-      setLoading(true);
+      setSizeSystemsLoading(true);
       try {
         const baseUrl = process.env.NODE_ENV === 'production' 
           ? 'https://trebodeluxe-backend.onrender.com' 
@@ -1487,34 +1488,31 @@ const AdminPage: NextPage = () => {
         console.error('Error loading size systems:', error);
         alert(t('Error de conexión al cargar sistemas de tallas'));
       } finally {
-        setLoading(false);
+        setSizeSystemsLoading(false);
       }
     };
 
-    // Efecto para cargar datos iniciales
-    React.useEffect(() => {
-      loadSizeSystems();
-    }, []);
+    // Efecto para cargar datos iniciales - se maneja en el useEffect principal
 
     // Manejar búsqueda
     const handleSearch = () => {
-      loadSizeSystems(searchQuery);
+      loadSizeSystems(sizeSystemSearchQuery);
     };
 
     // Agregar talla al formulario
     const addSizeInput = () => {
-      setFormData({
-        ...formData,
-        tallas: [...formData.tallas, '']
+      setSizeSystemFormData({
+        ...sizeSystemFormData,
+        tallas: [...sizeSystemFormData.tallas, '']
       });
     };
 
     // Quitar talla del formulario
     const removeSizeInput = (index: number) => {
-      if (formData.tallas.length > 3) {
-        const newTallas = formData.tallas.filter((_, i) => i !== index);
-        setFormData({
-          ...formData,
+      if (sizeSystemFormData.tallas.length > 3) {
+        const newTallas = sizeSystemFormData.tallas.filter((_, i) => i !== index);
+        setSizeSystemFormData({
+          ...sizeSystemFormData,
           tallas: newTallas
         });
       }
@@ -1522,39 +1520,39 @@ const AdminPage: NextPage = () => {
 
     // Actualizar talla específica
     const updateSizeInput = (index: number, value: string) => {
-      const newTallas = [...formData.tallas];
+      const newTallas = [...sizeSystemFormData.tallas];
       newTallas[index] = value;
-      setFormData({
-        ...formData,
+      setSizeSystemFormData({
+        ...sizeSystemFormData,
         tallas: newTallas
       });
     };
 
     // Abrir formulario para crear nuevo
     const openCreateForm = () => {
-      setFormData({
+      setSizeSystemFormData({
         nombre: '',
         tallas: ['', '', '']
       });
-      setEditingSystem(null);
-      setShowForm(true);
+      setEditingSizeSystem(null);
+      setShowSizeSystemForm(true);
     };
 
     // Abrir formulario para editar
     const openEditForm = (system: SizeSystem) => {
-      setFormData({
+      setSizeSystemFormData({
         nombre: system.nombre,
         tallas: system.tallas.map(t => t.nombre_talla)
       });
-      setEditingSystem(system);
-      setShowForm(true);
+      setEditingSizeSystem(system);
+      setShowSizeSystemForm(true);
     };
 
     // Cerrar formulario
     const closeForm = () => {
-      setShowForm(false);
-      setEditingSystem(null);
-      setFormData({
+      setShowSizeSystemForm(false);
+      setEditingSizeSystem(null);
+      setSizeSystemFormData({
         nombre: '',
         tallas: ['', '', '']
       });
@@ -1562,28 +1560,28 @@ const AdminPage: NextPage = () => {
 
     // Guardar sistema de tallas
     const saveSizeSystem = async () => {
-      if (!formData.nombre.trim()) {
+      if (!sizeSystemFormData.nombre.trim()) {
         alert(t('El nombre del sistema es requerido'));
         return;
       }
 
-      const tallasValidas = formData.tallas.filter(t => t.trim());
+      const tallasValidas = sizeSystemFormData.tallas.filter((t: string) => t.trim());
       if (tallasValidas.length === 0) {
         alert(t('Debe agregar al menos una talla'));
         return;
       }
 
-      setLoading(true);
+      setSizeSystemsLoading(true);
       try {
         const baseUrl = process.env.NODE_ENV === 'production' 
           ? 'https://trebodeluxe-backend.onrender.com' 
           : 'http://localhost:5000';
 
-        const url = editingSystem 
-          ? `${baseUrl}/api/size-systems/${editingSystem.id_sistema_talla}`
+        const url = editingSizeSystem 
+          ? `${baseUrl}/api/size-systems/${editingSizeSystem.id_sistema_talla}`
           : `${baseUrl}/api/size-systems`;
 
-        const method = editingSystem ? 'PUT' : 'POST';
+        const method = editingSizeSystem ? 'PUT' : 'POST';
 
         const response = await fetch(url, {
           method,
@@ -1591,7 +1589,7 @@ const AdminPage: NextPage = () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            nombre: formData.nombre.trim(),
+            nombre: sizeSystemFormData.nombre.trim(),
             tallas: tallasValidas
           })
         });
@@ -1599,9 +1597,9 @@ const AdminPage: NextPage = () => {
         const data = await response.json();
 
         if (data.success) {
-          alert(editingSystem ? t('Sistema actualizado correctamente') : t('Sistema creado correctamente'));
+          alert(editingSizeSystem ? t('Sistema actualizado exitosamente') : t('Sistema creado exitosamente'));
           closeForm();
-          loadSizeSystems(searchQuery);
+          loadSizeSystems();
         } else {
           alert(data.message || t('Error al guardar el sistema'));
         }
@@ -1609,7 +1607,7 @@ const AdminPage: NextPage = () => {
         console.error('Error saving size system:', error);
         alert(t('Error de conexión al guardar'));
       } finally {
-        setLoading(false);
+        setSizeSystemsLoading(false);
       }
     };
 
@@ -1633,7 +1631,7 @@ const AdminPage: NextPage = () => {
 
         if (data.success) {
           alert(t('Sistema eliminado correctamente'));
-          loadSizeSystems(searchQuery);
+          loadSizeSystems(sizeSystemSearchQuery);
         } else {
           alert(data.message || t('Error al eliminar el sistema'));
         }
@@ -1658,8 +1656,8 @@ const AdminPage: NextPage = () => {
             <input
               type="text"
               placeholder={t('Buscar sistema de tallas...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={sizeSystemSearchQuery}
+              onChange={(e) => setSizeSystemSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
             />
@@ -1735,12 +1733,12 @@ const AdminPage: NextPage = () => {
         </div>
 
         {/* Formulario Modal */}
-        {showForm && (
+        {showSizeSystemForm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-black/90 border border-white/20 rounded-lg p-6 w-full max-w-md mx-4">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-white">
-                  {editingSystem ? t('Editar Sistema') : t('Nuevo Sistema')}
+                  {editingSizeSystem ? t('Editar Sistema') : t('Nuevo Sistema')}
                 </h3>
                 <button
                   onClick={closeForm}
@@ -1758,8 +1756,8 @@ const AdminPage: NextPage = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                    value={sizeSystemFormData.nombre}
+                    onChange={(e) => setSizeSystemFormData({...sizeSystemFormData, nombre: e.target.value})}
                     placeholder={t('Ej: Tallas Estándar')}
                     className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
                   />
@@ -1771,7 +1769,7 @@ const AdminPage: NextPage = () => {
                     {t('Tallas')}
                   </label>
                   <div className="space-y-2">
-                    {formData.tallas.map((talla, index) => (
+                    {sizeSystemFormData.tallas.map((talla, index) => (
                       <div key={index} className="flex gap-2">
                         <input
                           type="text"
@@ -1780,7 +1778,7 @@ const AdminPage: NextPage = () => {
                           placeholder={t('Ej: XS, S, M, L...')}
                           className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
                         />
-                        {formData.tallas.length > 3 && (
+                        {sizeSystemFormData.tallas.length > 3 && (
                           <button
                             onClick={() => removeSizeInput(index)}
                             className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors"
@@ -1804,14 +1802,14 @@ const AdminPage: NextPage = () => {
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={saveSizeSystem}
-                    disabled={loading}
+                    disabled={sizeSystemsLoading}
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
-                    {loading ? t('Guardando...') : (editingSystem ? t('Actualizar') : t('Crear'))}
+                    {sizeSystemsLoading ? t('Guardando...') : (editingSizeSystem ? t('Actualizar') : t('Crear'))}
                   </button>
                   <button
                     onClick={closeForm}
-                    disabled={loading}
+                    disabled={sizeSystemsLoading}
                     className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     {t('Cancelar')}
