@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sistema de Tallas CRUD</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f, #2d5f3f);
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin: 10px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, button {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        button {
+            background: #22c55e;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #16a34a;
+        }
+        
+        button.delete {
+            background: #ef4444;
+        }
+        
+        button.delete:hover {
+            background: #dc2626;
+        }
+        
+        button.edit {
+            background: #eab308;
+        }
+        
+        button.edit:hover {
+            background: #ca8a04;
+        }
+        
+        .size-system {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .system-name {
+            font-weight: bold;
+            min-width: 150px;
+        }
+        
+        .separator {
+            width: 1px;
+            height: 30px;
+            background: rgba(255,255,255,0.2);
+            margin: 0 15px;
+        }
+        
+        .sizes {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .size-tag {
+            background: rgba(34,197,94,0.2);
+            border: 1px solid rgba(34,197,94,0.3);
+            color: #86efac;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30,58,95,0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .size-input-group {
+            display: flex;
+            gap: 10px;
+            margin: 5px 0;
+            align-items: center;
+        }
+        
+        .size-input {
+            flex: 1;
+        }
+        
+        .remove-size {
+            background: #ef4444 !important;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #22c55e;
+            color: white;
+            border-radius: 8px;
+            display: none;
+            z-index: 1001;
+        }
+        
+        .error {
+            background: #ef4444 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Test Sistema de Tallas CRUD</h1>
+        
+        <div class="section">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Buscar sistema de tallas..."
+                    style="flex: 1;"
+                >
+                <button onclick="searchSystems()">🔍 Buscar</button>
+                <button onclick="openCreateModal()">+ Agregar Sistema</button>
+            </div>
+            
+            <div id="systemsList">
+                <!-- Los sistemas se cargarán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="modalTitle">Nuevo Sistema de Tallas</h3>
+                <button onclick="closeModal()" style="background: transparent; border: none; color: #ccc; font-size: 24px; cursor: pointer;">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Nombre del Sistema:</label>
+                <input type="text" id="systemName" placeholder="Ej: Tallas Estándar">
+            </div>
+            
+            <div class="form-group">
+                <label>Tallas:</label>
+                <div id="sizesContainer">
+                    <!-- Los inputs de tallas se generarán aquí -->
+                </div>
+                <button onclick="addSizeInput()" style="margin-top: 10px;">+ Agregar Talla</button>
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button onclick="saveSystem()" style="flex: 1;">💾 Guardar</button>
+                <button onclick="closeModal()" style="flex: 1; background: #6b7280;">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificación de estado -->
+    <div id="status" class="status"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api/size-systems';
+        let currentSystem = null;
+
+        // Cargar sistemas al inicio
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSystems();
+        });
+
+        // Funciones principales
+        async function loadSystems(searchTerm = '') {
+            try {
+                const url = searchTerm ? 
+                    `${API_BASE}/search?search=${encodeURIComponent(searchTerm)}` : 
+                    API_BASE;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderSystems(data.sizeSystems || []);
+                } else {
+                    showStatus('Error al cargar sistemas', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error de conexión', 'error');
+            }
+        }
+
+        function renderSystems(systems) {
+            const container = document.getElementById('systemsList');
+            
+            if (systems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No se encontraron sistemas de tallas</div>';
+                return;
+            }
+
+            container.innerHTML = systems.map(system => `
+                <div class="size-system">
+                    <div class="system-name">${system.nombre}</div>
+                    <div class="separator"></div>
+                    <div class="sizes">
+                        ${system.tallas.map(size => 
+                            `<span class="size-tag">${size.nombre_talla}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="actions">
+                        <button class="edit" onclick="editSystem(${system.id_sistema_talla})">✏️ Editar</button>
+                        <button class="delete" onclick="deleteSystem(${system.id_sistema_talla}, '${system.nombre}')">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function searchSystems() {
+            const searchTerm = document.getElementById('searchInput').value;
+            loadSystems(searchTerm);
+        }
+
+        function openCreateModal() {
+            currentSystem = null;
+            document.getElementById('modalTitle').textContent = 'Nuevo Sistema de Tallas';
+            document.getElementById('systemName').value = '';
+            createSizeInputs(['', '', '']); // Mínimo 3 tallas
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        async function editSystem(systemId) {
+            try {
+                // Buscar el sistema en la lista actual o hacer una nueva consulta
+                const response = await fetch(API_BASE);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const system = data.sizeSystems.find(s => s.id_sistema_talla === systemId);
+                    if (system) {
+                        currentSystem = system;
+                        document.getElementById('modalTitle').textContent = 'Editar Sistema';
+                        document.getElementById('systemName').value = system.nombre;
+                        createSizeInputs(system.tallas.map(t => t.nombre_talla));
+                        document.getElementById('modal').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                showStatus('Error al cargar sistema', 'error');
+            }
+        }
+
+        async function deleteSystem(systemId, systemName) {
+            if (!confirm(`¿Está seguro de que desea eliminar el sistema "${systemName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/${systemId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Sistema eliminado correctamente');
+                    loadSystems();
+                } else {
+                    showStatus(data.message || 'Error al eliminar', 'error');
+                }
+            } catch (error) {
+                showStatus('Error de conexión', 'error');
+            }
+        }
+
+        function createSizeInputs(sizes) {
+            const container = document.getElementById('sizesContainer');
+            container.innerHTML = sizes.map((size, index) => `
+                <div class="size-input-group">
+                    <input type="text" class="size-input" value="${size}" placeholder="Ej: XS, S, M, L...">
+                    ${sizes.length > 3 ? `<button type="button" class="remove-size" onclick="removeSizeInput(${index})">-</button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function addSizeInput() {
+            const container = document.getElementById('sizesContainer');
+            const inputs = container.querySelectorAll('.size-input');
+            const sizes = Array.from(inputs).map(input => input.value);
+            sizes.push('');
+            createSizeInputs(sizes);
+        }
+
+        function removeSizeInput(index) {
+            const container = document.getElementById('sizesContainer');
+            const inputs = container.querySelectorAll('.size-input');
+            const sizes = Array.from(inputs).map(input => input.value);
+            
+            if (sizes.length > 3) {
+                sizes.splice(index, 1);
+                createSizeInputs(sizes);
+            }
+        }
+
+        async function saveSystem() {
+            const nombre = document.getElementById('systemName').value.trim();
+            const sizeInputs = document.querySelectorAll('.size-input');
+            const tallas = Array.from(sizeInputs)
+                .map(input => input.value.trim())
+                .filter(size => size);
+
+            if (!nombre) {
+                showStatus('El nombre del sistema es requerido', 'error');
+                return;
+            }
+
+            if (tallas.length === 0) {
+                showStatus('Debe agregar al menos una talla', 'error');
+                return;
+            }
+
+            try {
+                const url = currentSystem ? `${API_BASE}/${currentSystem.id_sistema_talla}` : API_BASE;
+                const method = currentSystem ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nombre, tallas })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(currentSystem ? 'Sistema actualizado correctamente' : 'Sistema creado correctamente');
+                    closeModal();
+                    loadSystems();
+                } else {
+                    showStatus(data.message || 'Error al guardar', 'error');
+                }
+            } catch (error) {
+                showStatus('Error de conexión', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            currentSystem = null;
+        }
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type === 'error' ? 'error' : ''}`;
+            status.style.display = 'block';
+
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchSystems();
+            }
+        });
+
+        // Cerrar modal al hacer click fuera
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

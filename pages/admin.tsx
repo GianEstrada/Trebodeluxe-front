@@ -38,33 +38,43 @@ interface Variant {
   }>;
 }
 
+interface Talla {
+  id_talla: number;
+  nombre_talla: string;
+  orden?: number;
+}
+
 interface SizeSystem {
   id_sistema_talla: number;
   nombre: string;
-  tallas: Array<{
-    id_talla: number;
-    nombre_talla: string;
-    orden: number;
-  }>;
+  tallas: Talla[];
 }
 
 interface Promotion {
-  id: number;
-  title: string;
-  description: string;
-  type: 'percentage' | 'quantity' | 'promo_code';
-  discountPercentage?: number;
+  id_promocion?: number;
+  id?: number; // Para compatibilidad
+  nombre?: string;
+  title?: string; // Para compatibilidad
+  descripcion?: string;
+  description?: string; // Para compatibilidad
+  tipo_descuento: string;
+  type?: string; // Para compatibilidad
+  valor_descuento: number;
+  discountPercentage?: number; // Para compatibilidad
+  fecha_inicio: string;
+  validFrom?: string; // Para compatibilidad
+  fecha_fin: string;
+  validTo?: string; // Para compatibilidad
+  activo: boolean;
+  isActive?: boolean; // Para compatibilidad
+  applicationType?: string;
   quantityRequired?: number;
   quantityFree?: number;
   promoCode?: string;
   codeDiscountPercentage?: number;
   codeDiscountAmount?: number;
-  applicationType: 'all_products' | 'specific_category' | 'specific_product';
   targetCategoryId?: string;
   targetProductId?: number;
-  validFrom: string;
-  validTo: string;
-  isActive: boolean;
   image?: string;
   usageLimit?: number;
   currentUsage?: number;
@@ -142,6 +152,10 @@ const AdminPage: NextPage = () => {
   const [sizeSystems, setSizeSystems] = useState<SizeSystem[]>([]);
   const [loading, setLoading] = useState(false);
   
+  // Estados para búsqueda y filtrado de productos
+  const [variantsSearchQuery, setVariantsSearchQuery] = useState('');
+  const [filteredVariants, setFilteredVariants] = useState<Variant[]>([]);
+  
   // Estados para el formulario de productos/variantes
   const [showVariantForm, setShowVariantForm] = useState(false);
   const [formType, setFormType] = useState<'nuevo_producto' | 'nueva_variante'>('nuevo_producto');
@@ -172,11 +186,16 @@ const AdminPage: NextPage = () => {
       title: "Descuento de Verano",
       description: "20% de descuento en toda la colección de verano",
       type: "percentage",
+      tipo_descuento: "percentage",
       discountPercentage: 20,
+      valor_descuento: 20,
       applicationType: "all_products",
       validFrom: "2025-06-01",
+      fecha_inicio: "2025-06-01",
       validTo: "2025-08-31",
+      fecha_fin: "2025-08-31",
       isActive: true,
+      activo: true,
       currentUsage: 0
     }
   ]);
@@ -229,6 +248,7 @@ const AdminPage: NextPage = () => {
       const data = await response.json();
       if (data.success) {
         setVariants(data.variants);
+        setFilteredVariants(data.variants);
       }
     } catch (error) {
       console.error('Error loading variants:', error);
@@ -261,6 +281,29 @@ const AdminPage: NextPage = () => {
     }
   };
 
+  // Función de búsqueda para productos/variantes
+  const searchVariants = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredVariants(variants);
+      return;
+    }
+
+    const filtered = variants.filter(variant => 
+      variant.nombre_producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      variant.nombre_variante.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      variant.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      variant.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (variant.descripcion_producto && variant.descripcion_producto.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    
+    setFilteredVariants(filtered);
+  };
+
+  // Efecto para buscar cuando cambia el término de búsqueda
+  useEffect(() => {
+    searchVariants(variantsSearchQuery);
+  }, [variantsSearchQuery, variants]);
+
   const uploadImageToCloudinary = async (file: File): Promise<{url: string, public_id: string}> => {
     setUploadingImage(true);
     try {
@@ -292,12 +335,35 @@ const AdminPage: NextPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Productos y Variantes')}</h2>
-        <button
-          onClick={() => setShowVariantForm(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-        >
-          + {t('Agregar Variante')}
-        </button>
+        {loading && <div className="text-green-400">⏳ {t('Cargando...')}</div>}
+      </div>
+
+      {/* Barra de búsqueda y botón agregar */}
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 mb-6">
+        <div className="flex gap-4">
+          <input
+            type="text"
+            placeholder={t('Buscar productos o variantes...')}
+            value={variantsSearchQuery}
+            onChange={(e) => setVariantsSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && searchVariants(variantsSearchQuery)}
+            className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
+          />
+          <button
+            onClick={() => searchVariants(variantsSearchQuery)}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            🔍 {t('Buscar')}
+          </button>
+          <button
+            onClick={() => setShowVariantForm(true)}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            + {t('Agregar Variante')}
+          </button>
+        </div>
       </div>
       
       {loading ? (
@@ -305,73 +371,93 @@ const AdminPage: NextPage = () => {
           <p>{t('Cargando...')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {variants.map((variant) => (
-            <div key={variant.id_variante} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              {/* Nombre del producto */}
-              <h3 className="text-lg font-bold text-white mb-3">{variant.nombre_producto}</h3>
-              
-              <div className="flex gap-4 mb-4">
-                {/* Imagen de la variante */}
-                <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                  {variant.imagen_url ? (
-                    <Image
-                      src={variant.imagen_url}
-                      alt={variant.nombre_variante}
-                      width={96}
-                      height={96}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500 text-xs">
-                      Sin imagen
-                    </div>
-                  )}
-                </div>
-                
-                {/* Información de la variante */}
-                <div className="flex-1">
-                  <h4 className="text-md font-semibold text-green-400 mb-2">{variant.nombre_variante}</h4>
-                  <p className="text-gray-300 text-sm mb-2 line-clamp-2">{variant.descripcion_producto}</p>
+        <div>
+          {/* Contador de resultados */}
+          <div className="mb-4 text-gray-300">
+            {variantsSearchQuery ? (
+              <p>{t('Se encontraron')} {filteredVariants.length} {t('resultados para')}: "{variantsSearchQuery}"</p>
+            ) : (
+              <p>{t('Total de variantes')}: {filteredVariants.length}</p>
+            )}
+          </div>
+
+          {filteredVariants.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              {variantsSearchQuery ? 
+                t('No se encontraron productos o variantes que coincidan con tu búsqueda') : 
+                t('No se encontraron productos o variantes')
+              }
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVariants.map((variant) => (
+                <div key={variant.id_variante} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+                  {/* Nombre del producto */}
+                  <h3 className="text-lg font-bold text-white mb-3">{variant.nombre_producto}</h3>
                   
-                  {/* Precio */}
-                  <div className="mb-2">
-                    <span className="text-lg font-bold text-white">${variant.precio}</span>
-                    {variant.precio_original && (
-                      <span className="text-sm text-gray-400 line-through ml-2">${variant.precio_original}</span>
+                  <div className="flex gap-4 mb-4">
+                    {/* Imagen de la variante */}
+                    <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                      {variant.imagen_url ? (
+                        <Image
+                          src={variant.imagen_url}
+                          alt={variant.nombre_variante}
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500 text-xs">
+                          Sin imagen
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Información de la variante */}
+                    <div className="flex-1">
+                      <h4 className="text-md font-semibold text-green-400 mb-2">{variant.nombre_variante}</h4>
+                      <p className="text-gray-300 text-sm mb-2 line-clamp-2">{variant.descripcion_producto}</p>
+                      
+                      {/* Precio */}
+                      <div className="mb-2">
+                        <span className="text-lg font-bold text-white">${variant.precio}</span>
+                        {variant.precio_original && (
+                          <span className="text-sm text-gray-400 line-through ml-2">${variant.precio_original}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Tallas y stock */}
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-400 mb-2">{t('Tallas y Stock:')}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {variant.tallas_stock.map((talla) => (
+                        <span
+                          key={talla.id_talla}
+                          className={`text-xs px-2 py-1 rounded ${
+                            talla.cantidad > 0 
+                              ? 'bg-green-600 text-white' 
+                              : 'bg-gray-600 text-gray-300'
+                          }`}
+                        >
+                          {talla.nombre_talla}: {talla.cantidad}
+                        </span>
+                      ))}
+                    </div>
+                    {variant.tallas_stock.length === 0 && (
+                      <span className="text-xs text-gray-500">{t('Sin tallas configuradas')}</span>
                     )}
                   </div>
+                  
+                  {/* Total de stock */}
+                  <div className="text-sm text-gray-300">
+                    <strong>{t('Total en stock:')} {variant.tallas_stock.reduce((total, talla) => total + talla.cantidad, 0)}</strong>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Tallas y stock */}
-              <div className="mb-4">
-                <p className="text-sm text-gray-400 mb-2">{t('Tallas y Stock:')}</p>
-                <div className="flex flex-wrap gap-1">
-                  {variant.tallas_stock.map((talla) => (
-                    <span
-                      key={talla.id_talla}
-                      className={`text-xs px-2 py-1 rounded ${
-                        talla.cantidad > 0 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-gray-600 text-gray-300'
-                      }`}
-                    >
-                      {talla.nombre_talla}: {talla.cantidad}
-                    </span>
-                  ))}
-                </div>
-                {variant.tallas_stock.length === 0 && (
-                  <span className="text-xs text-gray-500">{t('Sin tallas configuradas')}</span>
-                )}
-              </div>
-              
-              {/* Total de stock */}
-              <div className="text-sm text-gray-300">
-                <strong>{t('Total en stock:')} {variant.tallas_stock.reduce((total, talla) => total + talla.cantidad, 0)}</strong>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -1366,14 +1452,378 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const renderSizeSystems = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Sistemas de Tallas')}</h2>
-      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-        <p className="text-white">{t('Funcionalidad de sistemas de tallas en desarrollo')}</p>
+  const renderSizeSystems = () => {
+    const [sizeSystemsData, setSizeSystemsData] = useState<SizeSystem[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showForm, setShowForm] = useState(false);
+    const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
+    const [formData, setFormData] = useState({
+      nombre: '',
+      tallas: ['', '', ''] // Mínimo 3 tallas
+    });
+
+    // Cargar sistemas de tallas
+    const loadSizeSystems = async (search = '') => {
+      setLoading(true);
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://trebodeluxe-backend.onrender.com' 
+          : 'http://localhost:5000';
+        
+        const url = search 
+          ? `${baseUrl}/api/size-systems/search?search=${encodeURIComponent(search)}`
+          : `${baseUrl}/api/size-systems`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+          setSizeSystemsData(data.sizeSystems || []);
+        } else {
+          alert(t('Error al cargar sistemas de tallas'));
+        }
+      } catch (error) {
+        console.error('Error loading size systems:', error);
+        alert(t('Error de conexión al cargar sistemas de tallas'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Efecto para cargar datos iniciales
+    React.useEffect(() => {
+      loadSizeSystems();
+    }, []);
+
+    // Manejar búsqueda
+    const handleSearch = () => {
+      loadSizeSystems(searchQuery);
+    };
+
+    // Agregar talla al formulario
+    const addSizeInput = () => {
+      setFormData({
+        ...formData,
+        tallas: [...formData.tallas, '']
+      });
+    };
+
+    // Quitar talla del formulario
+    const removeSizeInput = (index: number) => {
+      if (formData.tallas.length > 3) {
+        const newTallas = formData.tallas.filter((_, i) => i !== index);
+        setFormData({
+          ...formData,
+          tallas: newTallas
+        });
+      }
+    };
+
+    // Actualizar talla específica
+    const updateSizeInput = (index: number, value: string) => {
+      const newTallas = [...formData.tallas];
+      newTallas[index] = value;
+      setFormData({
+        ...formData,
+        tallas: newTallas
+      });
+    };
+
+    // Abrir formulario para crear nuevo
+    const openCreateForm = () => {
+      setFormData({
+        nombre: '',
+        tallas: ['', '', '']
+      });
+      setEditingSystem(null);
+      setShowForm(true);
+    };
+
+    // Abrir formulario para editar
+    const openEditForm = (system: SizeSystem) => {
+      setFormData({
+        nombre: system.nombre,
+        tallas: system.tallas.map(t => t.nombre_talla)
+      });
+      setEditingSystem(system);
+      setShowForm(true);
+    };
+
+    // Cerrar formulario
+    const closeForm = () => {
+      setShowForm(false);
+      setEditingSystem(null);
+      setFormData({
+        nombre: '',
+        tallas: ['', '', '']
+      });
+    };
+
+    // Guardar sistema de tallas
+    const saveSizeSystem = async () => {
+      if (!formData.nombre.trim()) {
+        alert(t('El nombre del sistema es requerido'));
+        return;
+      }
+
+      const tallasValidas = formData.tallas.filter(t => t.trim());
+      if (tallasValidas.length === 0) {
+        alert(t('Debe agregar al menos una talla'));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://trebodeluxe-backend.onrender.com' 
+          : 'http://localhost:5000';
+
+        const url = editingSystem 
+          ? `${baseUrl}/api/size-systems/${editingSystem.id_sistema_talla}`
+          : `${baseUrl}/api/size-systems`;
+
+        const method = editingSystem ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            nombre: formData.nombre.trim(),
+            tallas: tallasValidas
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(editingSystem ? t('Sistema actualizado correctamente') : t('Sistema creado correctamente'));
+          closeForm();
+          loadSizeSystems(searchQuery);
+        } else {
+          alert(data.message || t('Error al guardar el sistema'));
+        }
+      } catch (error) {
+        console.error('Error saving size system:', error);
+        alert(t('Error de conexión al guardar'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Eliminar sistema de tallas
+    const deleteSizeSystem = async (system: SizeSystem) => {
+      if (!confirm(t('¿Está seguro de que desea eliminar este sistema de tallas? Esta acción no se puede deshacer.'))) {
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://trebodeluxe-backend.onrender.com' 
+          : 'http://localhost:5000';
+
+        const response = await fetch(`${baseUrl}/api/size-systems/${system.id_sistema_talla}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(t('Sistema eliminado correctamente'));
+          loadSizeSystems(searchQuery);
+        } else {
+          alert(data.message || t('Error al eliminar el sistema'));
+        }
+      } catch (error) {
+        console.error('Error deleting size system:', error);
+        alert(t('Error de conexión al eliminar'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold text-white mb-6">{t('Sistemas de Tallas')}</h2>
+          {loading && <div className="text-green-400">⏳ {t('Cargando...')}</div>}
+        </div>
+
+        {/* Barra de búsqueda y botón agregar */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <div className="flex gap-4 mb-6">
+            <input
+              type="text"
+              placeholder={t('Buscar sistema de tallas...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
+            />
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              🔍 {t('Buscar')}
+            </button>
+            <button
+              onClick={openCreateForm}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              + {t('Agregar Sistema')}
+            </button>
+          </div>
+
+          {/* Lista de sistemas de tallas */}
+          <div className="space-y-4">
+            {sizeSystemsData.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                {loading ? t('Cargando sistemas...') : t('No se encontraron sistemas de tallas')}
+              </div>
+            ) : (
+              sizeSystemsData.map((system) => (
+                <div 
+                  key={system.id_sistema_talla}
+                  className="flex items-center bg-black/30 rounded-lg p-4 border border-white/10"
+                >
+                  {/* Nombre del sistema */}
+                  <div className="font-semibold text-white min-w-[150px]">
+                    {system.nombre}
+                  </div>
+
+                  {/* Línea separadora */}
+                  <div className="w-px h-8 bg-white/20 mx-4"></div>
+
+                  {/* Tallas */}
+                  <div className="flex-1 flex flex-wrap gap-2">
+                    {system.tallas.map((talla, index) => (
+                      <span 
+                        key={talla.id_talla}
+                        className="bg-green-600/20 border border-green-400/30 text-green-300 px-3 py-1 rounded-full text-sm"
+                      >
+                        {talla.nombre_talla}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => openEditForm(system)}
+                      disabled={loading}
+                      className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      ✏️ {t('Editar')}
+                    </button>
+                    <button
+                      onClick={() => deleteSizeSystem(system)}
+                      disabled={loading}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      🗑️ {t('Eliminar')}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Formulario Modal */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-black/90 border border-white/20 rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">
+                  {editingSystem ? t('Editar Sistema') : t('Nuevo Sistema')}
+                </h3>
+                <button
+                  onClick={closeForm}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Nombre del sistema */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    {t('Nombre del Sistema')}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                    placeholder={t('Ej: Tallas Estándar')}
+                    className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
+                  />
+                </div>
+
+                {/* Tallas */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    {t('Tallas')}
+                  </label>
+                  <div className="space-y-2">
+                    {formData.tallas.map((talla, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={talla}
+                          onChange={(e) => updateSizeInput(index, e.target.value)}
+                          placeholder={t('Ej: XS, S, M, L...')}
+                          className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
+                        />
+                        {formData.tallas.length > 3 && (
+                          <button
+                            onClick={() => removeSizeInput(index)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors"
+                          >
+                            -
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={addSizeInput}
+                    className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    + {t('Agregar Talla')}
+                  </button>
+                </div>
+
+                {/* Botones del formulario */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={saveSizeSystem}
+                    disabled={loading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {loading ? t('Guardando...') : (editingSystem ? t('Actualizar') : t('Crear'))}
+                  </button>
+                  <button
+                    onClick={closeForm}
+                    disabled={loading}
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {t('Cancelar')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderContent = () => {
     switch (activeSection) {
