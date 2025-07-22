@@ -252,6 +252,31 @@ const AdminPage: NextPage = () => {
     loadSizeSystems();
   }, []);
 
+  // Efecto para cargar size systems inicialmente en sizeSystemsData
+  useEffect(() => {
+    if (activeSection === 'sizes' && sizeSystemsData.length === 0) {
+      console.log('Cargando size systems para la sección de tallas...');
+      const loadInitialSizeSystems = async () => {
+        setSizeSystemsLoading(true);
+        try {
+          const response = await fetch('https://trebodeluxe-backend.onrender.com/api/size-systems');
+          const data = await response.json();
+          console.log('Respuesta de size systems:', data);
+          if (data.success) {
+            setSizeSystemsData(data.sizeSystems || []);
+          } else {
+            console.error('Error en respuesta de size systems:', data.message);
+          }
+        } catch (error) {
+          console.error('Error loading initial size systems:', error);
+        } finally {
+          setSizeSystemsLoading(false);
+        }
+      };
+      loadInitialSizeSystems();
+    }
+  }, [activeSection, sizeSystemsData.length]);
+
   const loadVariants = async () => {
     setLoading(true);
     try {
@@ -281,14 +306,26 @@ const AdminPage: NextPage = () => {
   };
 
   const loadSizeSystems = async () => {
+    console.log('loadSizeSystems: Iniciando carga de sistemas de tallas...');
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/size-systems');
+      const url = 'https://trebodeluxe-backend.onrender.com/api/size-systems';
+      console.log('loadSizeSystems: Haciendo fetch a:', url);
+      
+      const response = await fetch(url);
+      console.log('loadSizeSystems: Respuesta recibida, status:', response.status);
+      
       const data = await response.json();
+      console.log('loadSizeSystems: Datos recibidos:', data);
+      
       if (data.success) {
+        console.log('loadSizeSystems: Actualizando sizeSystems con', data.sizeSystems?.length || 0, 'sistemas');
         setSizeSystems(data.sizeSystems);
+        setSizeSystemsData(data.sizeSystems); // También actualizar sizeSystemsData
+      } else {
+        console.error('loadSizeSystems: Error en respuesta:', data.message);
       }
     } catch (error) {
-      console.error('Error loading size systems:', error);
+      console.error('loadSizeSystems: Error de conexión:', error);
     }
   };
 
@@ -1464,8 +1501,8 @@ const AdminPage: NextPage = () => {
   );
 
   const renderSizeSystems = () => {
-    // Cargar sistemas de tallas
-    const loadSizeSystems = async (search = '') => {
+    // Función para cargar sistemas con búsqueda
+    const loadSizeSystemsWithSearch = async (search = '') => {
       setSizeSystemsLoading(true);
       try {
         const baseUrl = process.env.NODE_ENV === 'production' 
@@ -1492,11 +1529,9 @@ const AdminPage: NextPage = () => {
       }
     };
 
-    // Efecto para cargar datos iniciales - se maneja en el useEffect principal
-
     // Manejar búsqueda
     const handleSearch = () => {
-      loadSizeSystems(sizeSystemSearchQuery);
+      loadSizeSystemsWithSearch(sizeSystemSearchQuery);
     };
 
     // Agregar talla al formulario
@@ -1631,7 +1666,7 @@ const AdminPage: NextPage = () => {
 
         if (data.success) {
           alert(t('Sistema eliminado correctamente'));
-          loadSizeSystems(sizeSystemSearchQuery);
+          loadSizeSystemsWithSearch(sizeSystemSearchQuery);
         } else {
           alert(data.message || t('Error al eliminar el sistema'));
         }
@@ -1647,7 +1682,18 @@ const AdminPage: NextPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold text-white mb-6">{t('Sistemas de Tallas')}</h2>
-          {loading && <div className="text-green-400">⏳ {t('Cargando...')}</div>}
+          <div className="flex items-center gap-4">
+            {sizeSystemsLoading && <div className="text-green-400">⏳ {t('Cargando...')}</div>}
+            <button
+              onClick={() => {
+                console.log('Debug: Recargando sistemas de tallas...');
+                loadSizeSystems();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              🔄 Debug Reload
+            </button>
+          </div>
         </div>
 
         {/* Barra de búsqueda y botón agregar */}
@@ -1677,11 +1723,18 @@ const AdminPage: NextPage = () => {
             </button>
           </div>
 
+          {/* Debug info */}
+          <div className="mb-4 p-3 bg-gray-800 rounded text-sm text-gray-300">
+            <p>Debug: sizeSystemsData.length = {sizeSystemsData.length}</p>
+            <p>Debug: sizeSystems.length = {sizeSystems.length}</p>
+            <p>Debug: sizeSystemsLoading = {sizeSystemsLoading.toString()}</p>
+          </div>
+
           {/* Lista de sistemas de tallas */}
           <div className="space-y-4">
             {sizeSystemsData.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                {loading ? t('Cargando sistemas...') : t('No se encontraron sistemas de tallas')}
+                {sizeSystemsLoading ? t('Cargando sistemas...') : t('No se encontraron sistemas de tallas')}
               </div>
             ) : (
               sizeSystemsData.map((system) => (

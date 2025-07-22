@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Admin Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { padding: 10px 15px; margin: 5px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .systems { margin-top: 20px; }
+        .system { background: #333; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .debug { background: #444; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prueba Simple de Sistemas de Tallas</h1>
+        <button onclick="testBackend()">Probar Backend</button>
+        <button onclick="testSizeSystems()">Cargar Sistemas de Tallas</button>
+        
+        <div id="debug" class="debug"></div>
+        <div id="systems" class="systems"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const debug = document.getElementById('debug');
+            debug.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+        }
+
+        async function testBackend() {
+            log('Probando conexión con backend...');
+            try {
+                const response = await fetch('https://trebodeluxe-backend.onrender.com/api/health');
+                const data = await response.json();
+                log('Backend Health: ' + JSON.stringify(data));
+            } catch (error) {
+                log('Error de backend: ' + error.message);
+            }
+        }
+
+        async function testSizeSystems() {
+            log('Cargando sistemas de tallas...');
+            try {
+                const response = await fetch('https://trebodeluxe-backend.onrender.com/api/size-systems');
+                log('Status: ' + response.status + ' ' + response.statusText);
+                
+                const data = await response.json();
+                log('Datos recibidos: ' + JSON.stringify(data));
+                
+                if (data.success && data.sizeSystems) {
+                    displaySystems(data.sizeSystems);
+                } else {
+                    log('No hay sistemas o error: ' + data.message);
+                }
+            } catch (error) {
+                log('Error cargando sistemas: ' + error.message);
+            }
+        }
+
+        function displaySystems(systems) {
+            const container = document.getElementById('systems');
+            container.innerHTML = '<h2>Sistemas de Tallas (' + systems.length + ')</h2>';
+            
+            systems.forEach(system => {
+                const div = document.createElement('div');
+                div.className = 'system';
+                div.innerHTML = `
+                    <h3>${system.nombre}</h3>
+                    <p>ID: ${system.id_sistema_talla}</p>
+                    <p>Tallas: ${system.tallas ? system.tallas.map(t => t.nombre_talla).join(', ') : 'Sin tallas'}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Auto-test on page load
+        window.onload = () => {
+            setTimeout(() => {
+                testBackend();
+                setTimeout(testSizeSystems, 2000);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
