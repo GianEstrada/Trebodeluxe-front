@@ -1,894 +1,1354 @@
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import ProductManagement from '../components/admin/ProductManagement';
+import SizeManagement from '../components/admin/SizeManagement';
+import PromotionManagement from '../components/admin/PromotionManagement';
 
 interface Product {
   id: number;
-  nombre: string;
-  descripcion?: string;
-  categoria: string;
-  marca: string;
-  precio?: number;
-  activo: boolean;
-  fecha_creacion?: string;
-  imagen?: string;
-  variantes?: Variant[];
-  total_variantes?: number;
-  stock_total?: number;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  image: string;
+  category: string;
+  description: string;
+  sizes: string[];
+  colors: string[];
+  inStock: boolean;
+  featured: boolean;
 }
 
-interface Variant {
+interface Promotion {
   id: number;
-  producto_id: number;
-  nombre: string;
-  descripcion?: string;
-  precio: number;
-  activo: boolean;
-  stock_total: number;
-  imagen?: string;
-  tallas: VariantSize[];
+  title: string;
+  description: string;
+  type: 'percentage' | 'quantity' | 'promo_code';
+  
+  // Para descuentos de porcentaje
+  discountPercentage?: number;
+  
+  // Para promociones de cantidad (2x1, 3x2, etc.)
+  quantityRequired?: number;
+  quantityFree?: number;
+  
+  // Para códigos promocionales
+  promoCode?: string;
+  codeDiscountPercentage?: number;
+  codeDiscountAmount?: number;
+  
+  // Aplicación de la promoción
+  applicationType: 'all_products' | 'specific_category' | 'specific_product';
+  targetCategoryId?: string;
+  targetProductId?: number;
+  
+  validFrom: string;
+  validTo: string;
+  isActive: boolean;
+  image?: string;
+  
+  // Límites de uso
+  usageLimit?: number;
+  currentUsage?: number;
+  minPurchaseAmount?: number;
 }
 
-interface VariantSize {
-  talla_id: number;
-  nombre_talla: string;
-  cantidad: number;
-}
-
-interface Size {
+interface Order {
   id: number;
-  nombre: string;
-  sistema_id: number;
+  customerName: string;
+  email: string;
+  total: number;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  orderDate: string;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
+interface Note {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+interface HeaderTexts {
+  promoTexts: string[];
+  brandName: string;
+}
+
+interface PromoText {
+  id: number;
+  text: string;
+  isActive: boolean;
+  order: number;
+}
+
+interface HomeImages {
+  heroImage1: string;
+  heroImage2: string;
+  promosBannerImage: string;
 }
 
 interface SizeSystem {
   id: number;
   nombre: string;
   descripcion?: string;
-}
-
-interface CloudinaryResponse {
-  secure_url: string;
-  public_id: string;
+  talla_1: string;
+  talla_2: string;
+  talla_3: string;
+  talla_4?: string;
+  talla_5?: string;
+  talla_6?: string;
+  talla_7?: string;
+  talla_8?: string;
 }
 
 const AdminPage: NextPage = () => {
   const router = useRouter();
   const { user, logout } = useAuth();
-  
-  // Estados principales
-  const [activeTab, setActiveTab] = useState<'products' | 'promotions' | 'sizes' | 'orders'>('products');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  
-  // Estados para formularios
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showVariantForm, setShowVariantForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
-  
-  // Estados para filtros y búsqueda
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  
-  // Estados adicionales
-  const [sizes, setSizes] = useState<Size[]>([]);
-  const [sizeSystems, setSizeSystems] = useState<SizeSystem[]>([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState("es");
+  const { t, isTranslating } = useUniversalTranslate(currentLanguage);
 
-  useEffect(() => {
-    if (!user || user.rol !== 'admin') { // admin string
-      router.push('/login');
-      return;
+  // Categorías disponibles para las promociones
+  const availableCategories = [
+    { id: 'camisetas', name: 'Camisetas' },
+    { id: 'pantalones', name: 'Pantalones' },
+    { id: 'zapatos', name: 'Zapatos' },
+    { id: 'accesorios', name: 'Accesorios' },
+    { id: 'chaquetas', name: 'Chaquetas' },
+    { id: 'vestidos', name: 'Vestidos' },
+    { id: 'faldas', name: 'Faldas' },
+    { id: 'ropa-interior', name: 'Ropa Interior' },
+    { id: 'deportiva', name: 'Ropa Deportiva' },
+    { id: 'formal', name: 'Ropa Formal' }
+  ];
+
+  // Estados para las diferentes secciones
+  const [activeSection, setActiveSection] = useState('dashboard');
+  
+  // Estados para Header Texts
+  const [headerTexts, setHeaderTexts] = useState<HeaderTexts>({
+    promoTexts: [
+      'ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN',
+      'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'
+    ],
+    brandName: 'TREBOLUXE'
+  });
+
+  // Estados para Home Images
+  const [homeImages, setHomeImages] = useState<HomeImages>({
+    heroImage1: '/797e7904b64e13508ab322be3107e368-1@2x.png',
+    heroImage2: '/look-polo-2-1@2x.png',
+    promosBannerImage: '/promociones-playa.jpg'
+  });
+
+  // Estados para Products CRUD
+  const [products, setProducts] = useState<Product[]>([
+    {
+      id: 1,
+      name: "Camiseta Básica Premium",
+      price: 24.99,
+      originalPrice: 29.99,
+      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
+      category: "Camisetas",
+      description: "Camiseta de algodón 100% premium",
+      sizes: ["S", "M", "L", "XL"],
+      colors: ["Blanco", "Negro", "Gris"],
+      inStock: true,
+      featured: true
     }
-    
-    loadProducts();
-    loadSizes();
-    loadSizeSystems();
+  ]);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showProductForm, setShowProductForm] = useState(false);
+
+  // Estados para Promotions CRUD
+  const [promotions, setPromotions] = useState<Promotion[]>([
+    {
+      id: 1,
+      title: "Descuento de Verano",
+      description: "20% de descuento en toda la colección de verano",
+      type: "percentage",
+      discountPercentage: 20,
+      applicationType: "all_products",
+      validFrom: "2025-06-01",
+      validTo: "2025-08-31",
+      isActive: true,
+      currentUsage: 0
+    },
+    {
+      id: 2,
+      title: "2x1 en Camisetas",
+      description: "Compra 2 camisetas y llévate la segunda gratis",
+      type: "quantity",
+      quantityRequired: 2,
+      quantityFree: 1,
+      applicationType: "specific_category",
+      targetCategoryId: "camisetas",
+      validFrom: "2025-07-01",
+      validTo: "2025-07-31",
+      isActive: true,
+      currentUsage: 0
+    },
+    {
+      id: 3,
+      title: "Código SUMMER30",
+      description: "30% de descuento con código promocional",
+      type: "promo_code",
+      promoCode: "SUMMER30",
+      codeDiscountPercentage: 30,
+      applicationType: "all_products",
+      validFrom: "2025-07-01",
+      validTo: "2025-08-31",
+      isActive: true,
+      usageLimit: 100,
+      currentUsage: 15,
+      minPurchaseAmount: 500
+    }
+  ]);
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+  const [showPromotionForm, setShowPromotionForm] = useState(false);
+
+  // Estados para Orders Management
+  const [orders, setOrders] = useState<Order[]>([
+    {
+      id: 1001,
+      customerName: "Juan Pérez",
+      email: "juan@email.com",
+      total: 149.97,
+      status: "processing",
+      orderDate: "2025-07-13",
+      items: [
+        { productName: "Camiseta Básica Premium", quantity: 2, price: 24.99 },
+        { productName: "Polo Clásico", quantity: 1, price: 34.99 }
+      ]
+    }
+  ]);
+
+  // Estados para Notes
+  const [notes, setNotes] = useState<Note[]>([
+    {
+      id: 1,
+      title: "Recordatorio importante",
+      content: "Revisar inventario de productos antes del fin de mes",
+      createdAt: "2025-07-13",
+      priority: "high"
+    }
+  ]);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [showNoteForm, setShowNoteForm] = useState(false);
+
+  // Estados para Size Systems
+  const [sizeSystems, setSizeSystems] = useState<SizeSystem[]>([
+    {
+      id: 1,
+      nombre: "Tallas Estándar",
+      talla_1: "XS",
+      talla_2: "S",
+      talla_3: "M",
+      talla_4: "L",
+      talla_5: "XL",
+      talla_6: "XXL",
+      talla_7: "",
+      talla_8: ""
+    },
+    {
+      id: 2,
+      nombre: "Tallas Numéricas",
+      talla_1: "36",
+      talla_2: "38",
+      talla_3: "40",
+      talla_4: "42",
+      talla_5: "44",
+      talla_6: "46",
+      talla_7: "48",
+      talla_8: "50"
+    },
+    {
+      id: 3,
+      nombre: "Tallas de Calzado",
+      talla_1: "35",
+      talla_2: "36",
+      talla_3: "37",
+      talla_4: "38",
+      talla_5: "39",
+      talla_6: "40",
+      talla_7: "41",
+      talla_8: "42"
+    }
+  ]);
+  const [editingSizeSystem, setEditingSizeSystem] = useState<SizeSystem | null>(null);
+  const [showSizeSystemForm, setShowSizeSystemForm] = useState(false);
+
+  // Verificar si el usuario es administrador
+  useEffect(() => {
+    // Aquí verificarías con el backend si el usuario es admin
+    // Por ahora simularemos que cualquier usuario logueado puede acceder
+    if (!user) {
+      router.push('/login');
+    }
   }, [user, router]);
 
-  // Función para cargar productos
-  const loadProducts = async () => {
-    setLoading(true);
+  // Funciones para Header Texts
+  const updateHeaderTexts = async () => {
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (categoryFilter) params.append('categoria', categoryFilter);
-      if (brandFilter) params.append('marca', brandFilter);
-      if (statusFilter !== 'all') {
-        params.append('activo', statusFilter === 'active' ? 'true' : 'false');
-      }
+      // Aquí enviarías los datos al backend
+      console.log('Updating header texts:', headerTexts);
+      alert(t('Textos del header actualizados correctamente'));
+    } catch (error) {
+      console.error('Error updating header texts:', error);
+      alert(t('Error al actualizar los textos'));
+    }
+  };
 
-      const response = await fetch(`/api/admin/products?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  // Funciones para Home Images
+  const updateHomeImages = async () => {
+    try {
+      // Aquí enviarías las URLs de las imágenes al backend
+      console.log('Updating home images:', homeImages);
+      alert(t('Imágenes actualizadas correctamente'));
+    } catch (error) {
+      console.error('Error updating images:', error);
+      alert(t('Error al actualizar las imágenes'));
+    }
+  };
 
-      const data = await response.json();
-      
-      if (data.success) {
-        setProducts(data.products || []);
+  // Funciones para Products CRUD
+  const saveProduct = async (productData: Omit<Product, 'id'>) => {
+    try {
+      if (editingProduct) {
+        // Actualizar producto existente
+        const updatedProducts = products.map(p => 
+          p.id === editingProduct.id ? { ...productData, id: editingProduct.id } : p
+        );
+        setProducts(updatedProducts);
+        console.log('Updating product:', { ...productData, id: editingProduct.id });
       } else {
-        setError(data.message || 'Error al cargar productos');
+        // Crear nuevo producto
+        const newProduct = { ...productData, id: Date.now() };
+        setProducts([...products, newProduct]);
+        console.log('Creating product:', newProduct);
       }
+      setShowProductForm(false);
+      setEditingProduct(null);
+      alert(t('Producto guardado correctamente'));
     } catch (error) {
-      console.error('Error loading products:', error);
-      setError('Error de conexión');
-    } finally {
-      setLoading(false);
+      console.error('Error saving product:', error);
+      alert(t('Error al guardar el producto'));
     }
   };
 
-  // Función para cargar tallas
-  const loadSizes = async () => {
-    try {
-      const response = await fetch('/api/sizes', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setSizes(data.tallas || []);
+  const deleteProduct = async (productId: number) => {
+    if (confirm(t('¿Estás seguro de que quieres eliminar este producto?'))) {
+      try {
+        setProducts(products.filter(p => p.id !== productId));
+        console.log('Deleting product:', productId);
+        alert(t('Producto eliminado correctamente'));
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert(t('Error al eliminar el producto'));
       }
-    } catch (error) {
-      console.error('Error loading sizes:', error);
     }
   };
 
-  // Función para cargar sistemas de tallas
-  const loadSizeSystems = async () => {
+  // Funciones para Promotions CRUD
+  const savePromotion = async (promotionData: Omit<Promotion, 'id'>) => {
     try {
-      const response = await fetch('/api/sizes/systems', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setSizeSystems(data.sistemas || []);
+      if (editingPromotion) {
+        const updatedPromotions = promotions.map(p => 
+          p.id === editingPromotion.id ? { ...promotionData, id: editingPromotion.id } : p
+        );
+        setPromotions(updatedPromotions);
+        console.log('Updating promotion:', { ...promotionData, id: editingPromotion.id });
+      } else {
+        const newPromotion = { ...promotionData, id: Date.now() };
+        setPromotions([...promotions, newPromotion]);
+        console.log('Creating promotion:', newPromotion);
       }
+      setShowPromotionForm(false);
+      setEditingPromotion(null);
+      alert(t('Promoción guardada correctamente'));
     } catch (error) {
-      console.error('Error loading size systems:', error);
+      console.error('Error saving promotion:', error);
+      alert(t('Error al guardar la promoción'));
     }
   };
 
-  // Función para subir imagen a Cloudinary
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    setUploadingImage(true);
+  const deletePromotion = async (promotionId: number) => {
+    if (confirm(t('¿Estás seguro de que quieres eliminar esta promoción?'))) {
+      try {
+        setPromotions(promotions.filter(p => p.id !== promotionId));
+        console.log('Deleting promotion:', promotionId);
+        alert(t('Promoción eliminada correctamente'));
+      } catch (error) {
+        console.error('Error deleting promotion:', error);
+        alert(t('Error al eliminar la promoción'));
+      }
+    }
+  };
+
+  // Funciones para Orders Management
+  const updateOrderStatus = async (orderId: number, newStatus: Order['status']) => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', 'trebodeluxe');
-      
-      const response = await fetch(
-        'https://api.cloudinary.com/v1_1/dyh8tcvzv/image/upload',
-        {
-          method: 'POST',
-          body: formData,
-        }
+      const updatedOrders = orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
       );
-      
-      const data: CloudinaryResponse = await response.json();
-      return data.secure_url;
+      setOrders(updatedOrders);
+      console.log('Updating order status:', orderId, newStatus);
+      alert(t('Estado del pedido actualizado'));
     } catch (error) {
-      console.error('Error uploading to Cloudinary:', error);
-      throw error;
-    } finally {
-      setUploadingImage(false);
+      console.error('Error updating order status:', error);
+      alert(t('Error al actualizar el estado'));
     }
   };
 
-  // Componente para la lista de productos
-  const ProductList = () => (
-    <div className="space-y-4">
-      {/* Filtros y búsqueda */}
-      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-        <input
-          type="text"
-          placeholder="Buscar productos..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 min-w-64 px-3 py-2 border border-gray-300 rounded-md"
-        />
-        
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">Todas las categorías</option>
-          <option value="camisetas">Camisetas</option>
-          <option value="pantalones">Pantalones</option>
-          <option value="zapatos">Zapatos</option>
-          <option value="accesorios">Accesorios</option>
-        </select>
+  // Funciones para Notes
+  const saveNote = async (noteData: Omit<Note, 'id' | 'createdAt'>) => {
+    try {
+      if (editingNote) {
+        const updatedNotes = notes.map(n => 
+          n.id === editingNote.id ? { ...noteData, id: editingNote.id, createdAt: editingNote.createdAt } : n
+        );
+        setNotes(updatedNotes);
+        console.log('Updating note:', { ...noteData, id: editingNote.id });
+      } else {
+        const newNote = { 
+          ...noteData, 
+          id: Date.now(), 
+          createdAt: new Date().toISOString().split('T')[0] 
+        };
+        setNotes([...notes, newNote]);
+        console.log('Creating note:', newNote);
+      }
+      setShowNoteForm(false);
+      setEditingNote(null);
+      alert(t('Nota guardada correctamente'));
+    } catch (error) {
+      console.error('Error saving note:', error);
+      alert(t('Error al guardar la nota'));
+    }
+  };
 
-        <input
-          type="text"
-          placeholder="Filtrar por marca..."
-          value={brandFilter}
-          onChange={(e) => setBrandFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        />
+  const deleteNote = async (noteId: number) => {
+    if (confirm(t('¿Estás seguro de que quieres eliminar esta nota?'))) {
+      try {
+        setNotes(notes.filter(n => n.id !== noteId));
+        console.log('Deleting note:', noteId);
+        alert(t('Nota eliminada correctamente'));
+      } catch (error) {
+        console.error('Error deleting note:', error);
+        alert(t('Error al eliminar la nota'));
+      }
+    }
+  };
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="all">Todos los estados</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
-        </select>
+  // Funciones para Size Systems CRUD
+  const saveSizeSystem = async (editingSystem: SizeSystem | null, formData: any) => {
+    try {
+      const sizeSystemData = {
+        nombre: formData.name,
+        descripcion: formData.description,
+        talla_1: formData.size1,
+        talla_2: formData.size2,
+        talla_3: formData.size3,
+        talla_4: formData.size4,
+        talla_5: formData.size5,
+        talla_6: formData.size6,
+        talla_7: formData.size7,
+        talla_8: formData.size8
+      };
 
-        <button
-          onClick={loadProducts}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Buscar
-        </button>
-      </div>
+      if (editingSystem) {
+        const updatedSizeSystems = sizeSystems.map(s => 
+          s.id === editingSystem.id ? { ...sizeSystemData, id: editingSystem.id } : s
+        );
+        setSizeSystems(updatedSizeSystems);
+        console.log('Updating size system:', { ...sizeSystemData, id: editingSystem.id });
+      } else {
+        const newSizeSystem = { ...sizeSystemData, id: Date.now() };
+        setSizeSystems([...sizeSystems, newSizeSystem]);
+        console.log('Creating size system:', newSizeSystem);
+      }
+      alert(t('Sistema de tallas guardado correctamente'));
+    } catch (error) {
+      console.error('Error saving size system:', error);
+      alert(t('Error al guardar el sistema de tallas'));
+    }
+  };
 
-      {/* Botón para nuevo producto */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Gestión de Productos</h2>
-        <button
-          onClick={() => setShowProductForm(true)}
-          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-        >
-          + Crear Nuevo
-        </button>
-      </div>
+  const deleteSizeSystem = async (sizeSystemId: number) => {
+    if (confirm(t('¿Estás seguro de que quieres eliminar este sistema de tallas?'))) {
+      try {
+        setSizeSystems(sizeSystems.filter(s => s.id !== sizeSystemId));
+        console.log('Deleting size system:', sizeSystemId);
+        alert(t('Sistema de tallas eliminado correctamente'));
+      } catch (error) {
+        console.error('Error deleting size system:', error);
+        alert(t('Error al eliminar el sistema de tallas'));
+      }
+    }
+  };
 
-      {/* Lista de productos */}
-      {loading ? (
-        <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-          
-          {products.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-500">
-              No se encontraron productos
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  // Componente para cada tarjeta de producto
-  const ProductCard = ({ product }: { product: Product }) => (
-    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex gap-4">
-        {/* Imagen del producto */}
-        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-          {product.imagen ? (
-            <Image
-              src={product.imagen}
-              alt={product.nombre}
-              width={80}
-              height={80}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              Sin imagen
-            </div>
-          )}
-        </div>
-
-        {/* Información del producto */}
-        <div className="flex-1">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-lg">{product.nombre}</h3>
-            <div className="flex gap-2">
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                product.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {product.activo ? 'Activo' : 'Inactivo'}
-              </span>
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-600 mb-2">
-            <p><strong>Categoría:</strong> {product.categoria}</p>
-            <p><strong>Marca:</strong> {product.marca}</p>
-            {product.precio && <p><strong>Precio base:</strong> ${product.precio}</p>}
-          </div>
-
-          {product.descripcion && (
-            <p className="text-sm text-gray-700 mb-3 line-clamp-2">{product.descripcion}</p>
-          )}
-
-          {/* Información de variantes */}
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-blue-600">
-              {product.total_variantes || 0} variante(s) | Stock total: {product.stock_total || 0}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setSelectedProduct(product.id);
-                  setShowVariantForm(true);
-                }}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-              >
-                + Variante
-              </button>
-              <button
-                onClick={() => {
-                  setEditingProduct(product);
-                  setShowProductForm(true);
-                }}
-                className="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600"
-              >
-                Editar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Variantes del producto */}
-      {product.variantes && product.variantes.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <h4 className="font-medium text-sm mb-2">Variantes:</h4>
-          <div className="grid gap-2">
-            {product.variantes.map((variant) => (
-              <VariantCard key={variant.id} variant={variant} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Componente para cada tarjeta de variante
-  const VariantCard = ({ variant }: { variant: Variant }) => (
-    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-      <div className="flex gap-3">
-        {/* Imagen de la variante */}
-        <div className="w-12 h-12 bg-white rounded overflow-hidden flex-shrink-0">
-          {variant.imagen ? (
-            <Image
-              src={variant.imagen}
-              alt={variant.nombre}
-              width={48}
-              height={48}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-              No img
-            </div>
-          )}
-        </div>
-
-        {/* Info de la variante */}
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div>
-              <h5 className="font-medium text-sm">{variant.nombre}</h5>
-              <p className="text-xs text-gray-600">${variant.precio}</p>
-            </div>
-            <div className="flex gap-1">
-              <span className={`px-2 py-1 rounded text-xs ${
-                variant.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
-                {variant.activo ? 'Activa' : 'Inactiva'}
-              </span>
-            </div>
-          </div>
-
-          {/* Tallas y stock */}
-          {variant.tallas && variant.tallas.length > 0 && (
-            <div className="mt-2">
-              <div className="flex flex-wrap gap-1">
-                {variant.tallas.map((talla) => (
-                  <span
-                    key={talla.talla_id}
-                    className="px-2 py-1 bg-white rounded text-xs border"
-                    title={`Stock: ${talla.cantidad}`}
-                  >
-                    {talla.nombre_talla}: {talla.cantidad}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center mt-2">
-            <span className="text-xs text-gray-500">
-              Stock total: {variant.stock_total}
-            </span>
-            <button
-              onClick={() => {
-                setEditingVariant(variant);
-                setShowVariantForm(true);
-              }}
-              className="px-2 py-1 bg-yellow-400 text-white rounded text-xs hover:bg-yellow-500"
-            >
-              Editar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Formulario modal para productos y variantes
-  const ProductVariantForm = () => {
-    const [formType, setFormType] = useState<'product' | 'variant'>('product');
+  // Componente ProductForm básico
+  const ProductForm = ({ product, onSave, onCancel }: any) => {
     const [formData, setFormData] = useState({
-      nombre: '',
-      descripcion: '',
-      categoria: '',
-      marca: '',
-      precio: '',
-      imagen: '',
-      activo: true,
-      stock: {} as Record<number, number> // talla_id -> cantidad
+      nombre: product?.nombre || '',
+      descripcion: product?.descripcion || '',
+      precio: product?.precio || '',
+      imagen: product?.imagen || '',
+      categoria: product?.categoria || '',
+      disponible: product?.disponible || true
     });
 
-    const isEditing = editingProduct || editingVariant;
-
-    useEffect(() => {
-      if (editingProduct) {
-        setFormType('product');
-        setFormData({
-          nombre: editingProduct.nombre,
-          descripcion: editingProduct.descripcion || '',
-          categoria: editingProduct.categoria,
-          marca: editingProduct.marca,
-          precio: editingProduct.precio?.toString() || '',
-          imagen: editingProduct.imagen || '',
-          activo: editingProduct.activo,
-          stock: {}
-        });
-      } else if (editingVariant) {
-        setFormType('variant');
-        const stockMap = editingVariant.tallas.reduce((acc, talla) => ({
-          ...acc,
-          [talla.talla_id]: talla.cantidad
-        }), {});
-        
-        setFormData({
-          nombre: editingVariant.nombre,
-          descripcion: editingVariant.descripcion || '',
-          categoria: '',
-          marca: '',
-          precio: editingVariant.precio.toString(),
-          imagen: editingVariant.imagen || '',
-          activo: editingVariant.activo,
-          stock: stockMap
-        });
-      } else {
-        setFormData({
-          nombre: '',
-          descripcion: '',
-          categoria: '',
-          marca: '',
-          precio: '',
-          imagen: '',
-          activo: true,
-          stock: {}
-        });
-      }
-    }, [editingProduct, editingVariant]);
-
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      try {
-        const imageUrl = await uploadToCloudinary(file);
-        setFormData(prev => ({ ...prev, imagen: imageUrl }));
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        alert('Error al subir la imagen');
-      }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      setLoading(true);
-
-      try {
-        let endpoint = '/api/admin/products';
-        let method = 'POST';
-        let body: any = {
-          nombre: formData.nombre,
-          descripcion: formData.descripcion,
-          activo: formData.activo,
-          precio: parseFloat(formData.precio) || null,
-          imagen: formData.imagen || null
-        };
-
-        if (formType === 'product') {
-          body.categoria = formData.categoria;
-          body.marca = formData.marca;
-          
-          if (editingProduct) {
-            endpoint = `/api/admin/products/${editingProduct.id}`;
-            method = 'PUT';
-          }
-        } else {
-          // Para variantes
-          body.producto_id = selectedProduct || editingVariant?.producto_id;
-          body.stock = Object.entries(formData.stock)
-            .filter(([, cantidad]) => cantidad > 0)
-            .map(([talla_id, cantidad]) => ({
-              talla_id: parseInt(talla_id),
-              cantidad
-            }));
-
-          if (editingVariant) {
-            endpoint = `/api/admin/products/variants/${editingVariant.id}`;
-            method = 'PUT';
-          } else {
-            endpoint = '/api/admin/products/variants';
-          }
-        }
-
-        const response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-          closeForm();
-          loadProducts();
-        } else {
-          setError(data.message || 'Error al guardar');
-        }
-      } catch (error) {
-        console.error('Error saving:', error);
-        setError('Error de conexión');
-      } finally {
-        setLoading(false);
-      }
+      onSave(formData);
     };
-
-    const closeForm = () => {
-      setShowProductForm(false);
-      setShowVariantForm(false);
-      setEditingProduct(null);
-      setEditingVariant(null);
-      setSelectedProduct(null);
-    };
-
-    if (!showProductForm && !showVariantForm) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">
-                {isEditing ? 'Editar' : 'Crear'} {formType === 'product' ? 'Producto' : 'Variante'}
-              </h2>
-              <button
-                onClick={closeForm}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Radio buttons para tipo (solo si no está editando) */}
-            {!isEditing && (
-              <div className="mb-6">
-                <div className="flex gap-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="formType"
-                      value="product"
-                      checked={formType === 'product'}
-                      onChange={(e) => setFormType(e.target.value as 'product' | 'variant')}
-                      className="mr-2"
-                    />
-                    Nuevo Producto
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="formType"
-                      value="variant"
-                      checked={formType === 'variant'}
-                      onChange={(e) => setFormType(e.target.value as 'product' | 'variant')}
-                      className="mr-2"
-                    />
-                    Nueva Variante
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* Formulario */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Campos básicos */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Nombre {formType === 'product' ? 'del Producto' : 'de la Variante'} *
-                </label>
-                <input
-                  type="text"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
-                <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
-                />
-              </div>
-
-              {/* Campos específicos para productos */}
-              {formType === 'product' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Categoría *</label>
-                      <select
-                        value={formData.categoria}
-                        onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required
-                      >
-                        <option value="">Seleccionar categoría</option>
-                        <option value="camisetas">Camisetas</option>
-                        <option value="pantalones">Pantalones</option>
-                        <option value="zapatos">Zapatos</option>
-                        <option value="accesorios">Accesorios</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Marca *</label>
-                      <input
-                        type="text"
-                        value={formData.marca}
-                        onChange={(e) => setFormData(prev => ({ ...prev, marca: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        required
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Precio {formType === 'product' ? '(base)' : '*'}</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.precio}
-                  onChange={(e) => setFormData(prev => ({ ...prev, precio: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  required={formType === 'variant'}
-                />
-              </div>
-
-              {/* Imagen */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Imagen</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  disabled={uploadingImage}
-                />
-                {uploadingImage && <p className="text-sm text-blue-500 mt-1">Subiendo imagen...</p>}
-                {formData.imagen && (
-                  <div className="mt-2">
-                    <Image
-                      src={formData.imagen}
-                      alt="Preview"
-                      width={100}
-                      height={100}
-                      className="rounded-md object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Stock para variantes */}
-              {formType === 'variant' && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Stock por Talla</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {sizes.map((size) => (
-                      <div key={size.id} className="flex items-center gap-2">
-                        <label className="flex-1 text-sm">{size.nombre}:</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={formData.stock[size.id] || 0}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            stock: {
-                              ...prev.stock,
-                              [size.id]: parseInt(e.target.value) || 0
-                            }
-                          }))}
-                          className="w-20 px-2 py-1 border border-gray-300 rounded"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Estado activo */}
-              <div>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
-                    className="mr-2"
-                  />
-                  Activo
-                </label>
-              </div>
-
-              {/* Botones */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                  disabled={loading}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-                  disabled={loading || uploadingImage}
-                >
-                  {loading ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear')}
-                </button>
-              </div>
-            </form>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Nombre del Producto')}
+          </label>
+          <input
+            type="text"
+            value={formData.nombre}
+            onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
         </div>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descripción')}
+          </label>
+          <textarea
+            value={formData.descripcion}
+            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            rows={3}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Precio')}
+          </label>
+          <input
+            type="number"
+            value={formData.precio}
+            onChange={(e) => setFormData({...formData, precio: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Imagen URL')}
+          </label>
+          <input
+            type="text"
+            value={formData.imagen}
+            onChange={(e) => setFormData({...formData, imagen: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Categoría')}
+          </label>
+          <input
+            type="text"
+            value={formData.categoria}
+            onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.disponible}
+            onChange={(e) => setFormData({...formData, disponible: e.target.checked})}
+            className="mr-2"
+          />
+          <label className="text-sm text-gray-300">
+            {t('Disponible')}
+          </label>
+        </div>
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Guardar')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Cancelar')}
+          </button>
+        </div>
+      </form>
     );
   };
 
-  if (!user || user.rol !== 'admin') { // admin string
+  // Componente PromotionForm básico
+  const PromotionForm = ({ promotion, onSave, onCancel }: any) => {
+    const [formData, setFormData] = useState({
+      titulo: promotion?.titulo || '',
+      descripcion: promotion?.descripcion || '',
+      descuento: promotion?.descuento || '',
+      fechaInicio: promotion?.fechaInicio || '',
+      fechaFin: promotion?.fechaFin || '',
+      isActive: promotion?.isActive || true
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave(formData);
+    };
+
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Acceso Denegado</h1>
-          <p className="text-gray-600 mb-4">No tienes permisos para acceder a esta página</p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Título')}
+          </label>
+          <input
+            type="text"
+            value={formData.titulo}
+            onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descripción')}
+          </label>
+          <textarea
+            value={formData.descripcion}
+            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            rows={3}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {t('Descuento (%)')}
+          </label>
+          <input
+            type="number"
+            value={formData.descuento}
+            onChange={(e) => setFormData({...formData, descuento: e.target.value})}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              {t('Fecha Inicio')}
+            </label>
+            <input
+              type="date"
+              value={formData.fechaInicio}
+              onChange={(e) => setFormData({...formData, fechaInicio: e.target.value})}
+              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              {t('Fecha Fin')}
+            </label>
+            <input
+              type="date"
+              value={formData.fechaFin}
+              onChange={(e) => setFormData({...formData, fechaFin: e.target.value})}
+              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            />
+          </div>
+        </div>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.isActive}
+            onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+            className="mr-2"
+          />
+          <label className="text-sm text-gray-300">
+            {t('Activa')}
+          </label>
+        </div>
+        <div className="flex gap-4">
           <button
-            onClick={() => router.push('/login')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            Ir al Login
+            {t('Guardar')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            {t('Cancelar')}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  const renderSidebar = () => (
+    <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-white mb-8">{t('Panel de Admin')}</h1>
+        <nav className="space-y-2">
+          <button
+            onClick={() => setActiveSection('dashboard')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'dashboard' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📊 {t('Dashboard')}
+          </button>
+          <button
+            onClick={() => setActiveSection('header')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'header' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📝 {t('Textos del Header')}
+          </button>
+          <button
+            onClick={() => setActiveSection('images')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'images' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🖼️ {t('Imágenes Principales')}
+          </button>
+          <button
+            onClick={() => setActiveSection('products')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'products' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📦 {t('Productos')}
+          </button>
+          <button
+            onClick={() => setActiveSection('promotions')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'promotions' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🎯 {t('Promociones')}
+          </button>
+          <button
+            onClick={() => setActiveSection('orders')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'orders' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📋 {t('Pedidos')}
+          </button>
+          <button
+            onClick={() => setActiveSection('notes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'notes' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📝 {t('Notas')}
+          </button>
+          <button
+            onClick={() => setActiveSection('sizes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'sizes' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📏 {t('Sistemas de Tallas')}
+          </button>
+        </nav>
+      </div>
+      <div className="absolute bottom-6 left-6">
+        <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+          ← {t('Volver al sitio')}
+        </Link>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Total Productos')}</h3>
+          <p className="text-3xl font-bold text-green-400">{products.length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Promociones Activas')}</h3>
+          <p className="text-3xl font-bold text-blue-400">{promotions.filter(p => p.isActive).length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Pedidos Pendientes')}</h3>
+          <p className="text-3xl font-bold text-yellow-400">{orders.filter(o => o.status === 'pending').length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Notas')}</h3>
+          <p className="text-3xl font-bold text-purple-400">{notes.length}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Pedidos Recientes')}</h3>
+          <div className="space-y-3">
+            {orders.slice(0, 5).map(order => (
+              <div key={order.id} className="flex justify-between items-center p-3 bg-black/30 rounded">
+                <div>
+                  <p className="text-white font-medium">#{order.id} - {order.customerName}</p>
+                  <p className="text-gray-400 text-sm">${order.total}</p>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs ${
+                  order.status === 'pending' ? 'bg-yellow-600 text-white' :
+                  order.status === 'processing' ? 'bg-blue-600 text-white' :
+                  order.status === 'shipped' ? 'bg-purple-600 text-white' :
+                  order.status === 'delivered' ? 'bg-green-600 text-white' :
+                  'bg-red-600 text-white'
+                }`}>
+                  {t(order.status)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Notas Importantes')}</h3>
+          <div className="space-y-3">
+            {notes.filter(n => n.priority === 'high').slice(0, 3).map(note => (
+              <div key={note.id} className="p-3 bg-red-900/30 border border-red-500/50 rounded">
+                <p className="text-white font-medium">{note.title}</p>
+                <p className="text-gray-300 text-sm">{note.content.substring(0, 50)}...</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHeaderTexts = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Textos del Header')}</h2>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3
+          >
+          
+          <div className="space-y-6">
+            <div>
+              <label className="block text-white font-medium mb-3">{t('Nombre de la Marca')}</label>
+              <input
+                type="text"
+                value={headerTexts.brandName}
+                onChange={(e) => setHeaderTexts({...headerTexts, brandName: e.target.value})}
+                className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                placeholder={t('Nombre de la marca')}
+              />
+            </div>
+            
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-white font-medium">{t('Textos Promocionales')}</label>
+                <button
+                  onClick={() => {
+                    setHeaderTexts({
+                      ...headerTexts,
+                      promoTexts: [...headerTexts.promoTexts, '']
+                    });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                >
+                  + {t('Agregar')}
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                {headerTexts.promoTexts.map((text, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={text}
+                      onChange={(e) => {
+                        const newTexts = [...headerTexts.promoTexts];
+                        newTexts[index] = e.target.value;
+                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                      }}
+                      className="flex-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                      placeholder={t('Texto promocional {{number}}').replace('{{number}}', (index + 1).toString())}
+                    />
+                    <button
+                      onClick={() => {
+                        const newTexts = headerTexts.promoTexts.filter((_, i) => i !== index);
+                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition-colors"
+                      disabled={headerTexts.promoTexts.length <= 1}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {headerTexts.promoTexts.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-4 border border-dashed border-gray-600 rounded-lg">
+                  {t('No hay textos promocionales. Haz clic en "Agregar" para crear uno.')}
+                </p>
+              )}
+            </div>
+            
+            <button
+              onClick={updateHeaderTexts}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              {t('Guardar Cambios')}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
+          <h3 className="text-xl font-semibold text-white mb-4">{t('Vista Previa del Header')}</h3>
+          
+          {/* Simulación del header */}
+          <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-lg p-4 mb-4">
+            <div className="text-center">
+              <p className="text-white text-lg font-bold tracking-[4px] mb-3">{headerTexts.brandName}</p>
+              
+              {headerTexts.promoTexts.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300 mb-2">{t('Textos del carrusel:')}</p>
+                  {headerTexts.promoTexts.map((text, index) => (
+                    <div key={index} className="flex items-center justify-center gap-2">
+                      <span className="w-2 h-2 bg-white rounded-full opacity-50"></span>
+                      <p className="text-green-200 text-sm text-center">{text || t('(Texto vacío)')}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="bg-black/40 backdrop-blur-md rounded p-3 text-xs text-gray-400">
+            <p className="font-medium mb-2">{t('Información:')}</p>
+            <ul className="space-y-1">
+              <li>• {t('Los textos promocionales se mostrarán en rotación')}</li>
+              <li>• {t('Mínimo 1 texto promocional requerido')}</li>
+              <li>• {t('Máximo recomendado: 5 textos')}</li>
+              <li>• {t('Los cambios se aplicarán inmediatamente')}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHomeImages = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
+          <span className="text-blue-300 text-sm">💡 {t('Tip: Optimiza tus imágenes para web')}</span>
+        </div>
+      </div>
+      
+      {/* Panel de consejos generales */}
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
+        <h3 className="text-yellow-300 font-semibold mb-2">📝 {t('Mejores Prácticas para Imágenes')}</h3>
+        <ul className="text-yellow-200 text-sm space-y-1">
+          <li>• {t('Usa formatos modernos como WebP cuando sea posible')}</li>
+          <li>• {t('Comprime las imágenes sin perder calidad visible')}</li>
+          <li>• {t('Asegúrate de que las imágenes se vean bien en dispositivos móviles')}</li>
+          <li>• {t('Usa texto alternativo descriptivo para mejor SEO')}</li>
+        </ul>
+      </div>
+      
+      <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl space-y-8">
+        {/* Imagen Principal 1 */}
+        <div className="bg-black/20 rounded-lg p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+            <label className="text-white font-semibold text-lg">{t('Imagen Principal 1')}</label>
+          </div>
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
+            <p className="text-blue-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
+            <p className="text-blue-200 text-sm">1920x800px • Formato: JPG/PNG • Máx: 2MB</p>
+            <p className="text-gray-400 text-xs mt-1">{t('Imagen principal del hero section de la página de inicio')}</p>
+          </div>
+          <input
+            type="text"
+            value={homeImages.heroImage1}
+            onChange={(e) => setHomeImages({...homeImages, heroImage1: e.target.value})}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
+            placeholder={t('URL de la primera imagen')}
+          />
+          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+            <Image
+              src={homeImages.heroImage1}
+              alt="Imagen 1"
+              width={192}
+              height={96}
+              className="w-full h-full object-cover"
+              onError={() => console.log('Error loading image 1')}
+            />
+          </div>
+        </div>
+        
+        {/* Imagen Principal 2 */}
+        <div className="bg-black/20 rounded-lg p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+            <label className="text-white font-semibold text-lg">{t('Imagen Principal 2')}</label>
+          </div>
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mb-4">
+            <p className="text-purple-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
+            <p className="text-purple-200 text-sm">1920x800px • Formato: JPG/PNG • Máx: 2MB</p>
+            <p className="text-gray-400 text-xs mt-1">{t('Segunda imagen del hero section de la página de inicio')}</p>
+          </div>
+          <input
+            type="text"
+            value={homeImages.heroImage2}
+            onChange={(e) => setHomeImages({...homeImages, heroImage2: e.target.value})}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
+            placeholder={t('URL de la segunda imagen')}
+          />
+          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+            <Image
+              src={homeImages.heroImage2}
+              alt="Imagen 2"
+              width={192}
+              height={96}
+              className="w-full h-full object-cover"
+              onError={() => console.log('Error loading image 2')}
+            />
+          </div>
+        </div>
+
+        {/* Nueva: Imagen del Banner de Promociones */}
+        <div className="bg-black/20 rounded-lg p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <label className="text-white font-semibold text-lg">{t('Banner de Promociones Especiales')}</label>
+          </div>
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-4">
+            <p className="text-green-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
+            <p className="text-green-200 text-sm">1600x600px • Formato: JPG/PNG • Máx: 3MB</p>
+            <p className="text-gray-400 text-xs mt-1">{t('Imagen de fondo para la sección de promociones especiales en la página principal')}</p>
+          </div>
+          <input
+            type="text"
+            value={homeImages.promosBannerImage}
+            onChange={(e) => setHomeImages({...homeImages, promosBannerImage: e.target.value})}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
+            placeholder={t('URL de la imagen del banner de promociones')}
+          />
+          
+          {/* Vista previa del banner */}
+          <div className="mb-4">
+            <p className="text-white text-sm font-medium mb-2">{t('Vista previa del banner:')}</p>
+            <div className="relative w-full h-32 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+              <Image
+                src={homeImages.promosBannerImage}
+                alt="Banner Promociones Preview"
+                fill
+                className="object-cover"
+                onError={() => console.log('Error loading promo banner preview')}
+              />
+              {/* Simulación del overlay y texto */}
+              <div className="absolute inset-0 bg-black/40 flex flex-col justify-center items-start p-4">
+                <div className="text-white text-lg font-bold tracking-wider drop-shadow-lg">
+                  {t('Promociones')}
+                </div>
+                <div className="text-white text-lg font-bold tracking-wider drop-shadow-lg">
+                  {t('Especiales')}
+                </div>
+                <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                  🔥 HOT
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Thumbnail pequeño */}
+          <div className="w-48 h-18 bg-black/40 rounded-lg overflow-hidden border border-white/10">
+            <Image
+              src={homeImages.promosBannerImage}
+              alt="Banner Promociones Thumbnail"
+              width={192}
+              height={72}
+              className="w-full h-full object-cover"
+              onError={() => console.log('Error loading promo banner thumbnail')}
+            />
+          </div>
+        </div>
+        
+        {/* Botón de actualización */}
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={updateHomeImages}
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl"
+          >
+            {t('💾 Actualizar Todas las Imágenes')}
           </button>
         </div>
       </div>
-    );
+    </div>
+  );
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    category: '',
+    priceRange: { min: 0, max: 1000 },
+  });
+
+  const fetchFilteredProducts = async () => {
+    try {
+      const response = await fetch(`/api/products?search=${searchQuery}&category=${filters.category}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
+      const data = await response.json();
+      setProducts(data.products);
+    } catch (error) {
+      console.error('Error fetching filtered products:', error);
+    }
+  };
+
+  const renderProducts = () => (
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar productos..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
+        />
+        <select
+          value={filters.category}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
+        >
+          <option value="">Todas las categorías</option>
+          <option value="ropa">Ropa</option>
+          <option value="accesorios">Accesorios</option>
+        </select>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            placeholder="Precio mínimo"
+            value={filters.priceRange.min}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, min: Number(e.target.value) } })}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+          <input
+            type="number"
+            placeholder="Precio máximo"
+            value={filters.priceRange.max}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, max: Number(e.target.value) } })}
+            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+        <button
+          onClick={fetchFilteredProducts}
+          className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg mt-2"
+        >
+          Aplicar filtros
+        </button>
+      </div>
+      <ProductManagement />
+    </div>
+  );
+
+  const renderPromotions = () => (
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20">
+      <PromotionManagement />
+    </div>
+  );
+
+  const renderOrders = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Pedidos')}</h2>
+      
+      <div className="space-y-4">
+        {orders.map(order => (
+          <div key={order.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-white font-semibold text-lg">
+                  {t('Pedido')} #{order.id}
+                </h3>
+                <p className="text-gray-300">{order.customerName} - {order.email}</p>
+                <p className="text-gray-400 text-sm">{order.orderDate}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-green-400 font-bold text-xl">${order.total}</p>
+                <select
+                  value={order.status}
+                  onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
+                  className="mt-2 bg-black/50 border border-white/20 rounded px-3 py-1 text-white text-sm"
+                >
+                  <option value="pending">{t('Pendiente')}</option>
+                  <option value="processing">{t('Procesando')}</option>
+                  <option value="shipped">{t('Enviado')}</option>
+                  <option value="delivered">{t('Entregado')}</option>
+                  <option value="cancelled">{t('Cancelado')}</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="border-t border-white/20 pt-4">
+              <h4 className="text-white font-medium mb-2">{t('Productos:')}</h4>
+              <div className="space-y-2">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span className="text-gray-300">
+                      {item.productName} x{item.quantity}
+                    </span>
+                    <span className="text-white">${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Estados para el sistema de tallas
+  const [showForm, setShowForm] = useState(false);
+  const [editingSystem, setEditingSystem] = useState<SizeSystem | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    size1: '',
+    size2: '',
+    size3: '',
+    size4: '',
+    size5: '',
+    size6: '',
+    size7: '',
+    size8: ''
+  });
+
+  const renderSizeSystems = () => (
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20">
+      <SizeManagement />
+    </div>
+  );
+
+  const renderNotes = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Notas')}</h2>
+      
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <h3 className="text-xl font-semibold text-white mb-4">{t('Notas del Sistema')}</h3>
+        <div className="space-y-4">
+          <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+            <p className="text-gray-300">
+              {t('Aquí puedes agregar notas importantes sobre el sistema de administración.')}
+            </p>
+          </div>
+          <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+            <p className="text-gray-300">
+              {t('Funcionalidad de notas en desarrollo.')}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'header':
+        return renderHeaderTexts();
+      case 'images':
+        return renderHomeImages();
+      case 'products':
+        return renderProducts();
+      case 'promotions':
+        return renderPromotions();
+      case 'orders':
+        return renderOrders();
+      case 'notes':
+        return renderNotes();
+      case 'sizes':
+        return renderSizeSystems();
+      default:
+        return renderDashboard();
+    }
+  };
+
+  if (!user) {
+    return <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white">Cargando...</div>
+    </div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">
-                Bienvenido, {user.nombres}
-              </span>
-              <button
-                onClick={logout}
-                className="px-3 py-2 text-sm bg-red-500 text-white rounded-md hover:bg-red-600"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen flex"
+         style={{
+           background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
+         }}>
+      
+      {/* Indicador de traducción */}
+      {isTranslating && (
+        <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-green-600 to-green-400 z-50">
+          <div className="h-full bg-white opacity-50 animate-pulse"></div>
         </div>
-      </header>
+      )}
 
-      {/* Navigation */}
-      <nav className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            {[
-              { key: 'products', label: 'Productos' },
-              { key: 'promotions', label: 'Promociones' },
-              { key: 'sizes', label: 'Tallas' },
-              { key: 'orders', label: 'Pedidos' }
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
+      {/* Sidebar */}
+      {renderSidebar()}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-            {error}
-            <button
-              onClick={() => setError('')}
-              className="float-right font-bold"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'products' && <ProductList />}
-        {activeTab === 'promotions' && (
-          <div className="text-center py-8 text-gray-500">
-            Gestión de promociones - Por implementar
-          </div>
-        )}
-        {activeTab === 'sizes' && (
-          <div className="text-center py-8 text-gray-500">
-            Gestión de tallas - Por implementar
-          </div>
-        )}
-        {activeTab === 'orders' && (
-          <div className="text-center py-8 text-gray-500">
-            Gestión de pedidos - Por implementar
-          </div>
-        )}
-      </main>
-
-      {/* Modals */}
-      <ProductVariantForm />
+      <div className="flex-1 p-8">
+        {renderContent()}
+      </div>
     </div>
   );
 };
