@@ -7,7 +7,7 @@ interface User {
   apellidos: string;
   correo: string;
   usuario: string;
-  rol: number; // 0=user, 1=admin, 2=moderator
+  rol: string; // 'user', 'admin', 'moderator'
   token?: string;
   shippingInfo?: {
     id_informacion?: number;
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { setLoading } = useLoading();
 
   // Configurar la URL del backend
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   // Cargar usuario del localStorage al inicializar
   useEffect(() => {
