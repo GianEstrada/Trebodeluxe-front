@@ -330,34 +330,117 @@ const AdminPage: NextPage = () => {
   // Funciones para Products CRUD
   const saveProduct = async (productData: Omit<Product, 'id'>) => {
     try {
-      if (editingProduct) {
-        // Actualizar producto existente
-        const updatedProducts = products.map(p => 
-          p.id === editingProduct.id ? { ...productData, id: editingProduct.id } : p
-        );
-        setProducts(updatedProducts);
-        console.log('Updating product:', { ...productData, id: editingProduct.id });
-      } else {
-        // Crear nuevo producto
-        const newProduct = { ...productData, id: Date.now() };
-        setProducts([...products, newProduct]);
-        console.log('Creating product:', newProduct);
+      // Transformar los datos del frontend al formato que espera el backend
+      // Solo incluir campos que tengan valores válidos
+      const backendData: any = {};
+      
+      if (productData.name && productData.name.trim() !== '') {
+        backendData.nombre = productData.name.trim();
       }
+      
+      if (productData.description && productData.description.trim() !== '') {
+        backendData.descripcion = productData.description.trim();
+      }
+      
+      if (productData.price && productData.price > 0) {
+        backendData.precio = productData.price;
+      }
+      
+      if (productData.originalPrice && productData.originalPrice > 0) {
+        backendData.precio_original = productData.originalPrice;
+      }
+      
+      if (productData.image && productData.image.trim() !== '') {
+        backendData.imagen = productData.image.trim();
+      }
+      
+      if (productData.category && productData.category.trim() !== '') {
+        backendData.categoria = productData.category.trim();
+      }
+      
+      if (productData.inStock !== undefined) {
+        backendData.activo = productData.inStock;
+      }
+
+      console.log('Datos a enviar al backend:', backendData);
+
+      if (editingProduct) {
+        // Actualizar producto existente en el backend
+        const response = await fetch(`/api/admin/products/${editingProduct.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(backendData),
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Actualizar el estado local
+          const updatedProducts = products.map(p => 
+            p.id === editingProduct.id ? { ...productData, id: editingProduct.id } : p
+          );
+          setProducts(updatedProducts);
+          console.log('Product updated successfully:', result);
+          alert(t('Producto actualizado correctamente'));
+        } else {
+          console.error('Error updating product:', result.message);
+          alert(t('Error al actualizar el producto: ') + (result.message || 'Error desconocido'));
+        }
+      } else {
+        // Crear nuevo producto en el backend
+        const response = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(backendData),
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Agregar el producto al estado local
+          const newProduct = { ...productData, id: result.data.id_producto };
+          setProducts([...products, newProduct]);
+          console.log('Product created successfully:', result);
+          alert(t('Producto creado correctamente'));
+        } else {
+          console.error('Error creating product:', result.message);
+          alert(t('Error al crear el producto: ') + (result.message || 'Error desconocido'));
+        }
+      }
+      
       setShowProductForm(false);
       setEditingProduct(null);
-      alert(t('Producto guardado correctamente'));
     } catch (error) {
       console.error('Error saving product:', error);
-      alert(t('Error al guardar el producto'));
+      alert(t('Error al guardar el producto: ') + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   };
 
   const deleteProduct = async (productId: number) => {
     if (confirm(t('¿Estás seguro de que quieres eliminar este producto?'))) {
       try {
-        setProducts(products.filter(p => p.id !== productId));
-        console.log('Deleting product:', productId);
-        alert(t('Producto eliminado correctamente'));
+        const response = await fetch(`/api/admin/products/${productId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Remover del estado local
+          setProducts(products.filter(p => p.id !== productId));
+          console.log('Product deleted successfully:', productId);
+          alert(t('Producto eliminado correctamente'));
+        } else {
+          console.error('Error deleting product:', result.message);
+          alert(t('Error al eliminar el producto: ') + (result.message || 'Error desconocido'));
+        }
       } catch (error) {
         console.error('Error deleting product:', error);
         alert(t('Error al eliminar el producto'));
@@ -506,24 +589,48 @@ const AdminPage: NextPage = () => {
   // Función para filtrar productos
   const fetchFilteredProducts = async () => {
     try {
-      const response = await fetch(`/api/admin/products?search=${searchQuery}&category=${filters.category}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
+      const response = await fetch(`/api/admin/products?search=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(filters.category)}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
       const data = await response.json();
-      if (data.success) {
-        setProducts(data.products);
+      if (data.success && data.products) {
+        // Transformar los datos del backend al formato del frontend
+        const transformedProducts = data.products.map((product: any) => ({
+          id: product.id,
+          name: product.nombre,
+          description: product.descripcion,
+          price: product.precio,
+          originalPrice: product.precio_original,
+          image: product.imagen,
+          category: product.categoria,
+          inStock: product.disponible,
+          featured: product.destacado,
+          sizes: product.tallas || [],
+          colors: product.colores || []
+        }));
+        setProducts(transformedProducts);
+      } else {
+        console.error('Error fetching products:', data.message);
       }
     } catch (error) {
       console.error('Error fetching filtered products:', error);
+      alert(t('Error al cargar los productos'));
     }
   };
+
+  // Cargar productos al inicializar el componente
+  useEffect(() => {
+    if (activeSection === 'products') {
+      fetchFilteredProducts();
+    }
+  }, [activeSection]);
 
   // Componente ProductForm básico
   const handleImageUpload = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'your_upload_preset'); // Reemplaza con tu upload preset de Cloudinary
+    formData.append('upload_preset', 'ml_default'); // Preset por defecto de Cloudinary
 
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+      const response = await fetch('https://api.cloudinary.com/v1_1/dyh8tcvzv/image/upload', {
         method: 'POST',
         body: formData,
       });
