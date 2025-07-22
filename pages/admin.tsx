@@ -6,6 +6,8 @@ import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
+import MainImagesAdmin from '../components/admin/MainImagesAdmin';
+import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 
 interface Product {
   id_producto: number;
@@ -1908,11 +1910,11 @@ const AdminPage: NextPage = () => {
       case 'header':
         return renderHeaderTexts();
       case 'images':
-        return renderHomeImages();
+        return <MainImagesAdmin />;
       case 'products':
         return renderVariantsList();
       case 'promotions':
-        return renderPromotions();
+        return <PromotionsAdmin />;
       case 'orders':
         return renderOrders();
       case 'notes':
