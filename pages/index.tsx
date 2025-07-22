@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 
@@ -50,12 +51,15 @@ const HomeScreen: NextPage = () => {
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   const { user, isAuthenticated, logout } = useAuth();
   
+  // Usar configuraciones del sitio desde la base de datos
+  const { headerSettings, loading: settingsLoading } = useSiteSettings();
+  
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Textos originales en español - se traducirán automáticamente
-  const promoTexts = [
+  // Usar textos promocionales desde la base de datos, con fallback
+  const promoTexts = headerSettings?.promoTexts || [
     "Agrega 4 productos y paga 2",
     "2x1 en gorras"
   ];

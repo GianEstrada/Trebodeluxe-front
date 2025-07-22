@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import { useSiteSettings } from '../contexts/SiteSettingsContext';
 
 interface Product {
   id_producto: number;
@@ -142,6 +143,9 @@ const AdminPage: NextPage = () => {
   const { user } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  
+  // Usar configuraciones del sitio
+  const { headerSettings, updateHeaderSettings, loading: settingsLoading } = useSiteSettings();
 
   // Estados para las diferentes secciones
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -174,14 +178,24 @@ const AdminPage: NextPage = () => {
     tallas: ['', '', ''] // Mínimo 3 tallas
   });
 
-  // Estados para Header Texts
-  const [headerTexts, setHeaderTexts] = useState<HeaderTexts>({
-    promoTexts: [
+  // Estados para Header Texts - usar configuraciones desde la base de datos
+  const [localHeaderTexts, setLocalHeaderTexts] = useState<HeaderTexts>({
+    promoTexts: headerSettings?.promoTexts || [
       'ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN',
       'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'
     ],
-    brandName: 'TREBOLUXE'
+    brandName: headerSettings?.brandName || 'TREBOLUXE'
   });
+
+  // Sincronizar con configuraciones del contexto cuando cambian
+  useEffect(() => {
+    if (headerSettings) {
+      setLocalHeaderTexts({
+        promoTexts: headerSettings.promoTexts,
+        brandName: headerSettings.brandName
+      });
+    }
+  }, [headerSettings]);
 
   // Estados para Home Images
   const [homeImages, setHomeImages] = useState<HomeImages>({
@@ -1230,8 +1244,19 @@ const AdminPage: NextPage = () => {
   // Funciones para Header Texts
   const updateHeaderTexts = async () => {
     try {
-      console.log('Updating header texts:', headerTexts);
-      alert(t('Textos del header actualizados correctamente'));
+      console.log('Updating header texts:', localHeaderTexts);
+      
+      // Llamar al contexto para actualizar en la base de datos
+      const success = await updateHeaderSettings({
+        brandName: localHeaderTexts.brandName,
+        promoTexts: localHeaderTexts.promoTexts
+      });
+      
+      if (success) {
+        alert(t('Textos del header actualizados correctamente'));
+      } else {
+        alert(t('Error al actualizar los textos'));
+      }
     } catch (error) {
       console.error('Error updating header texts:', error);
       alert(t('Error al actualizar los textos'));
@@ -1305,8 +1330,8 @@ const AdminPage: NextPage = () => {
               <label className="block text-white font-medium mb-3">{t('Nombre de la Marca')}</label>
               <input
                 type="text"
-                value={headerTexts.brandName}
-                onChange={(e) => setHeaderTexts({...headerTexts, brandName: e.target.value})}
+                value={localHeaderTexts.brandName}
+                onChange={(e) => setLocalHeaderTexts({...localHeaderTexts, brandName: e.target.value})}
                 className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
                 placeholder={t('Nombre de la marca')}
               />
@@ -1317,9 +1342,9 @@ const AdminPage: NextPage = () => {
                 <label className="block text-white font-medium">{t('Textos Promocionales')}</label>
                 <button
                   onClick={() => {
-                    setHeaderTexts({
-                      ...headerTexts,
-                      promoTexts: [...headerTexts.promoTexts, '']
+                    setLocalHeaderTexts({
+                      ...localHeaderTexts,
+                      promoTexts: [...localHeaderTexts.promoTexts, '']
                     });
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
@@ -1329,26 +1354,26 @@ const AdminPage: NextPage = () => {
               </div>
 
               <div className="space-y-3">
-                {headerTexts.promoTexts.map((text, index) => (
+                {localHeaderTexts.promoTexts.map((text: string, index: number) => (
                   <div key={index} className="flex gap-2">
                     <input
                       type="text"
                       value={text}
                       onChange={(e) => {
-                        const newTexts = [...headerTexts.promoTexts];
+                        const newTexts = [...localHeaderTexts.promoTexts];
                         newTexts[index] = e.target.value;
-                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                        setLocalHeaderTexts({...localHeaderTexts, promoTexts: newTexts});
                       }}
                       className="flex-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
                       placeholder={t('Texto promocional {{number}}').replace('{{number}}', (index + 1).toString())}
                     />
                     <button
                       onClick={() => {
-                        const newTexts = headerTexts.promoTexts.filter((_, i) => i !== index);
-                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
+                        const newTexts = localHeaderTexts.promoTexts.filter((_: string, i: number) => i !== index);
+                        setLocalHeaderTexts({...localHeaderTexts, promoTexts: newTexts});
                       }}
                       className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition-colors"
-                      disabled={headerTexts.promoTexts.length <= 1}
+                      disabled={localHeaderTexts.promoTexts.length <= 1}
                     >
                       🗑️
                     </button>

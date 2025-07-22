@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { productsApi, productUtils } from '../../utils/productsApi';
 
 // Definimos el tipo Product para este archivo
@@ -71,8 +72,9 @@ const ProductPage: NextPage = () => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Textos del carrusel
-  const promoTexts = [
+  // Textos del carrusel desde la base de datos
+  const { headerSettings } = useSiteSettings();
+  const promoTexts = headerSettings?.promoTexts || [
     "ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN",
     "OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA"
   ];

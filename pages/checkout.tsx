@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../utils/roles';
 
 interface CartItem {
@@ -52,8 +53,9 @@ const CheckoutPage: NextPage = () => {
   const cartDropdownRef = useRef<HTMLDivElement>(null);
   const adminDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Textos del carrusel promocional
-  const promoTexts = ['ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN', 'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'];
+  // Textos del carrusel promocional desde la base de datos
+  const { headerSettings } = useSiteSettings();
+  const promoTexts = headerSettings?.promoTexts || ['ENVIO GRATIS EN PEDIDOS ARRIBA DE $500 MXN', 'OFERTA ESPECIAL: 20% DE DESCUENTO EN SEGUNDA PRENDA'];
   
   // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");

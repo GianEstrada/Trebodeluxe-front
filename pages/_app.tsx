@@ -4,6 +4,7 @@ import type { AppProps } from "next/app";
 import "./global.css";
 import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
+import { SiteSettingsProvider } from "../contexts/SiteSettingsContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 // Componente unificado para manejo de carga
@@ -36,9 +37,11 @@ function MyApp({ Component, pageProps }: AppProps) {
       
       <AuthProvider>
         <LoadingProvider>
-          <LoadingManager>
-            <Component {...pageProps} />
-          </LoadingManager>
+          <SiteSettingsProvider>
+            <LoadingManager>
+              <Component {...pageProps} />
+            </LoadingManager>
+          </SiteSettingsProvider>
         </LoadingProvider>
       </AuthProvider>
     </Fragment>
