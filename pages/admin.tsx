@@ -287,6 +287,13 @@ const AdminPage: NextPage = () => {
   const [editingSizeSystem, setEditingSizeSystem] = useState<SizeSystem | null>(null);
   const [showSizeSystemForm, setShowSizeSystemForm] = useState(false);
 
+  // Estados para búsqueda y filtros de productos
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    category: '',
+    priceRange: { min: 0, max: 1000 },
+  });
+
   // Verificar si el usuario es administrador
   useEffect(() => {
     // Aquí verificarías con el backend si el usuario es admin
@@ -496,707 +503,346 @@ const AdminPage: NextPage = () => {
     }
   };
 
-  // Componente ProductForm básico
-  const ProductForm = ({ product, onSave, onCancel }: any) => {
-    const [formData, setFormData] = useState({
-      nombre: product?.nombre || '',
-      descripcion: product?.descripcion || '',
-      precio: product?.precio || '',
-      imagen: product?.imagen || '',
-      categoria: product?.categoria || '',
-      disponible: product?.disponible || true
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      onSave(formData);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Nombre del Producto')}
-          </label>
-          <input
-            type="text"
-            value={formData.nombre}
-            onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Descripción')}
-          </label>
-          <textarea
-            value={formData.descripcion}
-            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            rows={3}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Precio')}
-          </label>
-          <input
-            type="number"
-            value={formData.precio}
-            onChange={(e) => setFormData({...formData, precio: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Imagen URL')}
-          </label>
-          <input
-            type="text"
-            value={formData.imagen}
-            onChange={(e) => setFormData({...formData, imagen: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Categoría')}
-          </label>
-          <input
-            type="text"
-            value={formData.categoria}
-            onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-          />
-        </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.disponible}
-            onChange={(e) => setFormData({...formData, disponible: e.target.checked})}
-            className="mr-2"
-          />
-          <label className="text-sm text-gray-300">
-            {t('Disponible')}
-          </label>
-        </div>
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {t('Guardar')}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-        </div>
-      </form>
-    );
-  };
-
-  // Componente PromotionForm básico
-  const PromotionForm = ({ promotion, onSave, onCancel }: any) => {
-    const [formData, setFormData] = useState({
-      titulo: promotion?.titulo || '',
-      descripcion: promotion?.descripcion || '',
-      descuento: promotion?.descuento || '',
-      fechaInicio: promotion?.fechaInicio || '',
-      fechaFin: promotion?.fechaFin || '',
-      isActive: promotion?.isActive || true
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      onSave(formData);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Título')}
-          </label>
-          <input
-            type="text"
-            value={formData.titulo}
-            onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Descripción')}
-          </label>
-          <textarea
-            value={formData.descripcion}
-            onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            rows={3}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            {t('Descuento (%)')}
-          </label>
-          <input
-            type="number"
-            value={formData.descuento}
-            onChange={(e) => setFormData({...formData, descuento: e.target.value})}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            min="0"
-            max="100"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              {t('Fecha Inicio')}
-            </label>
-            <input
-              type="date"
-              value={formData.fechaInicio}
-              onChange={(e) => setFormData({...formData, fechaInicio: e.target.value})}
-              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              {t('Fecha Fin')}
-            </label>
-            <input
-              type="date"
-              value={formData.fechaFin}
-              onChange={(e) => setFormData({...formData, fechaFin: e.target.value})}
-              className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-            />
-          </div>
-        </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.isActive}
-            onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-            className="mr-2"
-          />
-          <label className="text-sm text-gray-300">
-            {t('Activa')}
-          </label>
-        </div>
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {t('Guardar')}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-        </div>
-      </form>
-    );
-  };
-
-  const renderSidebar = () => (
-    <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-white mb-8">{t('Panel de Admin')}</h1>
-        <nav className="space-y-2">
-          <button
-            onClick={() => setActiveSection('dashboard')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'dashboard' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📊 {t('Dashboard')}
-          </button>
-          <button
-            onClick={() => setActiveSection('header')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'header' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📝 {t('Textos del Header')}
-          </button>
-          <button
-            onClick={() => setActiveSection('images')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'images' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            🖼️ {t('Imágenes Principales')}
-          </button>
-          <button
-            onClick={() => setActiveSection('products')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'products' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📦 {t('Productos')}
-          </button>
-          <button
-            onClick={() => setActiveSection('promotions')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'promotions' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            🎯 {t('Promociones')}
-          </button>
-          <button
-            onClick={() => setActiveSection('orders')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'orders' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📋 {t('Pedidos')}
-          </button>
-          <button
-            onClick={() => setActiveSection('notes')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'notes' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📝 {t('Notas')}
-          </button>
-          <button
-            onClick={() => setActiveSection('sizes')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'sizes' 
-                ? 'bg-green-600 text-white' 
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📏 {t('Sistemas de Tallas')}
-          </button>
-        </nav>
-      </div>
-      <div className="absolute bottom-6 left-6">
-        <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-          ← {t('Volver al sitio')}
-        </Link>
-      </div>
-    </div>
-  );
-
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Total Productos')}</h3>
-          <p className="text-3xl font-bold text-green-400">{products.length}</p>
-        </div>
-        
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Promociones Activas')}</h3>
-          <p className="text-3xl font-bold text-blue-400">{promotions.filter(p => p.isActive).length}</p>
-        </div>
-        
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Pedidos Pendientes')}</h3>
-          <p className="text-3xl font-bold text-yellow-400">{orders.filter(o => o.status === 'pending').length}</p>
-        </div>
-        
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Notas')}</h3>
-          <p className="text-3xl font-bold text-purple-400">{notes.length}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4">{t('Pedidos Recientes')}</h3>
-          <div className="space-y-3">
-            {orders.slice(0, 5).map(order => (
-              <div key={order.id} className="flex justify-between items-center p-3 bg-black/30 rounded">
-                <div>
-                  <p className="text-white font-medium">#{order.id} - {order.customerName}</p>
-                  <p className="text-gray-400 text-sm">${order.total}</p>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs ${
-                  order.status === 'pending' ? 'bg-yellow-600 text-white' :
-                  order.status === 'processing' ? 'bg-blue-600 text-white' :
-                  order.status === 'shipped' ? 'bg-purple-600 text-white' :
-                  order.status === 'delivered' ? 'bg-green-600 text-white' :
-                  'bg-red-600 text-white'
-                }`}>
-                  {t(order.status)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4">{t('Notas Importantes')}</h3>
-          <div className="space-y-3">
-            {notes.filter(n => n.priority === 'high').slice(0, 3).map(note => (
-              <div key={note.id} className="p-3 bg-red-900/30 border border-red-500/50 rounded">
-                <p className="text-white font-medium">{note.title}</p>
-                <p className="text-gray-300 text-sm">{note.content.substring(0, 50)}...</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderHeaderTexts = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Textos del Header')}</h2>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
-          <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3
-          >
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-white font-medium mb-3">{t('Nombre de la Marca')}</label>
-              <input
-                type="text"
-                value={headerTexts.brandName}
-                onChange={(e) => setHeaderTexts({...headerTexts, brandName: e.target.value})}
-                className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                placeholder={t('Nombre de la marca')}
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <label className="block text-white font-medium">{t('Textos Promocionales')}</label>
-                <button
-                  onClick={() => {
-                    setHeaderTexts({
-                      ...headerTexts,
-                      promoTexts: [...headerTexts.promoTexts, '']
-                    });
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                >
-                  + {t('Agregar')}
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {headerTexts.promoTexts.map((text, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={text}
-                      onChange={(e) => {
-                        const newTexts = [...headerTexts.promoTexts];
-                        newTexts[index] = e.target.value;
-                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
-                      }}
-                      className="flex-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
-                      placeholder={t('Texto promocional {{number}}').replace('{{number}}', (index + 1).toString())}
-                    />
-                    <button
-                      onClick={() => {
-                        const newTexts = headerTexts.promoTexts.filter((_, i) => i !== index);
-                        setHeaderTexts({...headerTexts, promoTexts: newTexts});
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition-colors"
-                      disabled={headerTexts.promoTexts.length <= 1}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                ))}
-              </div>
-              
-              {headerTexts.promoTexts.length === 0 && (
-                <p className="text-gray-400 text-sm text-center py-4 border border-dashed border-gray-600 rounded-lg">
-                  {t('No hay textos promocionales. Haz clic en "Agregar" para crear uno.')}
-                </p>
-              )}
-            </div>
-            
-            <button
-              onClick={updateHeaderTexts}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              {t('Guardar Cambios')}
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl">
-          <h3 className="text-xl font-semibold text-white mb-4">{t('Vista Previa del Header')}</h3>
-          
-          {/* Simulación del header */}
-          <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-lg p-4 mb-4">
-            <div className="text-center">
-              <p className="text-white text-lg font-bold tracking-[4px] mb-3">{headerTexts.brandName}</p>
-              
-              {headerTexts.promoTexts.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-300 mb-2">{t('Textos del carrusel:')}</p>
-                  {headerTexts.promoTexts.map((text, index) => (
-                    <div key={index} className="flex items-center justify-center gap-2">
-                      <span className="w-2 h-2 bg-white rounded-full opacity-50"></span>
-                      <p className="text-green-200 text-sm text-center">{text || t('(Texto vacío)')}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="bg-black/40 backdrop-blur-md rounded p-3 text-xs text-gray-400">
-            <p className="font-medium mb-2">{t('Información:')}</p>
-            <ul className="space-y-1">
-              <li>• {t('Los textos promocionales se mostrarán en rotación')}</li>
-              <li>• {t('Mínimo 1 texto promocional requerido')}</li>
-              <li>• {t('Máximo recomendado: 5 textos')}</li>
-              <li>• {t('Los cambios se aplicarán inmediatamente')}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderHomeImages = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
-          <span className="text-blue-300 text-sm">💡 {t('Tip: Optimiza tus imágenes para web')}</span>
-        </div>
-      </div>
-      
-      {/* Panel de consejos generales */}
-      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
-        <h3 className="text-yellow-300 font-semibold mb-2">📝 {t('Mejores Prácticas para Imágenes')}</h3>
-        <ul className="text-yellow-200 text-sm space-y-1">
-          <li>• {t('Usa formatos modernos como WebP cuando sea posible')}</li>
-          <li>• {t('Comprime las imágenes sin perder calidad visible')}</li>
-          <li>• {t('Asegúrate de que las imágenes se vean bien en dispositivos móviles')}</li>
-          <li>• {t('Usa texto alternativo descriptivo para mejor SEO')}</li>
-        </ul>
-      </div>
-      
-      <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl space-y-8">
-        {/* Imagen Principal 1 */}
-        <div className="bg-black/20 rounded-lg p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-            <label className="text-white font-semibold text-lg">{t('Imagen Principal 1')}</label>
-          </div>
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
-            <p className="text-blue-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
-            <p className="text-blue-200 text-sm">1920x800px • Formato: JPG/PNG • Máx: 2MB</p>
-            <p className="text-gray-400 text-xs mt-1">{t('Imagen principal del hero section de la página de inicio')}</p>
-          </div>
-          <input
-            type="text"
-            value={homeImages.heroImage1}
-            onChange={(e) => setHomeImages({...homeImages, heroImage1: e.target.value})}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
-            placeholder={t('URL de la primera imagen')}
-          />
-          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-            <Image
-              src={homeImages.heroImage1}
-              alt="Imagen 1"
-              width={192}
-              height={96}
-              className="w-full h-full object-cover"
-              onError={() => console.log('Error loading image 1')}
-            />
-          </div>
-        </div>
-        
-        {/* Imagen Principal 2 */}
-        <div className="bg-black/20 rounded-lg p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-            <label className="text-white font-semibold text-lg">{t('Imagen Principal 2')}</label>
-          </div>
-          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mb-4">
-            <p className="text-purple-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
-            <p className="text-purple-200 text-sm">1920x800px • Formato: JPG/PNG • Máx: 2MB</p>
-            <p className="text-gray-400 text-xs mt-1">{t('Segunda imagen del hero section de la página de inicio')}</p>
-          </div>
-          <input
-            type="text"
-            value={homeImages.heroImage2}
-            onChange={(e) => setHomeImages({...homeImages, heroImage2: e.target.value})}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
-            placeholder={t('URL de la segunda imagen')}
-          />
-          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-            <Image
-              src={homeImages.heroImage2}
-              alt="Imagen 2"
-              width={192}
-              height={96}
-              className="w-full h-full object-cover"
-              onError={() => console.log('Error loading image 2')}
-            />
-          </div>
-        </div>
-
-        {/* Nueva: Imagen del Banner de Promociones */}
-        <div className="bg-black/20 rounded-lg p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-            <label className="text-white font-semibold text-lg">{t('Banner de Promociones Especiales')}</label>
-          </div>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-4">
-            <p className="text-green-300 text-sm font-medium mb-1">📐 {t('Tamaño recomendado:')}</p>
-            <p className="text-green-200 text-sm">1600x600px • Formato: JPG/PNG • Máx: 3MB</p>
-            <p className="text-gray-400 text-xs mt-1">{t('Imagen de fondo para la sección de promociones especiales en la página principal')}</p>
-          </div>
-          <input
-            type="text"
-            value={homeImages.promosBannerImage}
-            onChange={(e) => setHomeImages({...homeImages, promosBannerImage: e.target.value})}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
-            placeholder={t('URL de la imagen del banner de promociones')}
-          />
-          
-          {/* Vista previa del banner */}
-          <div className="mb-4">
-            <p className="text-white text-sm font-medium mb-2">{t('Vista previa del banner:')}</p>
-            <div className="relative w-full h-32 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-              <Image
-                src={homeImages.promosBannerImage}
-                alt="Banner Promociones Preview"
-                fill
-                className="object-cover"
-                onError={() => console.log('Error loading promo banner preview')}
-              />
-              {/* Simulación del overlay y texto */}
-              <div className="absolute inset-0 bg-black/40 flex flex-col justify-center items-start p-4">
-                <div className="text-white text-lg font-bold tracking-wider drop-shadow-lg">
-                  {t('Promociones')}
-                </div>
-                <div className="text-white text-lg font-bold tracking-wider drop-shadow-lg">
-                  {t('Especiales')}
-                </div>
-                <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
-                  🔥 HOT
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Thumbnail pequeño */}
-          <div className="w-48 h-18 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-            <Image
-              src={homeImages.promosBannerImage}
-              alt="Banner Promociones Thumbnail"
-              width={192}
-              height={72}
-              className="w-full h-full object-cover"
-              onError={() => console.log('Error loading promo banner thumbnail')}
-            />
-          </div>
-        </div>
-        
-        {/* Botón de actualización */}
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={updateHomeImages}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl"
-          >
-            {t('💾 Actualizar Todas las Imágenes')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    category: '',
-    priceRange: { min: 0, max: 1000 },
-  });
-
+  // Función para filtrar productos
   const fetchFilteredProducts = async () => {
     try {
-      const response = await fetch(`/api/products?search=${searchQuery}&category=${filters.category}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
+      const response = await fetch(`/api/admin/products?search=${searchQuery}&category=${filters.category}&minPrice=${filters.priceRange.min}&maxPrice=${filters.priceRange.max}`);
       const data = await response.json();
-      setProducts(data.products);
+      if (data.success) {
+        setProducts(data.products);
+      }
     } catch (error) {
       console.error('Error fetching filtered products:', error);
     }
   };
 
-  const renderProducts = () => (
-    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20 p-6">
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar productos..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
-        />
-        <select
-          value={filters.category}
-          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white mb-2"
-        >
-          <option value="">Todas las categorías</option>
-          <option value="ropa">Ropa</option>
-          <option value="accesorios">Accesorios</option>
-        </select>
-        <div className="flex gap-2">
+  // Componente ProductForm básico
+  const handleImageUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'your_upload_preset'); // Reemplaza con tu upload preset de Cloudinary
+
+    try {
+      const response = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return '';
+    }
+  };
+
+  const ProductForm = ({ product, onSave, onCancel }: any) => {
+    const [formData, setFormData] = useState({
+      name: product?.name || '',
+      description: product?.description || '',
+      price: product?.price || '',
+      image: product?.image || '',
+      category: product?.category || '',
+      inStock: product?.inStock || true,
+      featured: product?.featured || false,
+      sizes: product?.sizes || [],
+      colors: product?.colors || [],
+      originalPrice: product?.originalPrice || ''
+    });
+
+    const [imageFile, setImageFile] = useState<File | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      
+      let imageUrl = formData.image;
+      
+      // Si hay un archivo seleccionado, subirlo a Cloudinary
+      if (imageFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', imageFile);
+        uploadFormData.append('upload_preset', 'ml_default'); // Ajusta según tu configuración
+        
+        try {
+          const response = await fetch(`https://api.cloudinary.com/v1_1/dyh8tcvzv/image/upload`, {
+            method: 'POST',
+            body: uploadFormData,
+          });
+          const data = await response.json();
+          imageUrl = data.secure_url;
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          alert(t('Error al subir la imagen'));
+          return;
+        }
+      }
+
+      const productData = {
+        ...formData,
+        image: imageUrl,
+        price: parseFloat(formData.price.toString()) || 0,
+        originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice.toString()) : undefined
+      };
+      
+      onSave(productData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <h3 className="text-xl font-bold text-white mb-4">
+          {product ? t('Editar Producto') : t('Nuevo Producto')}
+        </h3>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">{t('Nombre del producto')}</label>
           <input
-            type="number"
-            placeholder="Precio mínimo"
-            value={filters.priceRange.min}
-            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, min: Number(e.target.value) } })}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
-          />
-          <input
-            type="number"
-            placeholder="Precio máximo"
-            value={filters.priceRange.max}
-            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, max: Number(e.target.value) } })}
-            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+            required
           />
         </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">{t('Descripción')}</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+            rows={3}
+          />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-white font-medium mb-2">{t('Precio')}</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-white font-medium mb-2">{t('Precio Original')}</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.originalPrice}
+              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+              className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">{t('Categoría')}</label>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white focus:border-green-500 transition-colors"
+          >
+            <option value="">{t('Seleccionar categoría')}</option>
+            <option value="Camisetas">{t('Camisetas')}</option>
+            <option value="Pantalones">{t('Pantalones')}</option>
+            <option value="Accesorios">{t('Accesorios')}</option>
+            <option value="Zapatos">{t('Zapatos')}</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">{t('Imagen del producto')}</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-white file:bg-green-600 file:hover:bg-green-700 file:cursor-pointer"
+          />
+          {formData.image && (
+            <div className="mt-2">
+              <img 
+                src={formData.image} 
+                alt="Vista previa" 
+                className="w-24 h-24 object-cover rounded-lg border border-white/20"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <label className="flex items-center text-white">
+            <input
+              type="checkbox"
+              checked={formData.inStock}
+              onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+              className="mr-2 w-4 h-4 text-green-600 bg-black/50 border-white/20 rounded focus:ring-green-500"
+            />
+            {t('En stock')}
+          </label>
+          
+          <label className="flex items-center text-white">
+            <input
+              type="checkbox"
+              checked={formData.featured}
+              onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+              className="mr-2 w-4 h-4 text-green-600 bg-black/50 border-white/20 rounded focus:ring-green-500"
+            />
+            {t('Destacado')}
+          </label>
+        </div>
+        
+        <div className="flex gap-4 pt-4">
+          <button
+            type="submit"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            {t('💾 Guardar')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            {t('❌ Cancelar')}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  const renderProducts = () => (
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+      {/* Barra de búsqueda y filtros */}
+      <div className="mb-6 space-y-4">
+        <h2 className="text-2xl font-bold text-white mb-4">{t('Gestión de Productos')}</h2>
+        
+        <input
+          type="text"
+          placeholder={t('Buscar productos...')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+        />
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select
+            value={filters.category}
+            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white focus:border-green-500 transition-colors"
+          >
+            <option value="">{t('Todas las categorías')}</option>
+            <option value="Camisetas">{t('Camisetas')}</option>
+            <option value="Pantalones">{t('Pantalones')}</option>
+            <option value="Accesorios">{t('Accesorios')}</option>
+            <option value="Zapatos">{t('Zapatos')}</option>
+          </select>
+          
+          <input
+            type="number"
+            placeholder={t('Precio mínimo')}
+            value={filters.priceRange.min}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, min: Number(e.target.value) } })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+          />
+          
+          <input
+            type="number"
+            placeholder={t('Precio máximo')}
+            value={filters.priceRange.max}
+            onChange={(e) => setFilters({ ...filters, priceRange: { ...filters.priceRange, max: Number(e.target.value) } })}
+            className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-green-500 transition-colors"
+          />
+        </div>
+        
         <button
           onClick={fetchFilteredProducts}
-          className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg mt-2"
+          className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl"
         >
-          Aplicar filtros
+          {t('🔍 Aplicar filtros')}
         </button>
       </div>
-      <ProductManagement />
+
+      {/* Lista de productos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {products.map((product) => (
+          <div key={product.id} className="bg-black/30 rounded-lg p-6 border border-white/10 hover:border-green-500/50 transition-colors">
+            <div className="aspect-w-1 aspect-h-1 mb-4">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-48 object-cover rounded-lg"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                }}
+              />
+            </div>
+            <h3 className="text-white font-semibold text-lg mb-2">{product.name}</h3>
+            <p className="text-gray-300 text-sm mb-2 line-clamp-2">{product.description}</p>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-green-400 font-bold text-xl">${product.price}</p>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                product.inStock 
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              }`}>
+                {product.inStock ? t('En stock') : t('Agotado')}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingProduct(product);
+                  setShowProductForm(true);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {t('✏️ Editar')}
+              </button>
+              <button
+                onClick={() => deleteProduct(product.id)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {t('🗑️ Eliminar')}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Botón para agregar nuevo producto */}
+      <div className="mt-6 text-center">
+        <button
+          onClick={() => {
+            setEditingProduct(null);
+            setShowProductForm(true);
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl"
+        >
+          {t('➕ Agregar Producto')}
+        </button>
+      </div>
+
+      {/* Modal de formulario */}
+      {showProductForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <ProductForm 
+              product={editingProduct}
+              onSave={saveProduct}
+              onCancel={() => {
+                setShowProductForm(false);
+                setEditingProduct(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1295,6 +941,197 @@ const AdminPage: NextPage = () => {
               {t('Funcionalidad de notas en desarrollo.')}
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSidebar = () => (
+    <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-white mb-8">{t('Panel Admin')}</h1>
+        <nav className="space-y-2">
+          <button
+            onClick={() => setActiveSection('dashboard')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'dashboard' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📊 {t('Dashboard')}
+          </button>
+          <button
+            onClick={() => setActiveSection('header')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'header' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📝 {t('Textos del Header')}
+          </button>
+          <button
+            onClick={() => setActiveSection('images')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'images' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🖼️ {t('Imágenes')}
+          </button>
+          <button
+            onClick={() => setActiveSection('products')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'products' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📦 {t('Productos')}
+          </button>
+          <button
+            onClick={() => setActiveSection('promotions')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'promotions' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🎯 {t('Promociones')}
+          </button>
+          <button
+            onClick={() => setActiveSection('orders')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'orders' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📋 {t('Pedidos')}
+          </button>
+          <button
+            onClick={() => setActiveSection('notes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'notes' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📝 {t('Notas')}
+          </button>
+          <button
+            onClick={() => setActiveSection('sizes')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'sizes' 
+                ? 'bg-green-600 text-white' 
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📏 {t('Tallas')}
+          </button>
+        </nav>
+      </div>
+      <div className="absolute bottom-6 left-6">
+        <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+          ← {t('Volver al sitio')}
+        </Link>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Total Productos')}</h3>
+          <p className="text-3xl font-bold text-green-400">{products.length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Promociones Activas')}</h3>
+          <p className="text-3xl font-bold text-blue-400">{promotions.filter(p => p.isActive).length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Pedidos Pendientes')}</h3>
+          <p className="text-3xl font-bold text-yellow-400">{orders.filter(o => o.status === 'pending').length}</p>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+          <h3 className="text-lg font-semibold text-white mb-2">{t('Notas')}</h3>
+          <p className="text-3xl font-bold text-purple-400">{notes.length}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHeaderTexts = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Textos del Header')}</h2>
+      
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <h3 className="text-xl font-semibold text-white mb-4">{t('Configuración de Textos')}</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-white font-medium mb-2">{t('Nombre de la marca')}</label>
+            <input
+              type="text"
+              value={headerTexts.brandName}
+              onChange={(e) => setHeaderTexts({...headerTexts, brandName: e.target.value})}
+              className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+              placeholder={t('Nombre de la marca')}
+            />
+          </div>
+          
+          <button
+            onClick={updateHeaderTexts}
+            className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            {t('💾 Actualizar Textos')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHomeImages = () => (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
+      
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+        <div className="space-y-6">
+          <div>
+            <label className="block text-white font-medium mb-2">{t('Imagen Principal 1')}</label>
+            <input
+              type="text"
+              value={homeImages.heroImage1}
+              onChange={(e) => setHomeImages({...homeImages, heroImage1: e.target.value})}
+              className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+              placeholder={t('URL de la primera imagen')}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-white font-medium mb-2">{t('Imagen Principal 2')}</label>
+            <input
+              type="text"
+              value={homeImages.heroImage2}
+              onChange={(e) => setHomeImages({...homeImages, heroImage2: e.target.value})}
+              className="w-full bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+              placeholder={t('URL de la segunda imagen')}
+            />
+          </div>
+          
+          <button
+            onClick={updateHomeImages}
+            className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            {t('💾 Actualizar Imágenes')}
+          </button>
         </div>
       </div>
     </div>
