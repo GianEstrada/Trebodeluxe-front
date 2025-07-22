@@ -9,6 +9,7 @@ import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import MainImagesAdmin from '../components/admin/MainImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
+import NotesAdmin from '../components/admin/NotesAdmin';
 
 interface Product {
   id_producto: number;
@@ -1471,14 +1472,7 @@ const AdminPage: NextPage = () => {
 
   const renderOrders = () => <OrdersAdmin />;
 
-  const renderNotes = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Notas')}</h2>
-      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-        <p className="text-white">{t('Funcionalidad de notas en desarrollo')}</p>
-      </div>
-    </div>
-  );
+  const renderNotes = () => <NotesAdmin />;
 
   const renderSizeSystems = () => {
     // Función para cargar sistemas con búsqueda
