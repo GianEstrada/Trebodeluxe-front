@@ -191,6 +191,18 @@ const AdminPage: NextPage = () => {
     brandName: headerSettings?.brandName || 'TREBOLUXE'
   });
 
+  // Estado para la hora actual
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Actualizar la hora cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Sincronizar con configuraciones del contexto cuando cambian
   useEffect(() => {
     if (headerSettings) {
@@ -1150,6 +1162,72 @@ const AdminPage: NextPage = () => {
     );
   };
 
+  // Función para formatear la fecha y hora
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
+  // Función para obtener el saludo según la hora
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return 'Buenos días';
+    if (hour < 18) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
+  // Renderizar card de usuario
+  const renderUserCard = () => (
+    <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 mb-6 shadow-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-400 via-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-xl">
+              {user?.nombres ? user.nombres.charAt(0).toUpperCase() : '👤'}
+            </span>
+          </div>
+          <div>
+            <h2 className="text-white font-bold text-xl mb-1">
+              {getGreeting()}, {user?.nombres || 'Usuario'} {user?.apellidos || ''}
+            </h2>
+            <div className="flex items-center space-x-4 text-sm">
+              <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full font-medium border border-green-500/30">
+                🎭 {user?.rol?.toUpperCase() || 'ADMIN'}
+              </span>
+              <span className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full font-medium border border-blue-500/30">
+                👤 ID: {user?.id_usuario || 'N/A'}
+              </span>
+              <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full font-medium border border-purple-500/30">
+                � {user?.correo || 'Sin email'}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right flex flex-col items-end space-y-2">
+          <div className="bg-black/20 rounded-lg p-3 border border-white/20">
+            <div className="text-white/90 text-sm font-medium mb-1">
+              📅 {formatDateTime(currentTime).split(' ').slice(0, 4).join(' ')}
+            </div>
+            <div className="text-green-300 text-2xl font-mono font-bold text-center">
+              🕐 {currentTime.toLocaleTimeString('es-MX', { hour12: false })}
+            </div>
+          </div>
+          <div className="text-white/60 text-xs text-center">
+            Sesión activa desde {currentTime.toLocaleDateString('es-MX')}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderSidebar = () => (
     <div className="w-64 bg-black/80 backdrop-blur-md border-r border-white/20 min-h-screen">
       <div className="p-6">
@@ -1897,6 +1975,9 @@ const AdminPage: NextPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 p-8">
+        {/* Card de Usuario */}
+        {renderUserCard()}
+        
         {renderContent()}
       </div>
 
