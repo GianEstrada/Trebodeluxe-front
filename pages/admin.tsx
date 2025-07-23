@@ -203,7 +203,8 @@ const AdminPage: NextPage = () => {
     totalOrders: 0,
     totalNotes: 0,
     highPriorityNotes: 0,
-    recentHighPriorityNote: null as any
+    recentHighPriorityNote: null as any,
+    loading: false
   });
 
   // Actualizar la hora cada segundo
@@ -297,41 +298,104 @@ const AdminPage: NextPage = () => {
 
   // Función para cargar estadísticas del dashboard
   const loadDashboardStats = async () => {
+    console.log('🔄 INICIANDO loadDashboardStats...');
+    setDashboardStats(prev => {
+      console.log('📊 Estado anterior dashboardStats:', prev);
+      return { ...prev, loading: true };
+    });
+    
     try {
       const baseUrl = 'https://trebodeluxe-backend.onrender.com';
+      console.log('🔄 Cargando estadísticas del dashboard...');
       
-      // Cargar estadísticas en paralelo
-      const [variantsResponse, promotionsResponse, ordersResponse, notesStatsResponse, notesResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/admin/variants`),
-        fetch(`${baseUrl}/api/admin/promotions`),
-        fetch(`${baseUrl}/api/admin/orders`),
-        fetch(`${baseUrl}/api/notes/stats`),
-        fetch(`${baseUrl}/api/notes?prioridad=alta&limit=1&sort_order=desc`)
-      ]);
+      // Inicializar datos por defecto
+      let variantsData = { success: false, data: [] };
+      let promotionsData = { success: false, data: [] };
+      let ordersData = { success: false, data: [] };
+      let notesStatsData = { success: false, data: { total_notas: 0, urgentes: 0, altas: 0 } };
+      let recentNotesData = { success: false, data: [] };
 
-      const variantsData = await variantsResponse.json();
-      const promotionsData = await promotionsResponse.json();
-      const ordersData = await ordersResponse.json();
-      const notesStatsData = await notesStatsResponse.json();
-      const recentNotesData = await notesResponse.json();
+      // Cargar variants
+      try {
+        const variantsResponse = await fetch(`${baseUrl}/api/admin/variants`);
+        variantsData = await variantsResponse.json();
+        console.log('📦 Variants data:', variantsData);
+      } catch (error) {
+        console.error('❌ Error loading variants:', error);
+      }
+
+      // Cargar promotions
+      try {
+        const promotionsResponse = await fetch(`${baseUrl}/api/admin/promotions`);
+        promotionsData = await promotionsResponse.json();
+        console.log('🏷️ Promotions data:', promotionsData);
+      } catch (error) {
+        console.error('❌ Error loading promotions:', error);
+      }
+
+      // Cargar orders (intentar diferentes endpoints)
+      try {
+        const ordersResponse = await fetch(`${baseUrl}/api/admin/orders`);
+        if (!ordersResponse.ok) {
+          // Intentar endpoint alternativo
+          const altOrdersResponse = await fetch(`${baseUrl}/api/orders`);
+          ordersData = await altOrdersResponse.json();
+        } else {
+          ordersData = await ordersResponse.json();
+        }
+        console.log('📋 Orders data:', ordersData);
+      } catch (error) {
+        console.error('❌ Error loading orders:', error);
+      }
+
+      // Cargar notes stats
+      try {
+        const notesStatsResponse = await fetch(`${baseUrl}/api/notes/stats`);
+        notesStatsData = await notesStatsResponse.json();
+        console.log('📊 Notes stats:', notesStatsData);
+      } catch (error) {
+        console.error('❌ Error loading notes stats:', error);
+      }
+
+      // Cargar recent high priority notes
+      try {
+        const notesResponse = await fetch(`${baseUrl}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
+        recentNotesData = await notesResponse.json();
+        console.log('📝 Recent notes:', recentNotesData);
+      } catch (error) {
+        console.error('❌ Error loading recent notes:', error);
+      }
 
       // Calcular estadísticas
       const stats = {
         totalVariants: variantsData.success ? variantsData.data.length : 0,
         totalProducts: variantsData.success ? new Set(variantsData.data.map((v: any) => v.id_producto)).size : 0,
         activePromotions: promotionsData.success ? promotionsData.data.filter((p: any) => p.activo).length : 0,
-        pendingOrders: ordersData.success ? ordersData.data.filter((o: any) => o.estado === 'pendiente').length : 0,
+        pendingOrders: ordersData.success ? ordersData.data.filter((o: any) => o.estado === 'pendiente' || o.status === 'pending').length : 0,
         totalOrders: ordersData.success ? ordersData.data.length : 0,
         totalNotes: notesStatsData.success ? notesStatsData.data.total_notas : 0,
         highPriorityNotes: notesStatsData.success ? (notesStatsData.data.urgentes + notesStatsData.data.altas) : 0,
-        recentHighPriorityNote: recentNotesData.success && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null
+        recentHighPriorityNote: recentNotesData.success && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null,
+        loading: false
       };
 
+      console.log('📊 Estadísticas calculadas:', stats);
+      console.log('🔄 Actualizando estado dashboardStats...');
       setDashboardStats(stats);
+      console.log('✅ Estado dashboardStats actualizado!');
     } catch (error) {
-      console.error('Error loading dashboard stats:', error);
+      console.error('❌ Error general loading dashboard stats:', error);
+      setDashboardStats(prev => ({ ...prev, loading: false }));
     }
   };
+
+  // Recargar estadísticas cuando se cambie a dashboard
+  useEffect(() => {
+    if (activeSection === 'dashboard') {
+      console.log('📊 Sección dashboard activada, cargando estadísticas...');
+      loadDashboardStats();
+    }
+  }, [activeSection]);
 
   // Efecto para cargar size systems inicialmente en sizeSystemsData
   useEffect(() => {
@@ -1428,30 +1492,51 @@ const AdminPage: NextPage = () => {
         <h2 className="text-3xl font-bold text-white">{t('Dashboard General')}</h2>
         <button
           onClick={loadDashboardStats}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          disabled={dashboardStats.loading}
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
         >
-          🔄 Actualizar
+          {dashboardStats.loading ? '⏳' : '🔄'} {dashboardStats.loading ? 'Cargando...' : 'Actualizar'}
+        </button>
+        
+        <button
+          onClick={() => {
+            console.log('📊 Estado actual dashboardStats:', dashboardStats);
+            console.log('🔍 Test manual de loadDashboardStats...');
+            loadDashboardStats();
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+        >
+          🔍 Debug
         </button>
       </div>
 
       {/* Estadísticas principales */}
+      {dashboardStats.loading && (
+        <div className="text-center py-8 text-white/80">
+          <div className="inline-flex items-center gap-3">
+            <div className="animate-spin text-2xl">⏳</div>
+            <span className="text-lg">Cargando estadísticas del dashboard...</span>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-green-200 mb-1">Productos Únicos</h3>
-              <p className="text-3xl font-bold text-green-400">{dashboardStats.totalProducts}</p>
+              <p className="text-3xl font-bold text-green-400">{dashboardStats.totalProducts || '0'}</p>
             </div>
             <div className="text-green-400 text-3xl">📦</div>
           </div>
-          <p className="text-green-200 text-sm mt-2">{dashboardStats.totalVariants} variantes totales</p>
+          <p className="text-green-200 text-sm mt-2">{dashboardStats.totalVariants || '0'} variantes totales</p>
         </div>
 
         <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-blue-200 mb-1">Promociones</h3>
-              <p className="text-3xl font-bold text-blue-400">{dashboardStats.activePromotions}</p>
+              <p className="text-3xl font-bold text-blue-400">{dashboardStats.activePromotions || '0'}</p>
             </div>
             <div className="text-blue-400 text-3xl">🏷️</div>
           </div>
@@ -1462,22 +1547,22 @@ const AdminPage: NextPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-yellow-200 mb-1">Pedidos</h3>
-              <p className="text-3xl font-bold text-yellow-400">{dashboardStats.pendingOrders}</p>
+              <p className="text-3xl font-bold text-yellow-400">{dashboardStats.pendingOrders || '0'}</p>
             </div>
             <div className="text-yellow-400 text-3xl">⏳</div>
           </div>
-          <p className="text-yellow-200 text-sm mt-2">{dashboardStats.totalOrders} pedidos totales</p>
+          <p className="text-yellow-200 text-sm mt-2">{dashboardStats.totalOrders || '0'} pedidos totales</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-purple-200 mb-1">Notas</h3>
-              <p className="text-3xl font-bold text-purple-400">{dashboardStats.totalNotes}</p>
+              <p className="text-3xl font-bold text-purple-400">{dashboardStats.totalNotes || '0'}</p>
             </div>
             <div className="text-purple-400 text-3xl">📝</div>
           </div>
-          <p className="text-purple-200 text-sm mt-2">{dashboardStats.highPriorityNotes} de alta prioridad</p>
+          <p className="text-purple-200 text-sm mt-2">{dashboardStats.highPriorityNotes || '0'} de alta prioridad</p>
         </div>
       </div>
 
