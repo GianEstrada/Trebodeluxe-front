@@ -503,8 +503,8 @@ const AdminPage: NextPage = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      // Obtener token del localStorage
-      const token = localStorage.getItem('token');
+      // Obtener token del contexto de usuario
+      const token = user?.token || localStorage.getItem('token');
       if (!token) {
         throw new Error('No hay token de autenticación');
       }
@@ -1407,7 +1407,8 @@ const AdminPage: NextPage = () => {
     uploadingImage, 
     sizeSystems, 
     products, 
-    t
+    t,
+    user
   ]);
 
   // Función para formatear la fecha y hora
