@@ -194,6 +194,18 @@ const AdminPage: NextPage = () => {
   // Estado para la hora actual
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Estados para estadísticas del dashboard
+  const [dashboardStats, setDashboardStats] = useState({
+    totalProducts: 0,
+    totalVariants: 0,
+    activePromotions: 0,
+    pendingOrders: 0,
+    totalOrders: 0,
+    totalNotes: 0,
+    highPriorityNotes: 0,
+    recentHighPriorityNote: null as any
+  });
+
   // Actualizar la hora cada segundo
   useEffect(() => {
     const timer = setInterval(() => {
@@ -280,7 +292,46 @@ const AdminPage: NextPage = () => {
     loadVariants();
     loadProducts();
     loadSizeSystems();
+    loadDashboardStats();
   }, []);
+
+  // Función para cargar estadísticas del dashboard
+  const loadDashboardStats = async () => {
+    try {
+      const baseUrl = 'https://trebodeluxe-backend.onrender.com';
+      
+      // Cargar estadísticas en paralelo
+      const [variantsResponse, promotionsResponse, ordersResponse, notesStatsResponse, notesResponse] = await Promise.all([
+        fetch(`${baseUrl}/api/admin/variants`),
+        fetch(`${baseUrl}/api/admin/promotions`),
+        fetch(`${baseUrl}/api/admin/orders`),
+        fetch(`${baseUrl}/api/notes/stats`),
+        fetch(`${baseUrl}/api/notes?prioridad=alta&limit=1&sort_order=desc`)
+      ]);
+
+      const variantsData = await variantsResponse.json();
+      const promotionsData = await promotionsResponse.json();
+      const ordersData = await ordersResponse.json();
+      const notesStatsData = await notesStatsResponse.json();
+      const recentNotesData = await notesResponse.json();
+
+      // Calcular estadísticas
+      const stats = {
+        totalVariants: variantsData.success ? variantsData.data.length : 0,
+        totalProducts: variantsData.success ? new Set(variantsData.data.map((v: any) => v.id_producto)).size : 0,
+        activePromotions: promotionsData.success ? promotionsData.data.filter((p: any) => p.activo).length : 0,
+        pendingOrders: ordersData.success ? ordersData.data.filter((o: any) => o.estado === 'pendiente').length : 0,
+        totalOrders: ordersData.success ? ordersData.data.length : 0,
+        totalNotes: notesStatsData.success ? notesStatsData.data.total_notas : 0,
+        highPriorityNotes: notesStatsData.success ? (notesStatsData.data.urgentes + notesStatsData.data.altas) : 0,
+        recentHighPriorityNote: recentNotesData.success && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null
+      };
+
+      setDashboardStats(stats);
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    }
+  };
 
   // Efecto para cargar size systems inicialmente en sizeSystemsData
   useEffect(() => {
@@ -1372,28 +1423,192 @@ const AdminPage: NextPage = () => {
   };
 
   const renderDashboard = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Dashboard')}</h2>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold text-white">{t('Dashboard General')}</h2>
+        <button
+          onClick={loadDashboardStats}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+        >
+          🔄 Actualizar
+        </button>
+      </div>
 
+      {/* Estadísticas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Total Variantes')}</h3>
-          <p className="text-3xl font-bold text-green-400">{variants.length}</p>
+        <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-green-200 mb-1">Productos Únicos</h3>
+              <p className="text-3xl font-bold text-green-400">{dashboardStats.totalProducts}</p>
+            </div>
+            <div className="text-green-400 text-3xl">📦</div>
+          </div>
+          <p className="text-green-200 text-sm mt-2">{dashboardStats.totalVariants} variantes totales</p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Promociones Activas')}</h3>
-          <p className="text-3xl font-bold text-blue-400">{promotions.filter(p => p.isActive).length}</p>
+        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-blue-200 mb-1">Promociones</h3>
+              <p className="text-3xl font-bold text-blue-400">{dashboardStats.activePromotions}</p>
+            </div>
+            <div className="text-blue-400 text-3xl">🏷️</div>
+          </div>
+          <p className="text-blue-200 text-sm mt-2">Activas actualmente</p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Pedidos Pendientes')}</h3>
-          <p className="text-3xl font-bold text-yellow-400">{orders.filter(o => o.status === 'pending').length}</p>
+        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-yellow-200 mb-1">Pedidos</h3>
+              <p className="text-3xl font-bold text-yellow-400">{dashboardStats.pendingOrders}</p>
+            </div>
+            <div className="text-yellow-400 text-3xl">⏳</div>
+          </div>
+          <p className="text-yellow-200 text-sm mt-2">{dashboardStats.totalOrders} pedidos totales</p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-white mb-2">{t('Notas')}</h3>
-          <p className="text-3xl font-bold text-purple-400">{notes.length}</p>
+        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-purple-200 mb-1">Notas</h3>
+              <p className="text-3xl font-bold text-purple-400">{dashboardStats.totalNotes}</p>
+            </div>
+            <div className="text-purple-400 text-3xl">📝</div>
+          </div>
+          <p className="text-purple-200 text-sm mt-2">{dashboardStats.highPriorityNotes} de alta prioridad</p>
+        </div>
+      </div>
+
+      {/* Sección de accesos rápidos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Accesos rápidos */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4">🚀 Accesos Rápidos</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setActiveSection('products')}
+              className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg p-4 text-left transition-colors group"
+            >
+              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📦</div>
+              <div className="text-white font-medium">Productos</div>
+              <div className="text-green-200 text-sm">{dashboardStats.totalVariants} variantes</div>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('promotions')}
+              className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg p-4 text-left transition-colors group"
+            >
+              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏷️</div>
+              <div className="text-white font-medium">Promociones</div>
+              <div className="text-blue-200 text-sm">{dashboardStats.activePromotions} activas</div>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('orders')}
+              className="bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 rounded-lg p-4 text-left transition-colors group"
+            >
+              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</div>
+              <div className="text-white font-medium">Pedidos</div>
+              <div className="text-yellow-200 text-sm">{dashboardStats.pendingOrders} pendientes</div>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('notes')}
+              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg p-4 text-left transition-colors group"
+            >
+              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📝</div>
+              <div className="text-white font-medium">Notas</div>
+              <div className="text-purple-200 text-sm">{dashboardStats.highPriorityNotes} prioritarias</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Nota de alta prioridad más reciente */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4">🔥 Nota de Alta Prioridad</h3>
+          {dashboardStats.recentHighPriorityNote ? (
+            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+              <div className="flex items-start justify-between mb-3">
+                <h4 className="text-white font-semibold text-lg">{dashboardStats.recentHighPriorityNote.titulo}</h4>
+                <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  {dashboardStats.recentHighPriorityNote.prioridad.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-gray-300 mb-3 line-clamp-3">{dashboardStats.recentHighPriorityNote.contenido}</p>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">
+                  👤 {dashboardStats.recentHighPriorityNote.nombre_usuario_creador}
+                </span>
+                <span className="text-gray-400">
+                  📅 {new Date(dashboardStats.recentHighPriorityNote.fecha_creacion).toLocaleDateString('es-MX')}
+                </span>
+              </div>
+              <button
+                onClick={() => setActiveSection('notes')}
+                className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"
+              >
+                Ver Todas las Notas
+              </button>
+            </div>
+          ) : (
+            <div className="bg-gray-500/20 border border-gray-500/30 rounded-lg p-4 text-center">
+              <div className="text-4xl mb-3">✅</div>
+              <p className="text-gray-300">No hay notas de alta prioridad</p>
+              <button
+                onClick={() => setActiveSection('notes')}
+                className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Crear Nueva Nota
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sección de configuración rápida */}
+      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+        <h3 className="text-xl font-semibold text-white mb-4">⚙️ Configuración del Sitio</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => setActiveSection('header')}
+            className="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl group-hover:scale-110 transition-transform">🏷️</div>
+              <div>
+                <div className="text-white font-medium">Textos del Header</div>
+                <div className="text-indigo-200 text-sm">Configurar marca y promociones</div>
+              </div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setActiveSection('images')}
+            className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl group-hover:scale-110 transition-transform">🖼️</div>
+              <div>
+                <div className="text-white font-medium">Imágenes Principales</div>
+                <div className="text-green-200 text-sm">Hero, banners y promociones</div>
+              </div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setActiveSection('sizes')}
+            className="bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl group-hover:scale-110 transition-transform">📏</div>
+              <div>
+                <div className="text-white font-medium">Sistema de Tallas</div>
+                <div className="text-orange-200 text-sm">Gestionar tallas y sistemas</div>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
