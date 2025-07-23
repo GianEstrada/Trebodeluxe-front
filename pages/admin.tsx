@@ -34,8 +34,20 @@ interface Variant {
   categoria: string;
   marca: string;
   sistema_talla?: string;
+  id_sistema_talla?: number;
   imagen_url?: string;
   imagen_public_id?: string;
+  imagenes?: Array<{
+    id_imagen?: number;
+    url: string;
+    public_id: string;
+    orden?: number;
+  }>;
+  tallas?: Array<{
+    id_talla: number;
+    nombre_talla: string;
+    cantidad: number;
+  }>;
   tallas_stock: Array<{
     id_talla: number;
     nombre_talla: string;
@@ -176,6 +188,7 @@ const AdminPage: NextPage = () => {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [additionalVariants, setAdditionalVariants] = useState<number>(0);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
 
   // Estados para Sistema de Tallas
   const [sizeSystemsData, setSizeSystemsData] = useState<SizeSystem[]>([]);
@@ -301,7 +314,7 @@ const AdminPage: NextPage = () => {
   };
 
   // Función helper para hacer peticiones autenticadas
-  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+  const authenticatedFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     if (!token) {
       throw new Error('No hay token de autenticación disponible');
@@ -315,7 +328,7 @@ const AdminPage: NextPage = () => {
         ...options.headers,
       },
     });
-  };
+  }, [getAuthToken]);
 
   // Verificar si el usuario es administrador
   useEffect(() => {
@@ -458,7 +471,7 @@ const AdminPage: NextPage = () => {
     }
   }, [activeSection, sizeSystemsData.length]);
 
-  const loadVariants = async () => {
+  const loadVariants = useCallback(async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
@@ -472,7 +485,7 @@ const AdminPage: NextPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authenticatedFetch]);
 
   const loadProducts = async () => {
     try {
@@ -580,6 +593,58 @@ const AdminPage: NextPage = () => {
       setUploadingImage(false);
     }
   };
+
+  // Funciones para editar y eliminar variantes
+  const handleEditVariant = useCallback(async (variantId: number) => {
+    try {
+      console.log('🔍 [DEBUG] Editando variante:', variantId);
+      
+      // Obtener los datos de la variante
+      const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const variant = data.variant;
+        
+        // Configurar el formulario en modo edición
+        setFormType('nueva_variante');
+        setEditingVariant(variant);
+        setSelectedProductId(variant.id_producto);
+        
+        // Abrir el modal
+        setShowVariantForm(true);
+      } else {
+        alert(t('Error al cargar los datos de la variante'));
+      }
+    } catch (error) {
+      console.error('Error loading variant for edit:', error);
+      alert(t('Error al cargar los datos de la variante'));
+    }
+  }, [authenticatedFetch, t]);
+
+  const handleDeleteVariant = useCallback(async (variantId: number, variantName: string) => {
+    if (!confirm(t(`¿Estás seguro de que deseas eliminar la variante "${variantName}"?`))) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(t('Variante eliminada correctamente'));
+        loadVariants(); // Recargar las variantes
+      } else {
+        alert(t('Error al eliminar la variante: ') + data.message);
+      }
+    } catch (error) {
+      console.error('Error deleting variant:', error);
+      alert(t('Error al eliminar la variante'));
+    }
+  }, [authenticatedFetch, t, loadVariants]);
 
   const renderVariantsList = () => (
     <div className="space-y-6">
@@ -728,8 +793,24 @@ const AdminPage: NextPage = () => {
                   </div>
                   
                   {/* Total de stock */}
-                  <div className="text-sm text-gray-300">
+                  <div className="text-sm text-gray-300 mb-4">
                     <strong>{t('Total en stock:')} {variant.tallas_stock.reduce((total, talla) => total + talla.cantidad, 0)}</strong>
+                  </div>
+                  
+                  {/* Botones de acción */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditVariant(variant.id_variante)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      ✏️ {t('Editar')}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteVariant(variant.id_variante, variant.nombre_variante)}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      🗑️ {t('Eliminar')}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -774,6 +855,48 @@ const AdminPage: NextPage = () => {
     const [localUploadingImage, setLocalUploadingImage] = useState(false);
     const [uploadingVariantIndex, setUploadingVariantIndex] = useState<number | null>(null);
     const [uploadingToCloudinary, setUploadingToCloudinary] = useState(false);
+
+    // useEffect para cargar datos de edición
+    useEffect(() => {
+      if (editingVariant && formType === 'nueva_variante') {
+        console.log('🔍 [DEBUG] Cargando datos de variante para edición:', editingVariant);
+        
+        // Configurar datos del producto (read-only en modo edición)
+        setProductFormData(prev => ({
+          ...prev,
+          producto_nombre: editingVariant.nombre_producto,
+          producto_descripcion: editingVariant.descripcion_producto,
+          categoria: editingVariant.categoria,
+          marca: editingVariant.marca,
+          id_sistema_talla: editingVariant.id_sistema_talla || 0
+        }));
+        
+        // Configurar datos de la variante para edición
+        setSingleVariantData({
+          nombre: editingVariant.nombre_variante,
+          precio: editingVariant.precio,
+          precio_original: editingVariant.precio_original,
+          imagen_url: editingVariant.imagen_url,
+          imagen_public_id: editingVariant.imagen_public_id,
+          imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
+            url: img.url,
+            public_id: img.public_id,
+            isLocalPreview: false
+          })) : [],
+          tallas: editingVariant.tallas ? editingVariant.tallas.map((talla: any) => ({
+            id_talla: talla.id_talla,
+            nombre_talla: talla.nombre_talla,
+            cantidad: talla.cantidad
+          })) : editingVariant.tallas_stock ? editingVariant.tallas_stock.map((talla: any) => ({
+            id_talla: talla.id_talla,
+            nombre_talla: talla.nombre_talla,
+            cantidad: talla.cantidad
+          })) : []
+        });
+        
+        setUniquePriceValue(editingVariant.precio);
+      }
+    }, [editingVariant, formType]);
 
     const handleSizeSystemChange = (systemId: number) => {
       const system = sizeSystems.find(s => s.id_sistema_talla === systemId);
@@ -836,6 +959,32 @@ const AdminPage: NextPage = () => {
       
       console.log('🔍 [DEBUG] Vista previa agregada exitosamente');
     };
+
+    // Función para eliminar imagen
+    const handleRemoveImage = useCallback((imageIndex: number, variantIndex?: number) => {
+      console.log('🔍 [DEBUG] Eliminando imagen en índice:', imageIndex);
+      
+      if (formType === 'nuevo_producto' && variantIndex !== undefined) {
+        setProductFormData(prev => ({
+          ...prev,
+          variantes: prev.variantes.map((v, index) => 
+            index === variantIndex 
+              ? { 
+                  ...v, 
+                  imagenes: v.imagenes?.filter((_, imgIndex) => imgIndex !== imageIndex) || []
+                }
+              : v
+          )
+        }));
+      } else {
+        setSingleVariantData(prev => ({
+          ...prev,
+          imagenes: prev.imagenes?.filter((_, imgIndex) => imgIndex !== imageIndex) || []
+        }));
+      }
+      
+      console.log('🔍 [DEBUG] Imagen eliminada exitosamente');
+    }, [formType]);
 
     const addNewVariant = () => {
       const system = sizeSystems.find(s => s.id_sistema_talla === productFormData.id_sistema_talla);
@@ -948,8 +1097,8 @@ const AdminPage: NextPage = () => {
             body: JSON.stringify(updatedProductData),
           });
         } else {
-          // Para nueva variante - subir imágenes locales
-          console.log('🔍 [DEBUG] Subiendo imágenes locales para nueva variante...');
+          // Para nueva variante o edición de variante
+          console.log('🔍 [DEBUG] Procesando variante...', editingVariant ? 'Edición' : 'Nueva');
           let updatedVariantData = { ...singleVariantData };
           
           if (singleVariantData.imagenes && singleVariantData.imagenes.length > 0) {
@@ -957,22 +1106,37 @@ const AdminPage: NextPage = () => {
             updatedVariantData.imagenes = uploadedImages;
           }
           
-          const payload = {
-            id_producto: selectedProductId,
-            ...updatedVariantData
-          };
-          
-          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
+          if (editingVariant) {
+            // Modo edición - actualizar variante existente
+            const payload = {
+              id_variante: editingVariant.id_variante,
+              ...updatedVariantData
+            };
+            
+            response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/products/variants/${editingVariant.id_variante}`, {
+              method: 'PUT',
+              body: JSON.stringify(payload),
+            });
+          } else {
+            // Modo creación - nueva variante
+            const payload = {
+              id_producto: selectedProductId,
+              ...updatedVariantData
+            };
+            
+            response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
+              method: 'POST',
+              body: JSON.stringify(payload),
+            });
+          }
         }
         
         const data = await response.json();
         
         if (data.success) {
-          alert(t('Guardado correctamente'));
+          alert(editingVariant ? t('Variante actualizada correctamente') : t('Guardado correctamente'));
           setShowVariantForm(false);
+          setEditingVariant(null); // Limpiar estado de edición
           loadVariants();
           loadProducts();
         } else {
@@ -991,10 +1155,14 @@ const AdminPage: NextPage = () => {
         <div className="bg-gray-900 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">
-              {formType === 'nuevo_producto' ? t('Nuevo Producto') : t('Nueva Variante')}
+              {formType === 'nuevo_producto' ? t('Nuevo Producto') : 
+               editingVariant ? t('Editar Variante') : t('Nueva Variante')}
             </h3>
             <button
-              onClick={() => setShowVariantForm(false)}
+              onClick={() => {
+                setShowVariantForm(false);
+                setEditingVariant(null); // Limpiar estado de edición
+              }}
               className="text-gray-400 hover:text-white text-2xl"
             >
               ×
@@ -1152,7 +1320,7 @@ const AdminPage: NextPage = () => {
                               )}
                               {/* Imágenes adicionales */}
                               {variant.imagenes?.map((img, imgIndex) => (
-                                <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                                <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative group">
                                   <Image
                                     src={img.url}
                                     alt={`${variant.nombre} - ${imgIndex + 2}`}
@@ -1161,6 +1329,15 @@ const AdminPage: NextPage = () => {
                                     className="w-full h-full object-cover"
                                   />
                                   <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">{imgIndex + 2}</div>
+                                  {/* Botón X para eliminar */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveImage(imgIndex, index)}
+                                    className="absolute top-1 left-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Eliminar imagen"
+                                  >
+                                    ×
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -1395,7 +1572,7 @@ const AdminPage: NextPage = () => {
                         )}
                         {/* Imágenes adicionales */}
                         {singleVariantData.imagenes?.map((img, imgIndex) => (
-                          <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                          <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative group">
                             <Image
                               src={img.url}
                               alt={`${singleVariantData.nombre} - ${imgIndex + 2}`}
@@ -1404,6 +1581,15 @@ const AdminPage: NextPage = () => {
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">{imgIndex + 2}</div>
+                            {/* Botón X para eliminar */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(imgIndex)}
+                              className="absolute top-1 left-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Eliminar imagen"
+                            >
+                              ×
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -1549,7 +1735,7 @@ const AdminPage: NextPage = () => {
                     {t('Subiendo a Cloudinary...')}
                   </span>
                 ) : (
-                  t('Guardar')
+                  editingVariant ? t('Actualizar Variante') : t('Guardar')
                 )}
               </button>
               <button
