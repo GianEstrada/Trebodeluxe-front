@@ -309,11 +309,11 @@ const AdminPage: NextPage = () => {
       console.log('🔄 Cargando estadísticas del dashboard...');
       
       // Inicializar datos por defecto
-      let variantsData = { success: false, data: [] };
-      let promotionsData = { success: false, data: [] };
-      let ordersData = { success: false, data: [] };
-      let notesStatsData = { success: false, data: { total_notas: 0, urgentes: 0, altas: 0 } };
-      let recentNotesData = { success: false, data: [] };
+      let variantsData: any = { success: false, variants: [] };
+      let promotionsData: any = { success: false, data: [] };
+      let ordersData: any = { success: false, data: [] };
+      let notesStatsData: any = { success: false, data: { total_notas: 0, urgentes: 0, altas: 0 } };
+      let recentNotesData: any = { success: false, data: [] };
 
       // Cargar variants
       try {
@@ -368,14 +368,14 @@ const AdminPage: NextPage = () => {
 
       // Calcular estadísticas
       const stats = {
-        totalVariants: variantsData.success ? variantsData.data.length : 0,
-        totalProducts: variantsData.success ? new Set(variantsData.data.map((v: any) => v.id_producto)).size : 0,
-        activePromotions: promotionsData.success ? promotionsData.data.filter((p: any) => p.activo).length : 0,
-        pendingOrders: ordersData.success ? ordersData.data.filter((o: any) => o.estado === 'pendiente' || o.status === 'pending').length : 0,
-        totalOrders: ordersData.success ? ordersData.data.length : 0,
-        totalNotes: notesStatsData.success ? notesStatsData.data.total_notas : 0,
-        highPriorityNotes: notesStatsData.success ? (notesStatsData.data.urgentes + notesStatsData.data.altas) : 0,
-        recentHighPriorityNote: recentNotesData.success && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null,
+        totalVariants: variantsData.success && variantsData.variants ? variantsData.variants.length : 0,
+        totalProducts: variantsData.success && variantsData.variants ? new Set(variantsData.variants.map((v: any) => v.id_producto)).size : 0,
+        activePromotions: promotionsData.success && promotionsData.data ? promotionsData.data.filter((p: any) => p.activo).length : 0,
+        pendingOrders: ordersData.success && ordersData.data ? ordersData.data.filter((o: any) => o.estado === 'pendiente' || o.status === 'pending').length : 0,
+        totalOrders: ordersData.success && ordersData.data ? ordersData.data.length : 0,
+        totalNotes: notesStatsData.success && notesStatsData.data ? notesStatsData.data.total_notas : 0,
+        highPriorityNotes: notesStatsData.success && notesStatsData.data ? (notesStatsData.data.urgentes + notesStatsData.data.altas) : 0,
+        recentHighPriorityNote: recentNotesData.success && recentNotesData.data && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null,
         loading: false
       };
 
