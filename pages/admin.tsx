@@ -287,6 +287,36 @@ const AdminPage: NextPage = () => {
     }
   ]);
 
+  // Función helper para obtener token
+  const getAuthToken = () => {
+    let token = user?.token;
+    if (!token) {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        token = userData.token;
+      }
+    }
+    return token;
+  };
+
+  // Función helper para hacer peticiones autenticadas
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación disponible');
+    }
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  };
+
   // Verificar si el usuario es administrador
   useEffect(() => {
     if (!user) {
@@ -323,7 +353,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar variants
       try {
-        const variantsResponse = await fetch(`${baseUrl}/api/admin/variants`);
+        const variantsResponse = await authenticatedFetch(`${baseUrl}/api/admin/variants`);
         variantsData = await variantsResponse.json();
         console.log('📦 Variants data:', variantsData);
       } catch (error) {
@@ -332,7 +362,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar promotions
       try {
-        const promotionsResponse = await fetch(`${baseUrl}/api/admin/promotions`);
+        const promotionsResponse = await authenticatedFetch(`${baseUrl}/api/admin/promotions`);
         promotionsData = await promotionsResponse.json();
         console.log('🏷️ Promotions data:', promotionsData);
       } catch (error) {
@@ -341,10 +371,10 @@ const AdminPage: NextPage = () => {
 
       // Cargar orders (intentar diferentes endpoints)
       try {
-        const ordersResponse = await fetch(`${baseUrl}/api/admin/orders`);
+        const ordersResponse = await authenticatedFetch(`${baseUrl}/api/admin/orders`);
         if (!ordersResponse.ok) {
           // Intentar endpoint alternativo
-          const altOrdersResponse = await fetch(`${baseUrl}/api/orders`);
+          const altOrdersResponse = await authenticatedFetch(`${baseUrl}/api/orders`);
           ordersData = await altOrdersResponse.json();
         } else {
           ordersData = await ordersResponse.json();
@@ -431,7 +461,7 @@ const AdminPage: NextPage = () => {
   const loadVariants = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
       const data = await response.json();
       if (data.success) {
         setVariants(data.variants);
@@ -446,7 +476,7 @@ const AdminPage: NextPage = () => {
 
   const loadProducts = async () => {
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products');
+      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products');
       const data = await response.json();
       if (data.success) {
         setProducts(data.products);
@@ -843,15 +873,7 @@ const AdminPage: NextPage = () => {
           console.log('🔍 [DEBUG] Subiendo imagen local:', imagen.file.name);
           
           // Obtener token
-          let token = user?.token;
-          if (!token) {
-            const savedUser = localStorage.getItem('user');
-            if (savedUser) {
-              const userData = JSON.parse(savedUser);
-              token = userData.token;
-            }
-          }
-          
+          const token = getAuthToken();
           if (!token) {
             throw new Error('No hay token de autenticación');
           }
@@ -900,33 +922,6 @@ const AdminPage: NextPage = () => {
       try {
         let response;
         
-        // Obtener token del contexto de usuario primero, luego localStorage
-        let token = user?.token;
-        
-        if (!token) {
-          console.log('🔍 [DEBUG] Buscando token en localStorage...');
-          const savedUser = localStorage.getItem('user');
-          if (savedUser) {
-            try {
-              const userData = JSON.parse(savedUser);
-              token = userData.token;
-              console.log('🔍 [DEBUG] Token desde localStorage:', token ? `Token encontrado (${token.length} chars)` : 'No token en localStorage');
-            } catch (parseError) {
-              console.error('🔍 [DEBUG] Error al parsear datos de localStorage:', parseError);
-            }
-          } else {
-            console.log('🔍 [DEBUG] No hay datos de usuario en localStorage');
-          }
-        }
-        
-        if (!token) {
-          console.log('🔍 [DEBUG] ERROR: No se encontró token');
-          alert(t('Error de autenticación. Por favor, inicie sesión nuevamente.'));
-          return;
-        }
-        
-        console.log('🔍 [DEBUG] Procediendo con token válido');
-        
         if (formType === 'nuevo_producto') {
           // Subir imágenes locales de todas las variantes
           console.log('🔍 [DEBUG] Subiendo imágenes locales para nuevo producto...');
@@ -948,12 +943,8 @@ const AdminPage: NextPage = () => {
             variantes: updatedVariantes
           };
           
-          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
+          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(updatedProductData),
           });
         } else {
@@ -971,12 +962,8 @@ const AdminPage: NextPage = () => {
             ...updatedVariantData
           };
           
-          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
+          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(payload),
           });
         }
