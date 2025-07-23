@@ -236,11 +236,11 @@ const CatalogoScreen: NextPage = () => {
         ]);
         
         if (categoriesResponse.success && categoriesResponse.data && Array.isArray(categoriesResponse.data)) {
-          setCategories(categoriesResponse.data);
+          setCategories(categoriesResponse.data.map((cat: any) => cat.categoria));
         }
         
         if (brandsResponse.success && brandsResponse.data && Array.isArray(brandsResponse.data)) {
-          setBrands(brandsResponse.data);
+          setBrands(brandsResponse.data.map((brand: any) => brand.marca || brand));
         }
         
       } catch (err: any) {
