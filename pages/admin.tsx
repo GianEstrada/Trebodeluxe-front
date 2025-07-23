@@ -1536,7 +1536,14 @@ const AdminPage: NextPage = () => {
                   {dashboardStats.recentHighPriorityNote.prioridad.toUpperCase()}
                 </span>
               </div>
-              <p className="text-gray-300 mb-3 line-clamp-3">{dashboardStats.recentHighPriorityNote.contenido}</p>
+              <p className="text-gray-300 mb-3 overflow-hidden text-ellipsis"
+                 style={{
+                   display: '-webkit-box',
+                   WebkitLineClamp: 3,
+                   WebkitBoxOrient: 'vertical'
+                 }}>
+                {dashboardStats.recentHighPriorityNote.contenido}
+              </p>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">
                   👤 {dashboardStats.recentHighPriorityNote.nombre_usuario_creador}
