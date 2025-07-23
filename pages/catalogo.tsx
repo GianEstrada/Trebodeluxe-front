@@ -5,11 +5,67 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { useCart } from "../contexts/CartContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 
+// Componente para los botones de acción de cada card de producto
+const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addItem }: any) => {
+  const [quantity, setQuantity] = useState(1);
+
+  const handleAddToCart = () => {
+    if (!hasStock || !defaultSize) {
+      alert(t('Producto sin stock disponible'));
+      return;
+    }
+
+    const cartItem = {
+      id_variante: variant.id_variante,
+      id_producto: product.id_producto,
+      nombre_producto: product.nombre,
+      nombre_variante: variant.nombre_variante,
+      imagen_url: variant.imagen_url,
+      precio: variant.precio,
+      precio_original: variant.precio_original,
+      id_talla: defaultSize.id_talla,
+      nombre_talla: defaultSize.nombre_talla,
+      categoria: product.categoria,
+      marca: product.marca
+    };
+
+    addItem(cartItem, quantity);
+    alert(t('Producto agregado al carrito'));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <button
+          onClick={() => window.location.href = `/producto/${product.id_producto}?variante=${variant.id_variante}`}
+          className="flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-200 bg-white/20 text-white hover:bg-white/30 border border-white/30 text-sm"
+        >
+          {t('Ver detalles')}
+        </button>
+        
+        <button
+          disabled={!hasStock}
+          onClick={handleAddToCart}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-200 text-sm ${
+            hasStock 
+              ? 'bg-white text-black hover:bg-gray-100' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {hasStock ? t('Al carrito') : t('Agotado')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const CatalogoScreen: NextPage = () => {
   const router = useRouter();
+  const { addItem } = useCart();
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -221,11 +277,47 @@ const CatalogoScreen: NextPage = () => {
           filters.busqueda = searchTerm;
         }
         
-        // Si no es promociones, cargar productos normales
+        // Si no es promociones, cargar productos normales con variantes
         if (activeFilter !== 'promociones') {
-          const productsResponse = await productsApi.getAll(filters) as any;
-          if (productsResponse.success && productsResponse.products && Array.isArray(productsResponse.products)) {
-            setAllProducts(productsResponse.products.map(productUtils.transformToLegacyFormat));
+          const variantsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+          const variantsData = await variantsResponse.json();
+          
+          if (variantsData.success && variantsData.variants) {
+            // Agrupar variantes por producto
+            const productsMap = new Map();
+            
+            variantsData.variants.forEach((variant: any) => {
+              const productKey = variant.id_producto;
+              
+              if (!productsMap.has(productKey)) {
+                productsMap.set(productKey, {
+                  id_producto: variant.id_producto,
+                  nombre: variant.nombre_producto,
+                  descripcion: variant.descripcion_producto,
+                  categoria: variant.categoria,
+                  marca: variant.marca,
+                  variantes: []
+                });
+              }
+              
+              productsMap.get(productKey).variantes.push({
+                id_variante: variant.id_variante,
+                nombre_variante: variant.nombre_variante,
+                precio: variant.precio,
+                precio_original: variant.precio_original,
+                imagen_url: variant.imagen_url,
+                activo: variant.variante_activa,
+                tallas: variant.tallas_stock || []
+              });
+            });
+            
+            // Convertir el mapa a array y ordenar variantes
+            const productsArray = Array.from(productsMap.values()).map(product => ({
+              ...product,
+              variantes: product.variantes.sort((a: any, b: any) => a.id_variante - b.id_variante)
+            }));
+            
+            setAllProducts(productsArray);
           }
         }
         
@@ -306,28 +398,26 @@ const CatalogoScreen: NextPage = () => {
   // Filtrar productos basado en los criterios seleccionados
   const filteredProducts = Array.isArray(allProducts) ? allProducts.filter(product => {
     const matchesSearch = searchTerm === "" || 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase());
+      product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marca.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = selectedCategory === "Todas" || product.category === selectedCategory;
-    const matchesBrand = selectedBrand === "Todas" || product.brand === selectedBrand;
-    const matchesColor = selectedColor === "Todos" || product.color === selectedColor;
-    const matchesSize = selectedSize === "Todas" || product.size === selectedSize;
+    const matchesCategory = selectedCategory === "Todas" || product.categoria === selectedCategory;
+    const matchesBrand = selectedBrand === "Todas" || product.marca === selectedBrand;
     
     // Filtro específico para promociones (productos con descuento)
     let matchesFilter = true;
     if (activeFilter === 'promociones') {
-      matchesFilter = product.originalPrice > product.price; // Solo productos con descuento
+      matchesFilter = product.variantes.some((v: any) => v.precio_original && v.precio < v.precio_original);
     } else if (activeFilter === 'populares') {
-      matchesFilter = product.inStock; // Solo productos en stock para populares
+      matchesFilter = product.variantes.some((v: any) => v.activo); // Solo productos con variantes activas
     } else if (activeFilter === 'nuevos') {
-      matchesFilter = product.id > 2; // Simular productos nuevos (IDs más altos)
+      matchesFilter = product.id_producto > 10; // Simular productos nuevos
     } else if (activeFilter === 'basicos') {
-      matchesFilter = product.category === 'Camisetas'; // Solo camisetas para básicos
+      matchesFilter = product.categoria === 'Camisetas'; // Solo camisetas para básicos
     }
     
-    return matchesSearch && matchesCategory && matchesBrand && matchesColor && matchesSize && matchesFilter;
+    return matchesSearch && matchesCategory && matchesBrand && matchesFilter;
   }) : [];
 
   return (
@@ -1145,94 +1235,98 @@ const CatalogoScreen: NextPage = () => {
           )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.isArray(filteredProducts) && filteredProducts.map((product) => {
-              const discount = productUtils.calculateDiscount(product.originalPrice, product.price);
+            {Array.isArray(filteredProducts) && filteredProducts.map((product: any) => {
+              // Obtener la primera variante (ordenada ascendentemente)
+              const firstVariant = product.variantes && product.variantes.length > 0 ? product.variantes[0] : null;
+              if (!firstVariant) return null;
+
+              // Obtener la primera talla disponible
+              const firstSize = firstVariant.tallas && firstVariant.tallas.length > 0 ? firstVariant.tallas[0] : null;
+              
+              // Calcular descuento si existe precio original
+              const discount = firstVariant.precio_original 
+                ? Math.round(((firstVariant.precio_original - firstVariant.precio) / firstVariant.precio_original) * 100)
+                : 0;
+              
+              const hasStock = firstVariant.tallas.some((talla: any) => talla.cantidad > 0);
               
               return (
-                <div key={product.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                  <Link href={`/producto/${product.id}`}>
+                <div key={`${product.id_producto}-${firstVariant.id_variante}`} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                  <Link href={`/producto/${product.id_producto}?variante=${firstVariant.id_variante}`}>
                     <div className="cursor-pointer">
                       <div className="relative mb-4">
                         <Image
-                          className="w-full h-64 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
                           width={300}
-                          height={256}
-                          src={product.image || '/sin-ttulo1-2@2x.png'}
-                          alt={product.name}
+                          height={192}
+                          src={firstVariant.imagen_url || '/sin-ttulo1-2@2x.png'}
+                          alt={`${product.nombre} - ${firstVariant.nombre_variante}`}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/sin-ttulo1-2@2x.png';
                           }}
                         />
-                        {!product.inStock && (
+                        
+                        {!hasStock && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
                             <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                           </div>
                         )}
+                        
                         {discount > 0 && (
                           <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
                             {discount}% OFF
                           </div>
                         )}
+                        
                         {product.variantes && product.variantes.length > 1 && (
                           <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
-                            +{product.variantes.length - 1} {t('colores')}
+                            +{product.variantes.length - 1} {t('variantes')}
                           </div>
                         )}
                       </div>
                       
-                      <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-green-300 transition-colors">
-                        {product.name}
-                      </h3>
-                      
-                      <div className="space-y-1 mb-3">
-                        <p className="text-gray-300 text-sm">{t('Categoría')}: {product.category}</p>
-                        <p className="text-gray-300 text-sm">{t('Marca')}: {product.brand}</p>
-                        {product.description && (
-                          <p className="text-gray-400 text-xs line-clamp-2">{product.description}</p>
+                      <div className="space-y-2">
+                        <h3 className="text-white font-semibold text-lg group-hover:text-green-300 transition-colors line-clamp-1">
+                          {product.nombre}
+                        </h3>
+                        
+                        <p className="text-green-400 font-medium text-sm">
+                          {firstVariant.nombre_variante}
+                        </p>
+                        
+                        {firstSize && (
+                          <p className="text-gray-300 text-sm">
+                            {t('Talla')}: {firstSize.nombre_talla} ({firstSize.cantidad} {t('disponibles')})
+                          </p>
                         )}
-                      </div>
-                      
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                          {discount > 0 && (
-                            <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
-                          )}
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white font-bold text-lg">${firstVariant.precio}</span>
+                            {discount > 0 && (
+                              <span className="text-gray-400 line-through text-sm">${firstVariant.precio_original}</span>
+                            )}
+                          </div>
                         </div>
-                        {product.sistema_talla && (
-                          <span className="text-gray-400 text-xs">{product.sistema_talla}</span>
-                        )}
+                        
+                        <div className="text-xs text-gray-400 space-y-1">
+                          <p>{t('Categoría')}: {product.categoria}</p>
+                          <p>{t('Marca')}: {product.marca}</p>
+                        </div>
                       </div>
                     </div>
                   </Link>
                   
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => router.push(`/producto/${product.id}`)}
-                      className="flex-1 py-3 rounded-lg font-medium transition-colors duration-200 bg-white/20 text-white hover:bg-white/30 border border-white/30"
-                    >
-                      {t('Ver detalles')}
-                    </button>
-                    
-                    <button
-                      disabled={!product.inStock}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (product.inStock) {
-                          // Aquí puedes agregar lógica para añadir al carrito directamente
-                          console.log('Agregando al carrito:', product);
-                          alert(t('Funcionalidad de carrito en desarrollo'));
-                        }
-                      }}
-                      className={`flex-1 py-3 rounded-lg font-medium transition-colors duration-200 ${
-                        product.inStock 
-                          ? 'bg-white text-black hover:bg-gray-100' 
-                          : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      {product.inStock ? t('Al carrito') : t('Agotado')}
-                    </button>
+                  <div className="mt-4">
+                    <ProductCardActions 
+                      product={product}
+                      variant={firstVariant}
+                      defaultSize={firstSize}
+                      hasStock={hasStock}
+                      t={t}
+                      addItem={addItem}
+                    />
                   </div>
                 </div>
               );

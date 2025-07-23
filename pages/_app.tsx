@@ -6,6 +6,7 @@ import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import { SiteSettingsProvider } from "../contexts/SiteSettingsContext";
 import { MainImagesProvider } from "../contexts/MainImagesContext";
+import { CartProvider } from "../contexts/CartContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 // Componente unificado para manejo de carga
@@ -40,9 +41,11 @@ function MyApp({ Component, pageProps }: AppProps) {
         <LoadingProvider>
           <SiteSettingsProvider>
             <MainImagesProvider>
-              <LoadingManager>
-                <Component {...pageProps} />
-              </LoadingManager>
+              <CartProvider>
+                <LoadingManager>
+                  <Component {...pageProps} />
+                </LoadingManager>
+              </CartProvider>
             </MainImagesProvider>
           </SiteSettingsProvider>
         </LoadingProvider>

@@ -21,6 +21,21 @@ export const productsApi = {
     return apiRequest(endpoint);
   },
 
+  // Obtener productos con variantes para el catálogo
+  async getWithVariants(filters = {}) {
+    const queryParams = new URLSearchParams();
+    
+    if (filters.categoria) queryParams.append('categoria', filters.categoria);
+    if (filters.busqueda) queryParams.append('busqueda', filters.busqueda);
+    if (filters.marca) queryParams.append('marca', filters.marca);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/api/products/with-variants${queryString ? `?${queryString}` : ''}`;
+    
+    return apiRequest(endpoint);
+  },
+
   // Obtener producto por ID con todas sus variantes
   async getById(id) {
     return apiRequest(`/api/products/${id}`);
