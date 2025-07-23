@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { NextPage } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -665,19 +665,20 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const VariantForm = () => {
-    const [productFormData, setProductFormData] = useState<ProductFormData>({
-      producto_nombre: '',
-      producto_descripcion: '',
-      categoria: '',
-      marca: '',
-      id_sistema_talla: 0,
-      variantes: [
-        {
-          nombre: '',
-          precio: 0,
-          precio_original: undefined,
-          imagen_url: undefined,
+  const VariantForm = useMemo(() => {
+    const VariantFormComponent = () => {
+      const [productFormData, setProductFormData] = useState<ProductFormData>({
+        producto_nombre: '',
+        producto_descripcion: '',
+        categoria: '',
+        marca: '',
+        id_sistema_talla: 0,
+        variantes: [
+          {
+            nombre: '',
+            precio: 0,
+            precio_original: undefined,
+            imagen_url: undefined,
           imagen_public_id: undefined,
           tallas: []
         }
@@ -1396,7 +1397,18 @@ const AdminPage: NextPage = () => {
         </div>
       </div>
     );
-  };
+    };
+    
+    return <VariantFormComponent />;
+  }, [
+    formType, 
+    selectedProductId, 
+    additionalVariants, 
+    uploadingImage, 
+    sizeSystems, 
+    products, 
+    t
+  ]);
 
   // Función para formatear la fecha y hora
   const formatDateTime = (date: Date) => {
@@ -2410,7 +2422,7 @@ const AdminPage: NextPage = () => {
       </div>
 
       {/* Formulario modal */}
-      {showVariantForm && <VariantForm />}
+      {showVariantForm && VariantForm}
     </div>
   );
 };
