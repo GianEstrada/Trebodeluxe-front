@@ -563,7 +563,34 @@ const AdminPage: NextPage = () => {
             🔍 {t('Buscar')}
           </button>
           <button
-            onClick={() => setShowVariantForm(true)}
+            onClick={() => {
+              console.log('🔍 [DEBUG] Abriendo modal de variante...');
+              console.log('🔍 [DEBUG] Usuario en contexto antes de abrir modal:', user ? {
+                id: user.id_usuario,
+                usuario: user.usuario,
+                tieneToken: !!user.token,
+                tokenLength: user.token?.length || 0
+              } : 'No user in context');
+              
+              const savedUser = localStorage.getItem('user');
+              if (savedUser) {
+                try {
+                  const userData = JSON.parse(savedUser);
+                  console.log('🔍 [DEBUG] Usuario en localStorage antes de abrir modal:', {
+                    id: userData.id_usuario,
+                    usuario: userData.usuario,
+                    tieneToken: !!userData.token,
+                    tokenLength: userData.token?.length || 0
+                  });
+                } catch (e) {
+                  console.log('🔍 [DEBUG] Error al parsear localStorage:', e);
+                }
+              } else {
+                console.log('🔍 [DEBUG] No hay usuario en localStorage');
+              }
+              
+              setShowVariantForm(true);
+            }}
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
           >
@@ -731,6 +758,14 @@ const AdminPage: NextPage = () => {
     };
 
     const handleImageUpload = async (file: File, variantIndex?: number) => {
+      console.log('🔍 [DEBUG] Iniciando handleImageUpload...');
+      console.log('🔍 [DEBUG] Usuario desde contexto:', user ? {
+        id: user.id_usuario,
+        usuario: user.usuario,
+        tieneToken: !!user.token,
+        tokenLength: user.token?.length || 0
+      } : 'No user in context');
+      
       setLocalUploadingImage(true);
       setUploadingVariantIndex(variantIndex ?? null);
       
@@ -740,11 +775,26 @@ const AdminPage: NextPage = () => {
         
         // Obtener token del contexto de usuario primero, luego localStorage
         let token = user?.token;
+        console.log('🔍 [DEBUG] Token desde contexto:', token ? `Token presente (${token.length} chars)` : 'No token en contexto');
+        
         if (!token) {
+          console.log('🔍 [DEBUG] Buscando token en localStorage...');
           const savedUser = localStorage.getItem('user');
           if (savedUser) {
-            const userData = JSON.parse(savedUser);
-            token = userData.token;
+            try {
+              const userData = JSON.parse(savedUser);
+              token = userData.token;
+              console.log('🔍 [DEBUG] Token desde localStorage:', token ? `Token encontrado (${token.length} chars)` : 'No token en localStorage');
+              console.log('🔍 [DEBUG] Datos del usuario en localStorage:', {
+                id: userData.id_usuario,
+                usuario: userData.usuario,
+                tieneToken: !!userData.token
+              });
+            } catch (parseError) {
+              console.error('🔍 [DEBUG] Error al parsear datos de localStorage:', parseError);
+            }
+          } else {
+            console.log('🔍 [DEBUG] No hay datos de usuario en localStorage');
           }
         }
         
@@ -752,7 +802,10 @@ const AdminPage: NextPage = () => {
           throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
         }
         
-        console.log('Subiendo imagen con token:', token ? 'Token presente' : 'No token');
+        console.log('🔍 [DEBUG] Subiendo imagen con token:', token ? 'Token presente' : 'No token');
+        console.log('🔍 [DEBUG] Headers a enviar:', {
+          Authorization: `Bearer ${token.substring(0, 20)}...`
+        });
         
         const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
           method: 'POST',
@@ -762,8 +815,11 @@ const AdminPage: NextPage = () => {
           body: formData,
         });
         
+        console.log('🔍 [DEBUG] Respuesta del servidor - Status:', response.status);
+        console.log('🔍 [DEBUG] Respuesta del servidor - OK:', response.ok);
+        
         const data = await response.json();
-        console.log('Respuesta del servidor:', data);
+        console.log('🔍 [DEBUG] Respuesta del servidor - Data:', data);
         
         if (!data.success) {
           throw new Error(data.message || 'Error uploading image');
