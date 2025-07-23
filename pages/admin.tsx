@@ -503,8 +503,17 @@ const AdminPage: NextPage = () => {
       const formData = new FormData();
       formData.append('image', file);
       
+      // Obtener token del localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+      
       const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
       
@@ -769,25 +778,72 @@ const AdminPage: NextPage = () => {
       
       try {
         let response;
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert(t('Error de autenticación. Por favor, inicie sesión nuevamente.'));
+          return;
+        }
         
         if (formType === 'nuevo_producto') {
-          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(productFormData),
-          });
+          // Para nuevo producto, si la primera variante tiene imagen, necesitamos usar FormData
+          const firstVariant = productFormData.variantes[0];
+          
+          if (firstVariant && firstVariant.imagen_url) {
+            // Crear un FormData con todos los datos del producto
+            const formData = new FormData();
+            
+            // Datos del producto
+            formData.append('nombre', productFormData.producto_nombre);
+            formData.append('descripcion', productFormData.producto_descripcion || '');
+            formData.append('categoria', productFormData.categoria);
+            formData.append('marca', productFormData.marca || '');
+            if (productFormData.id_sistema_talla) {
+              formData.append('id_sistema_talla', productFormData.id_sistema_talla.toString());
+            }
+            
+            // Datos de la primera variante
+            formData.append('nombre_variante', firstVariant.nombre);
+            formData.append('precio', firstVariant.precio.toString());
+            if (firstVariant.precio_original) {
+              formData.append('precio_original', firstVariant.precio_original.toString());
+            }
+            
+            // Si hay imagen URL (ya subida), la enviamos también
+            if (firstVariant.imagen_url) {
+              formData.append('imagen_url', firstVariant.imagen_url);
+              formData.append('imagen_public_id', firstVariant.imagen_public_id || '');
+            }
+            
+            response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              body: formData,
+            });
+          } else {
+            // Sin imagen, usar JSON normal
+            response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(productFormData),
+            });
+          }
         } else {
+          // Para nueva variante
           const payload = {
             id_producto: selectedProductId,
             ...singleVariantData
           };
           
-          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants', {
+          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(payload),
           });
@@ -955,6 +1011,24 @@ const AdminPage: NextPage = () => {
                         <label className="block text-sm font-medium text-gray-300 mb-1">
                           {t('Imagen')}
                         </label>
+                        
+                        {/* Vista previa de imagen existente */}
+                        {variant.imagen_url && (
+                          <div className="mb-2">
+                            <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden">
+                              <Image
+                                src={variant.imagen_url}
+                                alt={variant.nombre}
+                                width={96}
+                                height={96}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">{t('Imagen actual')}</p>
+                          </div>
+                        )}
+                        
+                        {/* Input para subir nueva imagen */}
                         <input
                           type="file"
                           accept="image/*"
@@ -962,9 +1036,23 @@ const AdminPage: NextPage = () => {
                             const file = e.target.files?.[0];
                             if (file) handleImageUpload(file, index);
                           }}
-                          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+                          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
                         />
-                        {uploadingImage && <p className="text-yellow-400 text-sm mt-1">{t('Subiendo imagen...')}</p>}
+                        
+                        {/* Estados de carga */}
+                        {uploadingImage && (
+                          <p className="text-yellow-400 text-sm mt-1 flex items-center">
+                            <span className="animate-spin mr-2">⏳</span>
+                            {t('Subiendo imagen...')}
+                          </p>
+                        )}
+                        
+                        {variant.imagen_url && (
+                          <p className="text-green-400 text-sm mt-1 flex items-center">
+                            <span className="mr-2">✓</span>
+                            {t('Imagen cargada exitosamente')}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1146,6 +1234,24 @@ const AdminPage: NextPage = () => {
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     {t('Imagen')}
                   </label>
+                  
+                  {/* Vista previa de imagen existente */}
+                  {singleVariantData.imagen_url && (
+                    <div className="mb-2">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden">
+                        <Image
+                          src={singleVariantData.imagen_url}
+                          alt={singleVariantData.nombre}
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{t('Imagen actual')}</p>
+                    </div>
+                  )}
+                  
+                  {/* Input para subir nueva imagen */}
                   <input
                     type="file"
                     accept="image/*"
@@ -1153,8 +1259,23 @@ const AdminPage: NextPage = () => {
                       const file = e.target.files?.[0];
                       if (file) handleImageUpload(file);
                     }}
-                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
                   />
+                  
+                  {/* Estados de carga */}
+                  {uploadingImage && (
+                    <p className="text-yellow-400 text-sm mt-1 flex items-center">
+                      <span className="animate-spin mr-2">⏳</span>
+                      {t('Subiendo imagen...')}
+                    </p>
+                  )}
+                  
+                  {singleVariantData.imagen_url && (
+                    <p className="text-green-400 text-sm mt-1 flex items-center">
+                      <span className="mr-2">✓</span>
+                      {t('Imagen cargada exitosamente')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-4">

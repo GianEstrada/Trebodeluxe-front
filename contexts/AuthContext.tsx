@@ -32,6 +32,15 @@ interface RegisterData {
   correo: string;
   contrasena: string;
   usuario: string;
+  shippingInfo?: {
+    nombre_completo?: string;
+    telefono?: string;
+    direccion?: string;
+    ciudad?: string;
+    estado?: string;
+    codigo_postal?: string;
+    pais?: string;
+  };
 }
 
 interface AuthContextType {
