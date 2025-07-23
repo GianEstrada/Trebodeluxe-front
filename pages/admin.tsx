@@ -128,6 +128,8 @@ interface VariantFormData {
   imagenes?: Array<{
     url: string;
     public_id: string;
+    file?: File; // Para vistas previas locales
+    isLocalPreview?: boolean; // Para identificar vistas previas locales
   }>;
   tallas: Array<{
     id_talla: number;
@@ -741,6 +743,7 @@ const AdminPage: NextPage = () => {
     const [uniquePriceValue, setUniquePriceValue] = useState(0);
     const [localUploadingImage, setLocalUploadingImage] = useState(false);
     const [uploadingVariantIndex, setUploadingVariantIndex] = useState<number | null>(null);
+    const [uploadingToCloudinary, setUploadingToCloudinary] = useState(false);
 
     const handleSizeSystemChange = (systemId: number) => {
       const system = sizeSystems.find(s => s.id_sistema_talla === systemId);
@@ -770,102 +773,38 @@ const AdminPage: NextPage = () => {
     };
 
     const handleImageUpload = async (file: File, variantIndex?: number) => {
-      console.log('🔍 [DEBUG] Iniciando handleImageUpload...');
-      console.log('🔍 [DEBUG] Usuario desde contexto:', user ? {
-        id: user.id_usuario,
-        usuario: user.usuario,
-        tieneToken: !!user.token,
-        tokenLength: user.token?.length || 0
-      } : 'No user in context');
+      console.log('🔍 [DEBUG] Creando vista previa local para:', file.name);
       
-      setLocalUploadingImage(true);
-      setUploadingVariantIndex(variantIndex ?? null);
+      // Crear URL local para vista previa inmediata
+      const previewUrl = URL.createObjectURL(file);
       
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        // Obtener token del contexto de usuario primero, luego localStorage
-        let token = user?.token;
-        console.log('🔍 [DEBUG] Token desde contexto:', token ? `Token presente (${token.length} chars)` : 'No token en contexto');
-        
-        if (!token) {
-          console.log('🔍 [DEBUG] Buscando token en localStorage...');
-          const savedUser = localStorage.getItem('user');
-          if (savedUser) {
-            try {
-              const userData = JSON.parse(savedUser);
-              token = userData.token;
-              console.log('🔍 [DEBUG] Token desde localStorage:', token ? `Token encontrado (${token.length} chars)` : 'No token en localStorage');
-              console.log('🔍 [DEBUG] Datos del usuario en localStorage:', {
-                id: userData.id_usuario,
-                usuario: userData.usuario,
-                tieneToken: !!userData.token
-              });
-            } catch (parseError) {
-              console.error('🔍 [DEBUG] Error al parsear datos de localStorage:', parseError);
-            }
-          } else {
-            console.log('🔍 [DEBUG] No hay datos de usuario en localStorage');
-          }
-        }
-        
-        if (!token) {
-          throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
-        }
-        
-        console.log('🔍 [DEBUG] Subiendo imagen con token:', token ? 'Token presente' : 'No token');
-        console.log('🔍 [DEBUG] Headers a enviar:', {
-          Authorization: `Bearer ${token.substring(0, 20)}...`
-        });
-        
-        const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData,
-        });
-        
-        console.log('🔍 [DEBUG] Respuesta del servidor - Status:', response.status);
-        console.log('🔍 [DEBUG] Respuesta del servidor - OK:', response.ok);
-        
-        const data = await response.json();
-        console.log('🔍 [DEBUG] Respuesta del servidor - Data:', data);
-        
-        if (!data.success) {
-          throw new Error(data.message || 'Error uploading image');
-        }
-        
-        const result = { url: data.url, public_id: data.public_id };
-        
-        if (formType === 'nuevo_producto' && variantIndex !== undefined) {
-          setProductFormData(prev => ({
-            ...prev,
-            variantes: prev.variantes.map((v, index) => 
-              index === variantIndex 
-                ? { 
-                    ...v, 
-                    // Solo agregar a imagenes array, no duplicar en imagen_url
-                    imagenes: v.imagenes ? [...v.imagenes, result] : [result]
-                  }
-                : v
-            )
-          }));
-        } else {
-          setSingleVariantData(prev => ({
-            ...prev,
-            // Solo agregar a imagenes array, no duplicar en imagen_url
-            imagenes: prev.imagenes ? [...prev.imagenes, result] : [result]
-          }));
-        }
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        alert('Error al subir imagen: ' + error);
-      } finally {
-        setLocalUploadingImage(false);
-        setUploadingVariantIndex(null);
+      const imagePreview = {
+        url: previewUrl,
+        public_id: 'local-preview-' + Date.now(), // ID temporal para vista previa
+        file: file, // Guardamos el archivo para subirlo después
+        isLocalPreview: true // Marca para identificar vistas previas locales
+      };
+      
+      if (formType === 'nuevo_producto' && variantIndex !== undefined) {
+        setProductFormData(prev => ({
+          ...prev,
+          variantes: prev.variantes.map((v, index) => 
+            index === variantIndex 
+              ? { 
+                  ...v, 
+                  imagenes: v.imagenes ? [...v.imagenes, imagePreview] : [imagePreview]
+                }
+              : v
+          )
+        }));
+      } else {
+        setSingleVariantData(prev => ({
+          ...prev,
+          imagenes: prev.imagenes ? [...prev.imagenes, imagePreview] : [imagePreview]
+        }));
       }
+      
+      console.log('🔍 [DEBUG] Vista previa agregada exitosamente');
     };
 
     const addNewVariant = () => {
@@ -893,23 +832,76 @@ const AdminPage: NextPage = () => {
       }));
     };
 
+    // Función para subir imágenes locales a Cloudinary
+    const uploadLocalImagesToCloudinary = async (imagenes: any[]) => {
+      console.log('🔍 [DEBUG] Subiendo imágenes locales a Cloudinary...');
+      
+      const uploadedImages = [];
+      
+      for (const imagen of imagenes) {
+        if (imagen.isLocalPreview && imagen.file) {
+          console.log('🔍 [DEBUG] Subiendo imagen local:', imagen.file.name);
+          
+          // Obtener token
+          let token = user?.token;
+          if (!token) {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+              const userData = JSON.parse(savedUser);
+              token = userData.token;
+            }
+          }
+          
+          if (!token) {
+            throw new Error('No hay token de autenticación');
+          }
+          
+          const formData = new FormData();
+          formData.append('image', imagen.file);
+          
+          const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData,
+          });
+          
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.message || 'Error uploading image');
+          }
+          
+          // Limpiar URL local
+          URL.revokeObjectURL(imagen.url);
+          
+          uploadedImages.push({
+            url: data.url,
+            public_id: data.public_id
+          });
+        } else {
+          // Imagen ya subida, mantenerla
+          uploadedImages.push({
+            url: imagen.url,
+            public_id: imagen.public_id
+          });
+        }
+      }
+      
+      return uploadedImages;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       
       console.log('🔍 [DEBUG] Iniciando handleSubmit...');
-      console.log('🔍 [DEBUG] Usuario desde contexto:', user ? {
-        id: user.id_usuario,
-        usuario: user.usuario,
-        tieneToken: !!user.token,
-        tokenLength: user.token?.length || 0
-      } : 'No user in context');
+      setUploadingToCloudinary(true);
       
       try {
         let response;
         
         // Obtener token del contexto de usuario primero, luego localStorage
         let token = user?.token;
-        console.log('🔍 [DEBUG] Token desde contexto:', token ? `Token presente (${token.length} chars)` : 'No token en contexto');
         
         if (!token) {
           console.log('🔍 [DEBUG] Buscando token en localStorage...');
@@ -936,58 +928,47 @@ const AdminPage: NextPage = () => {
         console.log('🔍 [DEBUG] Procediendo con token válido');
         
         if (formType === 'nuevo_producto') {
-          // Para nuevo producto, si la primera variante tiene imagen, necesitamos usar FormData
-          const firstVariant = productFormData.variantes[0];
+          // Subir imágenes locales de todas las variantes
+          console.log('🔍 [DEBUG] Subiendo imágenes locales para nuevo producto...');
+          const updatedVariantes = await Promise.all(
+            productFormData.variantes.map(async (variante) => {
+              if (variante.imagenes && variante.imagenes.length > 0) {
+                const uploadedImages = await uploadLocalImagesToCloudinary(variante.imagenes);
+                return {
+                  ...variante,
+                  imagenes: uploadedImages
+                };
+              }
+              return variante;
+            })
+          );
           
-          if (firstVariant && firstVariant.imagen_url) {
-            // Crear un FormData con todos los datos del producto
-            const formData = new FormData();
-            
-            // Datos del producto
-            formData.append('nombre', productFormData.producto_nombre);
-            formData.append('descripcion', productFormData.producto_descripcion || '');
-            formData.append('categoria', productFormData.categoria);
-            formData.append('marca', productFormData.marca || '');
-            if (productFormData.id_sistema_talla) {
-              formData.append('id_sistema_talla', productFormData.id_sistema_talla.toString());
-            }
-            
-            // Datos de la primera variante
-            formData.append('nombre_variante', firstVariant.nombre);
-            formData.append('precio', firstVariant.precio.toString());
-            if (firstVariant.precio_original) {
-              formData.append('precio_original', firstVariant.precio_original.toString());
-            }
-            
-            // Si hay imagen URL (ya subida), la enviamos también
-            if (firstVariant.imagen_url) {
-              formData.append('imagen_url', firstVariant.imagen_url);
-              formData.append('imagen_public_id', firstVariant.imagen_public_id || '');
-            }
-            
-            response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`
-              },
-              body: formData,
-            });
-          } else {
-            // Sin imagen, usar JSON normal
-            response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(productFormData),
-            });
-          }
+          const updatedProductData = {
+            ...productFormData,
+            variantes: updatedVariantes
+          };
+          
+          response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedProductData),
+          });
         } else {
-          // Para nueva variante
+          // Para nueva variante - subir imágenes locales
+          console.log('🔍 [DEBUG] Subiendo imágenes locales para nueva variante...');
+          let updatedVariantData = { ...singleVariantData };
+          
+          if (singleVariantData.imagenes && singleVariantData.imagenes.length > 0) {
+            const uploadedImages = await uploadLocalImagesToCloudinary(singleVariantData.imagenes);
+            updatedVariantData.imagenes = uploadedImages;
+          }
+          
           const payload = {
             id_producto: selectedProductId,
-            ...singleVariantData
+            ...updatedVariantData
           };
           
           response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
@@ -1013,6 +994,8 @@ const AdminPage: NextPage = () => {
       } catch (error) {
         console.error('Error saving:', error);
         alert(t('Error al guardar'));
+      } finally {
+        setUploadingToCloudinary(false);
       }
     };
 
@@ -1570,10 +1553,17 @@ const AdminPage: NextPage = () => {
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-                disabled={localUploadingImage}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={uploadingToCloudinary}
               >
-                {localUploadingImage ? t('Subiendo imagen...') : t('Guardar')}
+                {uploadingToCloudinary ? (
+                  <span className="flex items-center justify-center">
+                    <span className="animate-spin mr-2">⏳</span>
+                    {t('Subiendo a Cloudinary...')}
+                  </span>
+                ) : (
+                  t('Guardar')
+                )}
               </button>
               <button
                 type="button"
