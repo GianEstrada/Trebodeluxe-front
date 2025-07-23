@@ -409,17 +409,32 @@ const CatalogoScreen: NextPage = () => {
     // Filtro específico para promociones (productos con descuento)
     let matchesFilter = true;
     if (activeFilter === 'promociones') {
-      matchesFilter = product.variantes.some((v: any) => {
-        const precio = typeof v.precio === 'string' ? parseFloat(v.precio) : (v.precio || 0);
-        const precioOriginal = v.precio_original 
-          ? (typeof v.precio_original === 'string' ? parseFloat(v.precio_original) : v.precio_original)
+      // Verificar que product.variantes existe y es un array antes de usar some()
+      if (product.variantes && Array.isArray(product.variantes)) {
+        matchesFilter = product.variantes.some((v: any) => {
+          const precio = typeof v.precio === 'string' ? parseFloat(v.precio) : (v.precio || 0);
+          const precioOriginal = v.precio_original 
+            ? (typeof v.precio_original === 'string' ? parseFloat(v.precio_original) : v.precio_original)
+            : null;
+          return precioOriginal && precio < precioOriginal;
+        });
+      } else {
+        // Para productos sin variantes (formato legacy), verificar descuento directamente
+        const precio = typeof product.price === 'string' ? parseFloat(product.price) : (product.price || 0);
+        const precioOriginal = product.originalPrice 
+          ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice)
           : null;
-        return precioOriginal && precio < precioOriginal;
-      });
+        matchesFilter = precioOriginal && precio < precioOriginal;
+      }
     } else if (activeFilter === 'populares') {
-      matchesFilter = product.variantes.some((v: any) => v.activo); // Solo productos con variantes activas
+      // Verificar que product.variantes existe antes de usar some()
+      if (product.variantes && Array.isArray(product.variantes)) {
+        matchesFilter = product.variantes.some((v: any) => v.activo); // Solo productos con variantes activas
+      } else {
+        matchesFilter = true; // Para productos legacy, asumimos que están disponibles
+      }
     } else if (activeFilter === 'nuevos') {
-      matchesFilter = product.id_producto > 10; // Simular productos nuevos
+      matchesFilter = product.id_producto ? product.id_producto > 10 : product.id > 10; // Simular productos nuevos
     } else if (activeFilter === 'basicos') {
       matchesFilter = product.categoria === 'Camisetas'; // Solo camisetas para básicos
     }
@@ -1259,7 +1274,10 @@ const CatalogoScreen: NextPage = () => {
                 ? Math.round(((precioOriginal - precio) / precioOriginal) * 100)
                 : 0;
               
-              const hasStock = firstVariant.tallas.some((talla: any) => talla.cantidad > 0);
+              // Verificar que tallas existe y es un array antes de usar some()
+              const hasStock = firstVariant.tallas && Array.isArray(firstVariant.tallas) 
+                ? firstVariant.tallas.some((talla: any) => talla.cantidad > 0)
+                : false;
               
               return (
                 <div key={`${product.id_producto}-${firstVariant.id_variante}`} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
