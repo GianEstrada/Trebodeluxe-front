@@ -5,24 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../utils/roles';
 
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  size: string;
-  color: string;
-  quantity: number;
-  inStock: boolean;
-}
-
 const CarritoPage: NextPage = () => {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -55,42 +45,6 @@ const CarritoPage: NextPage = () => {
   
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
-
-  // Estados del carrito
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: "Camiseta Básica Premium",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      size: "M",
-      color: "Blanco",
-      quantity: 2,
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Polo Clásico Elegante",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      size: "L",
-      color: "Azul",
-      quantity: 1,
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Chaqueta Moderna Sport",
-      price: 89.99,
-      image: "/image@2x.png",
-      size: "M",
-      color: "Negro",
-      quantity: 1,
-      inStock: false
-    }
-  ]);
 
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
@@ -142,38 +96,37 @@ const CarritoPage: NextPage = () => {
     }
   };
 
-  // Funciones del carrito
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(id);
-      return;
+  // Funciones del carrito usando datos reales
+  const handleUpdateQuantity = async (id_variante: number, id_talla: number, newQuantity: number) => {
+    try {
+      await updateQuantity(id_variante, id_talla, newQuantity);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
     }
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
   };
 
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id));
+  const handleRemoveItem = async (id_variante: number, id_talla: number) => {
+    try {
+      await removeItem(id_variante, id_talla);
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const handleClearCart = async () => {
+    try {
+      await clearCart();
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+    }
   };
 
   const calculateShipping = () => {
-    const subtotal = calculateSubtotal();
-    return subtotal >= 500 ? 0 : 50; // Envío gratis arriba de $500
+    return totalPrice >= 500 ? 0 : 50; // Envío gratis arriba de $500
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping();
+    return totalPrice + calculateShipping();
   };
 
   // Cargar preferencias guardadas
@@ -801,25 +754,41 @@ const CarritoPage: NextPage = () => {
                       {/* Lista de productos */}
                       <div className="space-y-4 flex-1 overflow-y-auto">
                         {cartItems.map((item) => (
-                          <div key={item.id} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                          <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
                             <div className="flex items-start gap-3">
-                              <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0"></div>
+                              <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0 overflow-hidden">
+                                {item.imagen_url ? (
+                                  <Image
+                                    src={item.imagen_url}
+                                    alt={item.nombre_producto}
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500 text-xs">
+                                    Sin imagen
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-medium truncate">{item.name}</h4>
-                                <p className="text-gray-300 text-sm">{t('Talla')}: {item.size}, {t('Color')}: {item.color}</p>
+                                <h4 className="text-white font-medium truncate">{item.nombre_producto}</h4>
+                                <p className="text-gray-300 text-sm">{t('Talla')}: {item.nombre_talla}, {t('Variante')}: {item.nombre_variante}</p>
                                 <div className="flex items-center justify-between mt-2">
-                                  <span className="text-white font-bold">{formatPrice(item.price)}</span>
+                                  <span className="text-white font-bold">${item.precio.toFixed(2)}</span>
                                   <div className="flex items-center gap-2">
                                     <button 
-                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                      className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                      onClick={() => handleUpdateQuantity(item.id_variante, item.id_talla, item.cantidad - 1)}
+                                      className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors disabled:opacity-50"
+                                      disabled={isLoading || item.cantidad <= 1}
                                     >
                                       -
                                     </button>
-                                    <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
+                                    <span className="text-white text-sm w-8 text-center">{item.cantidad}</span>
                                     <button 
-                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                      className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                      onClick={() => handleUpdateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                      className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors disabled:opacity-50"
+                                      disabled={isLoading}
                                     >
                                       +
                                     </button>
@@ -827,8 +796,9 @@ const CarritoPage: NextPage = () => {
                                 </div>
                               </div>
                               <button 
-                                onClick={() => removeItem(item.id)}
-                                className="text-red-400 hover:text-red-300 transition-colors"
+                                onClick={() => handleRemoveItem(item.id_variante, item.id_talla)}
+                                className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                                disabled={isLoading}
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -843,7 +813,7 @@ const CarritoPage: NextPage = () => {
                       <div className="mt-6 pt-4 border-t border-white/20">
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Subtotal:')}</span>
-                          <span className="text-white font-bold">{formatPrice(calculateSubtotal())}</span>
+                          <span className="text-white font-bold">${totalPrice.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Envío:')}</span>
@@ -915,64 +885,70 @@ const CarritoPage: NextPage = () => {
             ) : (
               <div className="space-y-4">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+                  <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
                     <div className="flex items-start gap-4">
                       {/* Imagen del producto */}
                       <div className="w-24 h-24 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                        />
+                        {item.imagen_url ? (
+                          <Image
+                            src={item.imagen_url}
+                            alt={item.nombre_producto}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500 text-sm">
+                            Sin imagen
+                          </div>
+                        )}
                       </div>
 
                       {/* Información del producto */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-lg font-medium text-white mb-1">{t(item.name)}</h3>
+                            <h3 className="text-lg font-medium text-white mb-1">{item.nombre_producto}</h3>
                             <p className="text-sm text-gray-400 mb-2">
-                              {t('Talla')}: {item.size} | {t('Color')}: {t(item.color)}
+                              {t('Talla')}: {item.nombre_talla} | {t('Variante')}: {item.nombre_variante}
                             </p>
                             <div className="flex items-center space-x-2">
                               <span className="text-lg font-bold text-green-400">
-                                {formatPrice(item.price)}
+                                ${item.precio.toFixed(2)}
                               </span>
-                              {item.originalPrice && (
+                              {item.precio_original && (
                                 <span className="text-sm text-gray-500 line-through">
-                                  {formatPrice(item.originalPrice)}
+                                  ${item.precio_original.toFixed(2)}
                                 </span>
                               )}
                             </div>
-                            {!item.inStock && (
-                              <p className="text-red-400 text-sm mt-1">{t('Producto agotado')}</p>
-                            )}
                           </div>
 
                           {/* Controles de cantidad */}
                           <div className="flex items-center space-x-3">
                             <div className="flex items-center space-x-2">
                               <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white"
+                                onClick={() => handleUpdateQuantity(item.id_variante, item.id_talla, item.cantidad - 1)}
+                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white disabled:opacity-50"
+                                disabled={isLoading || item.cantidad <= 1}
                               >
                                 -
                               </button>
                               <span className="w-12 text-center text-white font-medium">
-                                {item.quantity}
+                                {item.cantidad}
                               </span>
                               <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white"
+                                onClick={() => handleUpdateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white disabled:opacity-50"
+                                disabled={isLoading}
                               >
                                 +
                               </button>
                             </div>
                             <button
-                              onClick={() => removeItem(item.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors p-2"
+                              onClick={() => handleRemoveItem(item.id_variante, item.id_talla)}
+                              className="text-red-400 hover:text-red-300 transition-colors p-2 disabled:opacity-50"
+                              disabled={isLoading}
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -997,8 +973,8 @@ const CarritoPage: NextPage = () => {
                   
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">{t('Subtotal')} ({cartItems.reduce((total, item) => total + item.quantity, 0)} {t('productos')})</span>
-                      <span className="text-white font-medium">{formatPrice(calculateSubtotal())}</span>
+                      <span className="text-gray-300">{t('Subtotal')} ({totalItems} {t('productos')})</span>
+                      <span className="text-white font-medium">{formatPrice(totalPrice)}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -1010,7 +986,7 @@ const CarritoPage: NextPage = () => {
                     
                     {calculateShipping() > 0 && (
                       <div className="text-xs text-gray-400 bg-green-400/10 border border-green-400/20 rounded p-2">
-                        {t('Agrega')} {formatPrice(500 - calculateSubtotal())} {t('más para envío gratis')}
+                        {t('Agrega')} {formatPrice(500 - totalPrice)} {t('más para envío gratis')}
                       </div>
                     )}
                     

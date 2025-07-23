@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { canAccessAdminPanel } from '../utils/roles';
 
 interface NavigationBarProps {
@@ -38,6 +39,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   // Hooks
   const { t } = useUniversalTranslate(currentLanguage);
   const { user, isAuthenticated, logout } = useAuth();
+  const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
 
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -602,12 +604,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
         {/* Botón del Carrito */}
         <div className="w-8 relative h-8" ref={cartDropdownRef}>
           <button 
-            onClick={() => {
-              if (handleAuthRequiredAction()) {
-                window.location.href = '/carrito';
-              }
-            }}
-            className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+            onClick={() => setShowCartDropdown(!showCartDropdown)}
+            className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
           >
             <Image
               className="h-full w-full object-contain"
@@ -617,7 +615,173 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               alt="Carrito de compras"
               src="/icon3.svg"
             />
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {totalItems > 99 ? '99+' : totalItems}
+              </span>
+            )}
           </button>
+          
+          {/* Dropdown del Carrito */}
+          {showCartDropdown && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-96 overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {t('Tu Carrito')} ({totalItems})
+                  </h3>
+                  {cartItems.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await clearCart();
+                        } catch (error) {
+                          console.error('Error clearing cart:', error);
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                      disabled={isLoading}
+                    >
+                      {t('Limpiar')}
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="max-h-64 overflow-y-auto">
+                {isLoading ? (
+                  <div className="p-4 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">{t('Cargando...')}</p>
+                  </div>
+                ) : cartItems.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <Image
+                      src="/icon3.svg"
+                      alt="Carrito vacío"
+                      width={48}
+                      height={48}
+                      className="mx-auto mb-3 opacity-50"
+                    />
+                    <p>{t('Tu carrito está vacío')}</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {cartItems.map((item) => (
+                      <div key={`${item.id_variante}-${item.id_talla}`} className="p-4 flex gap-3">
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.imagen_url ? (
+                            <Image
+                              src={item.imagen_url}
+                              alt={item.nombre_producto}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">Sin imagen</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-800 truncate">
+                            {item.nombre_producto}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {item.nombre_variante} - {item.nombre_talla}
+                          </p>
+                          
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await updateQuantity(item.id_variante, item.id_talla, item.cantidad - 1);
+                                  } catch (error) {
+                                    console.error('Error updating quantity:', error);
+                                  }
+                                }}
+                                className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                disabled={isLoading || item.cantidad <= 1}
+                              >
+                                -
+                              </button>
+                              <span className="text-sm font-medium px-2">{item.cantidad}</span>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await updateQuantity(item.id_variante, item.id_talla, item.cantidad + 1);
+                                  } catch (error) {
+                                    console.error('Error updating quantity:', error);
+                                  }
+                                }}
+                                className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                disabled={isLoading}
+                              >
+                                +
+                              </button>
+                            </div>
+                            
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await removeItem(item.id_variante, item.id_talla);
+                                } catch (error) {
+                                  console.error('Error removing item:', error);
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                              disabled={isLoading}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          <div className="text-right mt-1">
+                            <span className="text-sm font-semibold text-gray-800">
+                              ${(item.precio * item.cantidad).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {cartItems.length > 0 && (
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-lg font-semibold text-gray-800">{t('Total:')}</span>
+                    <span className="text-xl font-bold text-gray-900">${totalPrice.toFixed(2)}</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Link href="/carrito">
+                      <button
+                        onClick={() => setShowCartDropdown(false)}
+                        className="w-full bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-900 transition-colors duration-200 font-medium"
+                      >
+                        {t('Ver Carrito')}
+                      </button>
+                    </Link>
+                    <Link href="/checkout">
+                      <button
+                        onClick={() => setShowCartDropdown(false)}
+                        className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+                      >
+                        {t('Finalizar Compra')}
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
