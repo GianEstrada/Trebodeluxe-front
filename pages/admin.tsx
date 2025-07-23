@@ -507,8 +507,20 @@ const AdminPage: NextPage = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      // Obtener token del contexto de usuario
-      const token = user?.token || localStorage.getItem('token');
+      // Obtener token del contexto de usuario primero, luego localStorage
+      let token = user?.token;
+      if (!token) {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          try {
+            const userData = JSON.parse(savedUser);
+            token = userData.token;
+          } catch (parseError) {
+            console.error('Error al parsear datos de localStorage:', parseError);
+          }
+        }
+      }
+      
       if (!token) {
         throw new Error('No hay token de autenticación');
       }
@@ -884,13 +896,44 @@ const AdminPage: NextPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       
+      console.log('🔍 [DEBUG] Iniciando handleSubmit...');
+      console.log('🔍 [DEBUG] Usuario desde contexto:', user ? {
+        id: user.id_usuario,
+        usuario: user.usuario,
+        tieneToken: !!user.token,
+        tokenLength: user.token?.length || 0
+      } : 'No user in context');
+      
       try {
         let response;
-        const token = localStorage.getItem('token');
+        
+        // Obtener token del contexto de usuario primero, luego localStorage
+        let token = user?.token;
+        console.log('🔍 [DEBUG] Token desde contexto:', token ? `Token presente (${token.length} chars)` : 'No token en contexto');
+        
         if (!token) {
+          console.log('🔍 [DEBUG] Buscando token en localStorage...');
+          const savedUser = localStorage.getItem('user');
+          if (savedUser) {
+            try {
+              const userData = JSON.parse(savedUser);
+              token = userData.token;
+              console.log('🔍 [DEBUG] Token desde localStorage:', token ? `Token encontrado (${token.length} chars)` : 'No token en localStorage');
+            } catch (parseError) {
+              console.error('🔍 [DEBUG] Error al parsear datos de localStorage:', parseError);
+            }
+          } else {
+            console.log('🔍 [DEBUG] No hay datos de usuario en localStorage');
+          }
+        }
+        
+        if (!token) {
+          console.log('🔍 [DEBUG] ERROR: No se encontró token');
           alert(t('Error de autenticación. Por favor, inicie sesión nuevamente.'));
           return;
         }
+        
+        console.log('🔍 [DEBUG] Procediendo con token válido');
         
         if (formType === 'nuevo_producto') {
           // Para nuevo producto, si la primera variante tiene imagen, necesitamos usar FormData
