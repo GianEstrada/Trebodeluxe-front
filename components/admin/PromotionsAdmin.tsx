@@ -1,6 +1,7 @@
 // PromotionsAdmin.tsx - Componente para administrar promociones
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Promotion {
   id_promocion: number;
@@ -29,12 +30,43 @@ interface PromotionsAdminProps {
 }
 
 const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
+  const { user } = useAuth();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Función helper para obtener token
+  const getAuthToken = () => {
+    let token = user?.token;
+    if (!token) {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        token = userData.token;
+      }
+    }
+    return token;
+  };
+
+  // Función helper para hacer peticiones autenticadas
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación disponible');
+    }
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  };
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -61,7 +93,7 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
   const fetchPromotions = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/admin/promotions?page=${page}&limit=10`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/promotions?page=${page}&limit=10`);
       const data = await response.json();
       
       if (data.success) {
@@ -162,11 +194,8 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
       
       const method = editingPromotion ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(payload)
       });
 
@@ -189,7 +218,7 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
     if (!confirm('¿Estás seguro de que deseas eliminar esta promoción?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/promotions/${promotionId}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/promotions/${promotionId}`, {
         method: 'DELETE'
       });
 
