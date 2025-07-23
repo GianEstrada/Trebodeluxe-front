@@ -210,7 +210,7 @@ const CatalogoScreen: NextPage = () => {
         if (activeFilter === 'promociones') {
           // Para promociones, usar el endpoint de mejores promociones
           const promoResponse = await productsApi.getBestPromotions(20) as any;
-          if (promoResponse.success) {
+          if (promoResponse.success && promoResponse.products && Array.isArray(promoResponse.products)) {
             setAllProducts(promoResponse.products.map(productUtils.transformToLegacyFormat));
           }
         } else if (selectedCategory && selectedCategory !== 'Todas') {
@@ -224,7 +224,7 @@ const CatalogoScreen: NextPage = () => {
         // Si no es promociones, cargar productos normales
         if (activeFilter !== 'promociones') {
           const productsResponse = await productsApi.getAll(filters) as any;
-          if (productsResponse.success) {
+          if (productsResponse.success && productsResponse.products && Array.isArray(productsResponse.products)) {
             setAllProducts(productsResponse.products.map(productUtils.transformToLegacyFormat));
           }
         }
@@ -235,12 +235,12 @@ const CatalogoScreen: NextPage = () => {
           productsApi.getBrands() as any
         ]);
         
-        if (categoriesResponse.success) {
-          setCategories(categoriesResponse.categories);
+        if (categoriesResponse.success && categoriesResponse.data && Array.isArray(categoriesResponse.data)) {
+          setCategories(categoriesResponse.data);
         }
         
-        if (brandsResponse.success) {
-          setBrands(brandsResponse.brands);
+        if (brandsResponse.success && brandsResponse.data && Array.isArray(brandsResponse.data)) {
+          setBrands(brandsResponse.data);
         }
         
       } catch (err: any) {
@@ -304,7 +304,7 @@ const CatalogoScreen: NextPage = () => {
   }, [router.isReady, router.query]);
 
   // Filtrar productos basado en los criterios seleccionados
-  const filteredProducts = allProducts.filter(product => {
+  const filteredProducts = Array.isArray(allProducts) ? allProducts.filter(product => {
     const matchesSearch = searchTerm === "" || 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -328,7 +328,7 @@ const CatalogoScreen: NextPage = () => {
     }
     
     return matchesSearch && matchesCategory && matchesBrand && matchesColor && matchesSize && matchesFilter;
-  });
+  }) : [];
 
   return (
     <div className="w-full relative [background:linear-gradient(180deg,_#323232,_#000)] min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa">
@@ -1033,7 +1033,7 @@ const CatalogoScreen: NextPage = () => {
               disabled={loading}
             >
               <option value="Todas" className="text-black">{t('Todas las categorías')}</option>
-              {categories.map(category => (
+              {Array.isArray(categories) && categories.map(category => (
                 <option key={category} value={category} className="text-black">
                   {t(category)}
                 </option>
@@ -1047,7 +1047,7 @@ const CatalogoScreen: NextPage = () => {
               disabled={loading}
             >
               <option value="Todas" className="text-black">{t('Todas las marcas')}</option>
-              {brands.map(brand => (
+              {Array.isArray(brands) && brands.map(brand => (
                 <option key={brand} value={brand} className="text-black">
                   {brand}
                 </option>
@@ -1126,7 +1126,7 @@ const CatalogoScreen: NextPage = () => {
                   {activeFilter === 'basicos' && t('Mostrando productos básicos')}
                 </span>
                 <span className="text-green-400 bg-green-900/30 px-2 py-1 rounded text-sm">
-                  {filteredProducts.length} {t('productos encontrados')}
+                  {Array.isArray(filteredProducts) ? filteredProducts.length : 0} {t('productos encontrados')}
                 </span>
               </div>
               <Link href="/catalogo" className="text-green-300 hover:text-white transition-colors text-sm">
@@ -1138,14 +1138,14 @@ const CatalogoScreen: NextPage = () => {
 
         {/* Grid de productos */}
         <div className="w-full max-w-7xl">
-          {!loading && filteredProducts.length === 0 && (
+          {!loading && Array.isArray(filteredProducts) && filteredProducts.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-300 text-lg">{t('No se encontraron productos que coincidan con tu búsqueda.')}</p>
             </div>
           )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => {
+            {Array.isArray(filteredProducts) && filteredProducts.map((product) => {
               const discount = productUtils.calculateDiscount(product.originalPrice, product.price);
               
               return (
