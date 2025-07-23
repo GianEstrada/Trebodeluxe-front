@@ -5,7 +5,15 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-bac
 // Obtener token de autenticación
 const getAuthToken = () => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('treboluxe-token');
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        return userData.token;
+      }
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
   }
   return null;
 };
