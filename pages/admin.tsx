@@ -738,11 +738,21 @@ const AdminPage: NextPage = () => {
         const formData = new FormData();
         formData.append('image', file);
         
-        // Obtener token del contexto de usuario
-        const token = user?.token || localStorage.getItem('token');
+        // Obtener token del contexto de usuario primero, luego localStorage
+        let token = user?.token;
         if (!token) {
-          throw new Error('No hay token de autenticación');
+          const savedUser = localStorage.getItem('user');
+          if (savedUser) {
+            const userData = JSON.parse(savedUser);
+            token = userData.token;
+          }
         }
+        
+        if (!token) {
+          throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
+        }
+        
+        console.log('Subiendo imagen con token:', token ? 'Token presente' : 'No token');
         
         const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
           method: 'POST',
@@ -753,6 +763,8 @@ const AdminPage: NextPage = () => {
         });
         
         const data = await response.json();
+        console.log('Respuesta del servidor:', data);
+        
         if (!data.success) {
           throw new Error(data.message || 'Error uploading image');
         }
@@ -766,9 +778,7 @@ const AdminPage: NextPage = () => {
               index === variantIndex 
                 ? { 
                     ...v, 
-                    imagen_url: result.url, 
-                    imagen_public_id: result.public_id,
-                    // Soporte para múltiples imágenes en el futuro
+                    // Solo agregar a imagenes array, no duplicar en imagen_url
                     imagenes: v.imagenes ? [...v.imagenes, result] : [result]
                   }
                 : v
@@ -777,9 +787,7 @@ const AdminPage: NextPage = () => {
         } else {
           setSingleVariantData(prev => ({
             ...prev,
-            imagen_url: result.url,
-            imagen_public_id: result.public_id,
-            // Soporte para múltiples imágenes en el futuro
+            // Solo agregar a imagenes array, no duplicar en imagen_url
             imagenes: prev.imagenes ? [...prev.imagenes, result] : [result]
           }));
         }
