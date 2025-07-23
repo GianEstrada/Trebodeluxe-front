@@ -64,9 +64,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   }, [items]);
 
   const addItem = (newItem: Omit<CartItem, 'cantidad'>, cantidad: number) => {
+    // Ensure price is a number
+    const validatedItem = {
+      ...newItem,
+      precio: typeof newItem.precio === 'string' ? parseFloat(newItem.precio) : (newItem.precio || 0),
+      precio_original: newItem.precio_original 
+        ? (typeof newItem.precio_original === 'string' ? parseFloat(newItem.precio_original) : newItem.precio_original)
+        : undefined
+    };
+
     setItems(currentItems => {
       const existingItemIndex = currentItems.findIndex(
-        item => item.id_variante === newItem.id_variante && item.id_talla === newItem.id_talla
+        item => item.id_variante === validatedItem.id_variante && item.id_talla === validatedItem.id_talla
       );
 
       if (existingItemIndex >= 0) {
@@ -76,7 +85,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return updatedItems;
       } else {
         // Si es un item nuevo, agregarlo
-        return [...currentItems, { ...newItem, cantidad }];
+        return [...currentItems, { ...validatedItem, cantidad }];
       }
     });
   };
@@ -123,7 +132,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   };
 
   const totalItems = items.reduce((total, item) => total + item.cantidad, 0);
-  const totalPrice = items.reduce((total, item) => total + (item.precio * item.cantidad), 0);
+  const totalPrice = items.reduce((total, item) => {
+    const precio = typeof item.precio === 'string' ? parseFloat(item.precio) : (item.precio || 0);
+    return total + (precio * item.cantidad);
+  }, 0);
 
   const value: CartContextType = {
     items,

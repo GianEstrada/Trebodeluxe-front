@@ -144,7 +144,7 @@ const CatalogoScreen: NextPage = () => {
   };
 
   // Función para formatear precio con la moneda seleccionada
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | string | null | undefined) => {
     const exchangeRates = {
       'EUR': 1,
       'USD': 1.1,
@@ -157,7 +157,8 @@ const CatalogoScreen: NextPage = () => {
       'MXN': '$'
     };
     
-    const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
+    const numPrice = typeof price === 'string' ? parseFloat(price) : (price || 0);
+    const convertedPrice = (numPrice * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
     const symbol = symbols[currentCurrency as keyof typeof symbols];
     
     return `${symbol}${convertedPrice}`;
@@ -303,8 +304,8 @@ const CatalogoScreen: NextPage = () => {
               productsMap.get(productKey).variantes.push({
                 id_variante: variant.id_variante,
                 nombre_variante: variant.nombre_variante,
-                precio: variant.precio,
-                precio_original: variant.precio_original,
+                precio: typeof variant.precio === 'string' ? parseFloat(variant.precio) : (variant.precio || 0),
+                precio_original: variant.precio_original ? (typeof variant.precio_original === 'string' ? parseFloat(variant.precio_original) : variant.precio_original) : null,
                 imagen_url: variant.imagen_url,
                 activo: variant.variante_activa,
                 tallas: variant.tallas_stock || []
@@ -408,7 +409,13 @@ const CatalogoScreen: NextPage = () => {
     // Filtro específico para promociones (productos con descuento)
     let matchesFilter = true;
     if (activeFilter === 'promociones') {
-      matchesFilter = product.variantes.some((v: any) => v.precio_original && v.precio < v.precio_original);
+      matchesFilter = product.variantes.some((v: any) => {
+        const precio = typeof v.precio === 'string' ? parseFloat(v.precio) : (v.precio || 0);
+        const precioOriginal = v.precio_original 
+          ? (typeof v.precio_original === 'string' ? parseFloat(v.precio_original) : v.precio_original)
+          : null;
+        return precioOriginal && precio < precioOriginal;
+      });
     } else if (activeFilter === 'populares') {
       matchesFilter = product.variantes.some((v: any) => v.activo); // Solo productos con variantes activas
     } else if (activeFilter === 'nuevos') {
@@ -1244,8 +1251,12 @@ const CatalogoScreen: NextPage = () => {
               const firstSize = firstVariant.tallas && firstVariant.tallas.length > 0 ? firstVariant.tallas[0] : null;
               
               // Calcular descuento si existe precio original
-              const discount = firstVariant.precio_original 
-                ? Math.round(((firstVariant.precio_original - firstVariant.precio) / firstVariant.precio_original) * 100)
+              const precio = typeof firstVariant.precio === 'string' ? parseFloat(firstVariant.precio) : (firstVariant.precio || 0);
+              const precioOriginal = firstVariant.precio_original 
+                ? (typeof firstVariant.precio_original === 'string' ? parseFloat(firstVariant.precio_original) : firstVariant.precio_original)
+                : null;
+              const discount = precioOriginal && precioOriginal > precio
+                ? Math.round(((precioOriginal - precio) / precioOriginal) * 100)
                 : 0;
               
               const hasStock = firstVariant.tallas.some((talla: any) => talla.cantidad > 0);
@@ -1303,9 +1314,9 @@ const CatalogoScreen: NextPage = () => {
                         
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <span className="text-white font-bold text-lg">${firstVariant.precio}</span>
-                            {discount > 0 && (
-                              <span className="text-gray-400 line-through text-sm">${firstVariant.precio_original}</span>
+                            <span className="text-white font-bold text-lg">{formatPrice(precio)}</span>
+                            {discount > 0 && precioOriginal && (
+                              <span className="text-gray-400 line-through text-sm">{formatPrice(precioOriginal)}</span>
                             )}
                           </div>
                         </div>

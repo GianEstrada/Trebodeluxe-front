@@ -111,8 +111,8 @@ const ProductPage: NextPage = () => {
             variantes: productVariants.map((v: any) => ({
               id_variante: v.id_variante,
               nombre_variante: v.nombre_variante,
-              precio: v.precio,
-              precio_original: v.precio_original,
+              precio: typeof v.precio === 'string' ? parseFloat(v.precio) : (v.precio || 0),
+              precio_original: v.precio_original ? (typeof v.precio_original === 'string' ? parseFloat(v.precio_original) : v.precio_original) : undefined,
               imagen_url: v.imagen_url,
               activo: v.variante_activa,
               tallas: v.tallas_stock || []
@@ -165,8 +165,8 @@ const ProductPage: NextPage = () => {
             productsMap.get(productKey).variantes.push({
               id_variante: variant.id_variante,
               nombre_variante: variant.nombre_variante,
-              precio: variant.precio,
-              precio_original: variant.precio_original,
+              precio: typeof variant.precio === 'string' ? parseFloat(variant.precio) : (variant.precio || 0),
+              precio_original: variant.precio_original ? (typeof variant.precio_original === 'string' ? parseFloat(variant.precio_original) : variant.precio_original) : undefined,
               imagen_url: variant.imagen_url,
               activo: variant.variante_activa,
               tallas: variant.tallas_stock || []
@@ -231,11 +231,16 @@ const ProductPage: NextPage = () => {
     }, 500);
   };
 
-  const formatPrice = (price: number) => `$${price.toFixed(2)}`;
+  const formatPrice = (price: number | string | null | undefined) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : (price || 0);
+    return `$${numPrice.toFixed(2)}`;
+  };
 
-  const calculateDiscount = (original?: number, current?: number) => {
-    if (!original || !current) return 0;
-    return Math.round(((original - current) / original) * 100);
+  const calculateDiscount = (original?: number | string | null, current?: number | string | null) => {
+    const origNum = typeof original === 'string' ? parseFloat(original) : (original || 0);
+    const currNum = typeof current === 'string' ? parseFloat(current) : (current || 0);
+    if (!origNum || !currNum || origNum <= currNum) return 0;
+    return Math.round(((origNum - currNum) / origNum) * 100);
   };
 
   if (loading) {
@@ -395,7 +400,7 @@ const ProductPage: NextPage = () => {
               </div>
               {selectedVariant?.precio_original && (
                 <p className="text-sm text-green-300">
-                  Ahorras {formatPrice(selectedVariant.precio_original - selectedVariant.precio)}
+                  Ahorras {formatPrice((typeof selectedVariant.precio_original === 'string' ? parseFloat(selectedVariant.precio_original) : selectedVariant.precio_original) - (typeof selectedVariant.precio === 'string' ? parseFloat(selectedVariant.precio) : selectedVariant.precio))}
                 </p>
               )}
             </div>
