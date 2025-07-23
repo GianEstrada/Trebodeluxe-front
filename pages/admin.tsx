@@ -125,6 +125,10 @@ interface VariantFormData {
   precio_original?: number;
   imagen_url?: string;
   imagen_public_id?: string;
+  imagenes?: Array<{
+    url: string;
+    public_id: string;
+  }>;
   tallas: Array<{
     id_talla: number;
     nombre_talla: string;
@@ -696,6 +700,8 @@ const AdminPage: NextPage = () => {
 
     const [uniquePrice, setUniquePrice] = useState(true);
     const [uniquePriceValue, setUniquePriceValue] = useState(0);
+    const [localUploadingImage, setLocalUploadingImage] = useState(false);
+    const [uploadingVariantIndex, setUploadingVariantIndex] = useState<number | null>(null);
 
     const handleSizeSystemChange = (systemId: number) => {
       const system = sizeSystems.find(s => s.id_sistema_talla === systemId);
@@ -725,15 +731,46 @@ const AdminPage: NextPage = () => {
     };
 
     const handleImageUpload = async (file: File, variantIndex?: number) => {
+      setLocalUploadingImage(true);
+      setUploadingVariantIndex(variantIndex ?? null);
+      
       try {
-        const result = await uploadImageToCloudinary(file);
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Obtener token del contexto de usuario
+        const token = user?.token || localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No hay token de autenticación');
+        }
+        
+        const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData,
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Error uploading image');
+        }
+        
+        const result = { url: data.url, public_id: data.public_id };
         
         if (formType === 'nuevo_producto' && variantIndex !== undefined) {
           setProductFormData(prev => ({
             ...prev,
             variantes: prev.variantes.map((v, index) => 
               index === variantIndex 
-                ? { ...v, imagen_url: result.url, imagen_public_id: result.public_id }
+                ? { 
+                    ...v, 
+                    imagen_url: result.url, 
+                    imagen_public_id: result.public_id,
+                    // Soporte para múltiples imágenes en el futuro
+                    imagenes: v.imagenes ? [...v.imagenes, result] : [result]
+                  }
                 : v
             )
           }));
@@ -741,11 +778,17 @@ const AdminPage: NextPage = () => {
           setSingleVariantData(prev => ({
             ...prev,
             imagen_url: result.url,
-            imagen_public_id: result.public_id
+            imagen_public_id: result.public_id,
+            // Soporte para múltiples imágenes en el futuro
+            imagenes: prev.imagenes ? [...prev.imagenes, result] : [result]
           }));
         }
       } catch (error) {
+        console.error('Error uploading image:', error);
         alert('Error al subir imagen: ' + error);
+      } finally {
+        setLocalUploadingImage(false);
+        setUploadingVariantIndex(null);
       }
     };
 
@@ -1010,24 +1053,43 @@ const AdminPage: NextPage = () => {
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">
-                          {t('Imagen')}
+                          {t('Imágenes')}
                         </label>
                         
-                        {/* Vista previa de imagen existente */}
-                        {variant.imagen_url && (
+                        {/* Vista previa de imágenes existentes */}
+                        {(variant.imagenes && variant.imagenes.length > 0) || variant.imagen_url ? (
                           <div className="mb-2">
-                            <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden">
-                              <Image
-                                src={variant.imagen_url}
-                                alt={variant.nombre}
-                                width={96}
-                                height={96}
-                                className="w-full h-full object-cover"
-                              />
+                            <div className="flex flex-wrap gap-2">
+                              {/* Imagen principal (compatibilidad) */}
+                              {variant.imagen_url && (
+                                <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                                  <Image
+                                    src={variant.imagen_url}
+                                    alt={variant.nombre}
+                                    width={96}
+                                    height={96}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded-bl">1</div>
+                                </div>
+                              )}
+                              {/* Imágenes adicionales */}
+                              {variant.imagenes?.map((img, imgIndex) => (
+                                <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                                  <Image
+                                    src={img.url}
+                                    alt={`${variant.nombre} - ${imgIndex + 2}`}
+                                    width={96}
+                                    height={96}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">{imgIndex + 2}</div>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">{t('Imagen actual')}</p>
+                            <p className="text-xs text-gray-400 mt-1">{t('Imágenes actuales')}</p>
                           </div>
-                        )}
+                        ) : null}
                         
                         {/* Input para subir nueva imagen */}
                         <input
@@ -1039,9 +1101,10 @@ const AdminPage: NextPage = () => {
                           }}
                           className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
                         />
+                        <p className="text-xs text-gray-400 mt-1">{t('Puedes subir múltiples imágenes por variante')}</p>
                         
                         {/* Estados de carga */}
-                        {uploadingImage && (
+                        {localUploadingImage && uploadingVariantIndex === index && (
                           <p className="text-yellow-400 text-sm mt-1 flex items-center">
                             <span className="animate-spin mr-2">⏳</span>
                             {t('Subiendo imagen...')}
@@ -1233,24 +1296,43 @@ const AdminPage: NextPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    {t('Imagen')}
+                    {t('Imágenes')}
                   </label>
                   
-                  {/* Vista previa de imagen existente */}
-                  {singleVariantData.imagen_url && (
+                  {/* Vista previa de imágenes existentes */}
+                  {(singleVariantData.imagenes && singleVariantData.imagenes.length > 0) || singleVariantData.imagen_url ? (
                     <div className="mb-2">
-                      <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden">
-                        <Image
-                          src={singleVariantData.imagen_url}
-                          alt={singleVariantData.nombre}
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="flex flex-wrap gap-2">
+                        {/* Imagen principal (compatibilidad) */}
+                        {singleVariantData.imagen_url && (
+                          <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                            <Image
+                              src={singleVariantData.imagen_url}
+                              alt={singleVariantData.nombre}
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded-bl">1</div>
+                          </div>
+                        )}
+                        {/* Imágenes adicionales */}
+                        {singleVariantData.imagenes?.map((img, imgIndex) => (
+                          <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                            <Image
+                              src={img.url}
+                              alt={`${singleVariantData.nombre} - ${imgIndex + 2}`}
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 rounded-bl">{imgIndex + 2}</div>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{t('Imagen actual')}</p>
+                      <p className="text-xs text-gray-400 mt-1">{t('Imágenes actuales')}</p>
                     </div>
-                  )}
+                  ) : null}
                   
                   {/* Input para subir nueva imagen */}
                   <input
@@ -1262,9 +1344,10 @@ const AdminPage: NextPage = () => {
                     }}
                     className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
                   />
+                  <p className="text-xs text-gray-400 mt-1">{t('Puedes subir múltiples imágenes por variante')}</p>
                   
                   {/* Estados de carga */}
-                  {uploadingImage && (
+                  {localUploadingImage && (
                     <p className="text-yellow-400 text-sm mt-1 flex items-center">
                       <span className="animate-spin mr-2">⏳</span>
                       {t('Subiendo imagen...')}
@@ -1381,9 +1464,9 @@ const AdminPage: NextPage = () => {
               <button
                 type="submit"
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-                disabled={uploadingImage}
+                disabled={localUploadingImage}
               >
-                {uploadingImage ? t('Guardando...') : t('Guardar')}
+                {localUploadingImage ? t('Subiendo imagen...') : t('Guardar')}
               </button>
               <button
                 type="button"
@@ -1404,7 +1487,6 @@ const AdminPage: NextPage = () => {
     formType, 
     selectedProductId, 
     additionalVariants, 
-    uploadingImage, 
     sizeSystems, 
     products, 
     t,
