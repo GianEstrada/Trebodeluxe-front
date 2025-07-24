@@ -252,6 +252,12 @@ const AdminPage: NextPage = () => {
     heroImage2: '/look-polo-2-1@2x.png',
     promosBannerImage: '/promociones-playa.jpg'
   });
+  
+  // Estados para gestión de imágenes principales
+  const [homeImagesLoading, setHomeImagesLoading] = useState(false);
+  const [showImageUploadOverlay, setShowImageUploadOverlay] = useState(false);
+  const [currentImageType, setCurrentImageType] = useState<'heroImage1' | 'heroImage2' | 'promosBannerImage' | null>(null);
+  const [uploadingHomeImage, setUploadingHomeImage] = useState(false);
 
   // Estados para Promotions
   const [promotions, setPromotions] = useState<Promotion[]>([
@@ -344,6 +350,7 @@ const AdminPage: NextPage = () => {
     loadProducts();
     loadSizeSystems();
     loadDashboardStats();
+    loadHomeImages(); // Cargar imágenes principales
   }, []);
 
   // Función para cargar estadísticas del dashboard
@@ -2474,6 +2481,81 @@ const AdminPage: NextPage = () => {
   };
 
   // Funciones para Home Images  
+  const loadHomeImages = useCallback(async () => {
+    setHomeImagesLoading(true);
+    try {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/home-images');
+      const data = await response.json();
+      
+      if (data.success) {
+        setHomeImages(data.images);
+      } else {
+        console.error('Error loading home images:', data.message);
+      }
+    } catch (error) {
+      console.error('Error loading home images:', error);
+    } finally {
+      setHomeImagesLoading(false);
+    }
+  }, []);
+
+  const updateHomeImage = async (imageType: 'heroImage1' | 'heroImage2' | 'promosBannerImage', file: File) => {
+    setUploadingHomeImage(true);
+    try {
+      // Subir imagen a Cloudinary
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+      
+      const uploadResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+      
+      const uploadData = await uploadResponse.json();
+      if (!uploadData.success) {
+        throw new Error(uploadData.message || 'Error uploading image');
+      }
+      
+      // Actualizar en el backend
+      const updateResponse = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/home-images', {
+        method: 'PUT',
+        body: JSON.stringify({
+          imageType,
+          url: uploadData.url,
+          public_id: uploadData.public_id
+        })
+      });
+      
+      const updateData = await updateResponse.json();
+      if (updateData.success) {
+        // Actualizar estado local
+        setHomeImages(prev => ({
+          ...prev,
+          [imageType]: uploadData.url
+        }));
+        
+        alert(t('Imagen actualizada correctamente'));
+        setShowImageUploadOverlay(false);
+        setCurrentImageType(null);
+      } else {
+        throw new Error(updateData.message || 'Error updating image');
+      }
+    } catch (error) {
+      console.error('Error updating home image:', error);
+      alert(t('Error al actualizar la imagen'));
+    } finally {
+      setUploadingHomeImage(false);
+    }
+  };
+
   const updateHomeImages = async () => {
     try {
       console.log('Updating home images:', homeImages);
@@ -2800,62 +2882,167 @@ const AdminPage: NextPage = () => {
     <div className="space-y-6">
       <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
 
-      <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-white/10 shadow-2xl space-y-8">
-        <div className="bg-black/20 rounded-lg p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-            <label className="text-white font-semibold text-lg">{t('Imagen Principal 1')}</label>
+      {homeImagesLoading ? (
+        <div className="text-center text-white">
+          <p>{t('Cargando imágenes...')}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Imagen Hero 1 */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              🖼️ {t('Imagen Hero Izquierda')}
+            </h3>
+            <div className="relative group">
+              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
+                <Image
+                  src={homeImages.heroImage1}
+                  alt="Hero Imagen 1"
+                  width={300}
+                  height={160}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Overlay de descripción en hover */}
+              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                <p className="text-white text-center text-sm px-4">
+                  {t('Imagen principal que aparece debajo del header en el lado izquierdo')}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                setCurrentImageType('heroImage1');
+                setShowImageUploadOverlay(true);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              🔄 {t('Actualizar Imagen')}
+            </button>
           </div>
-          <input
-            type="text"
-            value={homeImages.heroImage1}
-            onChange={(e) => setHomeImages({...homeImages, heroImage1: e.target.value})}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
-            placeholder={t('URL de la primera imagen')}
-          />
-          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-            <Image
-              src={homeImages.heroImage1}
-              alt="Imagen 1"
-              width={192}
-              height={96}
-              className="w-full h-full object-cover"
-              onError={() => console.log('Error loading image 1')}
-            />
+
+          {/* Imagen Hero 2 */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              🖼️ {t('Imagen Hero Derecha')}
+            </h3>
+            <div className="relative group">
+              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
+                <Image
+                  src={homeImages.heroImage2}
+                  alt="Hero Imagen 2"
+                  width={300}
+                  height={160}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Overlay de descripción en hover */}
+              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                <p className="text-white text-center text-sm px-4">
+                  {t('Imagen principal que aparece debajo del header en el lado derecho')}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                setCurrentImageType('heroImage2');
+                setShowImageUploadOverlay(true);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              🔄 {t('Actualizar Imagen')}
+            </button>
+          </div>
+
+          {/* Banner Promociones */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              🎯 {t('Banner Promociones')}
+            </h3>
+            <div className="relative group">
+              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
+                <Image
+                  src={homeImages.promosBannerImage}
+                  alt="Banner Promociones"
+                  width={300}
+                  height={160}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Overlay de descripción en hover */}
+              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                <p className="text-white text-center text-sm px-4">
+                  {t('Imagen de fondo para la sección de promociones especiales con texto superpuesto')}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                setCurrentImageType('promosBannerImage');
+                setShowImageUploadOverlay(true);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              🔄 {t('Actualizar Banner')}
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="bg-black/20 rounded-lg p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-            <label className="text-white font-semibold text-lg">{t('Imagen Principal 2')}</label>
-          </div>
-          <input
-            type="text"
-            value={homeImages.heroImage2}
-            onChange={(e) => setHomeImages({...homeImages, heroImage2: e.target.value})}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-gray-400 focus:outline-none mb-4"
-            placeholder={t('URL de la segunda imagen')}
-          />
-          <div className="w-48 h-24 bg-black/40 rounded-lg overflow-hidden border border-white/10">
-            <Image
-              src={homeImages.heroImage2}
-              alt="Imagen 2"
-              width={192}
-              height={96}
-              className="w-full h-full object-cover"
-              onError={() => console.log('Error loading image 2')}
-            />
+      {/* Overlay para subir imagen */}
+      {showImageUploadOverlay && currentImageType && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white">
+                📸 {t('Subir Nueva Imagen')}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowImageUploadOverlay(false);
+                  setCurrentImageType(null);
+                }}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-sm text-gray-300">
+                {currentImageType === 'heroImage1' && t('Selecciona la nueva imagen para el hero izquierdo')}
+                {currentImageType === 'heroImage2' && t('Selecciona la nueva imagen para el hero derecho')}
+                {currentImageType === 'promosBannerImage' && t('Selecciona la nueva imagen para el banner de promociones')}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    updateHomeImage(currentImageType, file);
+                  }
+                }}
+                className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                disabled={uploadingHomeImage}
+              />
+
+              {uploadingHomeImage && (
+                <div className="text-center text-blue-400">
+                  <p>{t('Subiendo imagen...')}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        <button
-          onClick={updateHomeImages}
-          className="w-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
-        >
-          {t('💾 Actualizar Todas las Imágenes')}
-        </button>
-      </div>
+      )}
     </div>
   );
 
