@@ -35,6 +35,9 @@ interface Variant {
   sistema_talla?: string;
   id_sistema_talla?: number;
   precio: number; // Precio de referencia (mínimo)
+  precio_minimo?: number; // Precio mínimo de la variante
+  precio_maximo?: number; // Precio máximo de la variante
+  precios_distintos?: number; // Cantidad de precios diferentes
   precio_unico: boolean; // Si todos los precios son iguales
   imagen_url?: string;
   imagen_public_id?: string;
@@ -1005,7 +1008,7 @@ const AdminPage: NextPage = () => {
           // Datos de la variante
           nombre_variante: editingVariant.nombre_variante,
           precio_unico: editingVariant.precio_unico || true,
-          precio_referencia: editingVariant.precio || 0,
+          precio_referencia: editingVariant.precio_unico ? (editingVariant.precio_minimo || editingVariant.precio || 0) : 0,
           imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
             url: img.url,
             public_id: img.public_id,
@@ -1022,9 +1025,15 @@ const AdminPage: NextPage = () => {
             cantidad: talla.cantidad,
             precio: talla.precio || 0
           })) : []
-        };          setOriginalData(JSON.parse(JSON.stringify(initialData)));
-          setEditData(initialData);
-          setUniquePrice(true); // Por defecto precio único
+        };
+
+        console.log('📝 Cargando datos de variante para edición:', editingVariant);
+        console.log('🎯 Precio único detectado:', editingVariant.precio_unico);
+        console.log('💰 Precio de referencia inicializado:', initialData.precio_referencia);
+
+        setOriginalData(JSON.parse(JSON.stringify(initialData)));
+        setEditData(initialData);
+        setUniquePrice(initialData.precio_unico); // Usar el valor detectado del backend
         }
       }, [editingVariant]);
 
@@ -1160,10 +1169,12 @@ const AdminPage: NextPage = () => {
             id_variante: editingVariant?.id_variante,
             nombre_variante: editData.nombre_variante,
             precio_unico: editData.precio_unico,
-            precio_referencia: editData.precio_referencia,
+            precio: editData.precio_referencia, // Cambiar precio_referencia por precio
             imagenes: uploadedImages,
             tallas: editData.tallas
           };
+
+          console.log('🚀 [DEBUG] Payload enviado al backend:', payload);
           
           const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${editingVariant?.id_variante}`, {
             method: 'PUT',
