@@ -831,6 +831,12 @@ const AdminPage: NextPage = () => {
       if (!editingVariant) return null;
       const [originalData, setOriginalData] = useState<any>(null);
       const [editData, setEditData] = useState<{
+        // Datos del producto
+        nombre_producto: string;
+        categoria: string;
+        descripcion_producto: string;
+        marca: string;
+        // Datos de la variante
         nombre_variante: string;
         precio: number;
         precio_original?: number;
@@ -847,6 +853,12 @@ const AdminPage: NextPage = () => {
           precio?: number;
         }>;
       }>({
+        // Datos del producto
+        nombre_producto: '',
+        categoria: '',
+        descripcion_producto: '',
+        marca: '',
+        // Datos de la variante
         nombre_variante: '',
         precio: 0,
         precio_original: undefined,
@@ -863,6 +875,12 @@ const AdminPage: NextPage = () => {
           console.log('📝 Cargando datos de variante para edición:', editingVariant);
           
           const initialData = {
+            // Datos del producto
+            nombre_producto: editingVariant.nombre_producto,
+            categoria: editingVariant.categoria,
+            descripcion_producto: editingVariant.descripcion_producto,
+            marca: editingVariant.marca,
+            // Datos de la variante
             nombre_variante: editingVariant.nombre_variante,
             precio: editingVariant.precio,
             precio_original: editingVariant.precio_original,
@@ -1010,6 +1028,13 @@ const AdminPage: NextPage = () => {
           const uploadedImages = await uploadLocalImagesToCloudinary(editData.imagenes);
           
           const payload = {
+            // Datos del producto
+            id_producto: editingVariant?.id_producto,
+            nombre_producto: editData.nombre_producto,
+            categoria: editData.categoria,
+            descripcion_producto: editData.descripcion_producto,
+            marca: editData.marca,
+            // Datos de la variante
             id_variante: editingVariant?.id_variante,
             nombre_variante: editData.nombre_variante,
             precio: editData.precio,
@@ -1060,49 +1085,60 @@ const AdminPage: NextPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Sección: Información del Producto (Solo lectura) */}
+              {/* Sección: Información del Producto (Editable) */}
               <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30">
                 <h4 className="text-lg font-semibold text-blue-300 mb-4 flex items-center">
                   📦 {t('Información del Producto')} 
                   <span className="ml-2 text-xs bg-blue-500/20 px-2 py-1 rounded-full">
-                    {t('Solo lectura')}
+                    {t('Editable')}
                   </span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      {t('Nombre del Producto')}
+                      {t('Nombre del Producto')} *
                     </label>
                     <input
                       type="text"
-                      value={editingVariant.nombre_producto}
-                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
-                      disabled
-                      readOnly
+                      value={editData.nombre_producto}
+                      onChange={(e) => setEditData(prev => ({...prev, nombre_producto: e.target.value}))}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      {t('Categoría')}
+                      {t('Categoría')} *
                     </label>
                     <input
                       type="text"
-                      value={editingVariant.categoria}
-                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
-                      disabled
-                      readOnly
+                      value={editData.categoria}
+                      onChange={(e) => setEditData(prev => ({...prev, categoria: e.target.value}))}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                      required
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t('Marca')}
+                    </label>
+                    <input
+                      type="text"
+                      value={editData.marca}
+                      onChange={(e) => setEditData(prev => ({...prev, marca: e.target.value}))}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                    />
+                  </div>
+                  <div></div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-300 mb-1">
                       {t('Descripción del Producto')}
                     </label>
                     <textarea
-                      value={editingVariant.descripcion_producto}
-                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
-                      rows={2}
-                      disabled
-                      readOnly
+                      value={editData.descripcion_producto}
+                      onChange={(e) => setEditData(prev => ({...prev, descripcion_producto: e.target.value}))}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                      rows={3}
                     />
                   </div>
                 </div>
