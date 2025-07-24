@@ -131,6 +131,19 @@ interface HomeImages {
   promosBannerImage: string;
 }
 
+interface PrincipalImage {
+  id_imagen: number;
+  nombre: string;
+  descripcion?: string;
+  url: string;
+  public_id: string;
+  posicion: 'inactiva' | 'izquierda' | 'derecha';
+  orden: number;
+  activo: boolean;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+}
+
 interface VariantFormData {
   nombre: string;
   precio: number;
@@ -2878,173 +2891,426 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const renderHomeImages = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes Principales')}</h2>
+  const renderHomeImages = () => {
+    const [principalImages, setPrincipalImages] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [showUploadForm, setShowUploadForm] = useState(false);
+    const [uploadFormData, setUploadFormData] = useState({
+      nombre: '',
+      descripcion: '',
+      posicion: 'inactiva'
+    });
 
-      {homeImagesLoading ? (
-        <div className="text-center text-white">
-          <p>{t('Cargando imágenes...')}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Imagen Hero 1 */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              🖼️ {t('Imagen Hero Izquierda')}
+    // Cargar imágenes principales
+    const loadPrincipalImages = useCallback(async (search = '') => {
+      setLoading(true);
+      try {
+        const url = search 
+          ? `https://trebodeluxe-backend.onrender.com/api/admin/principal-images?search=${encodeURIComponent(search)}`
+          : 'https://trebodeluxe-backend.onrender.com/api/admin/principal-images';
+        
+        const response = await authenticatedFetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+          setPrincipalImages(data.images || []);
+        } else {
+          console.error('Error loading principal images:', data.message);
+        }
+      } catch (error) {
+        console.error('Error loading principal images:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [authenticatedFetch]);
+
+    // Cargar imágenes al montar el componente
+    useEffect(() => {
+      loadPrincipalImages();
+    }, [loadPrincipalImages]);
+
+    // Manejar cambio de posición
+    const handlePositionChange = async (imageId: number, newPosition: string) => {
+      try {
+        const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}/position`, {
+          method: 'PUT',
+          body: JSON.stringify({ posicion: newPosition }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          loadPrincipalImages(searchQuery); // Recargar lista
+        } else {
+          alert(t('Error al actualizar posición: ') + data.message);
+        }
+      } catch (error) {
+        console.error('Error updating position:', error);
+        alert(t('Error al actualizar la posición'));
+      }
+    };
+
+    // Manejar subida de nueva imagen
+    const handleImageUpload = async (file: File) => {
+      try {
+        setUploadingHomeImage(true);
+        
+        // Subir imagen a Cloudinary
+        const imageData = await uploadImageToCloudinary(file);
+        
+        // Crear registro en base de datos
+        const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/principal-images', {
+          method: 'POST',
+          body: JSON.stringify({
+            nombre: uploadFormData.nombre,
+            descripcion: uploadFormData.descripcion,
+            url: imageData.url,
+            public_id: imageData.public_id,
+            posicion: uploadFormData.posicion
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setShowUploadForm(false);
+          setUploadFormData({ nombre: '', descripcion: '', posicion: 'inactiva' });
+          loadPrincipalImages(searchQuery);
+          alert(t('Imagen subida correctamente'));
+        } else {
+          alert(t('Error al guardar imagen: ') + data.message);
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert(t('Error al subir la imagen'));
+      } finally {
+        setUploadingHomeImage(false);
+      }
+    };
+
+    // Eliminar imagen
+    const handleDeleteImage = async (imageId: number, imageName: string) => {
+      if (!confirm(t(`¿Estás seguro de que deseas eliminar la imagen "${imageName}"?`))) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}`, {
+          method: 'DELETE',
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          loadPrincipalImages(searchQuery);
+          alert(t('Imagen eliminada correctamente'));
+        } else {
+          alert(t('Error al eliminar imagen: ') + data.message);
+        }
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        alert(t('Error al eliminar la imagen'));
+      }
+    };
+
+    // Filtrar imágenes por posición
+    const imagesByPosition = {
+      izquierda: principalImages.filter(img => img.posicion === 'izquierda'),
+      derecha: principalImages.filter(img => img.posicion === 'derecha'),
+      inactiva: principalImages.filter(img => img.posicion === 'inactiva')
+    };
+
+    return (
+      <div className="space-y-8">
+        <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Imágenes')}</h2>
+
+        {/* Subsección 1: Imágenes Principales */}
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h3 className="text-2xl font-semibold text-white flex items-center gap-2">
+              🖼️ {t('Imágenes Principales')}
             </h3>
-            <div className="relative group">
-              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
-                <Image
-                  src={homeImages.heroImage1}
-                  alt="Hero Imagen 1"
-                  width={300}
-                  height={160}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              {/* Overlay de descripción en hover */}
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                <p className="text-white text-center text-sm px-4">
-                  {t('Imagen principal que aparece debajo del header en el lado izquierdo')}
-                </p>
-              </div>
-            </div>
             
-            <button
-              onClick={() => {
-                setCurrentImageType('heroImage1');
-                setShowImageUploadOverlay(true);
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              🔄 {t('Actualizar Imagen')}
-            </button>
-          </div>
-
-          {/* Imagen Hero 2 */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              🖼️ {t('Imagen Hero Derecha')}
-            </h3>
-            <div className="relative group">
-              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
-                <Image
-                  src={homeImages.heroImage2}
-                  alt="Hero Imagen 2"
-                  width={300}
-                  height={160}
-                  className="w-full h-full object-cover"
+            {/* Controles de búsqueda y agregar */}
+            <div className="flex gap-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={t('Buscar por nombre...')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && loadPrincipalImages(searchQuery)}
+                  className="bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm focus:outline-none focus:border-blue-400/50"
                 />
+                <button
+                  onClick={() => loadPrincipalImages(searchQuery)}
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  �
+                </button>
               </div>
-              
-              {/* Overlay de descripción en hover */}
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                <p className="text-white text-center text-sm px-4">
-                  {t('Imagen principal que aparece debajo del header en el lado derecho')}
-                </p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                setCurrentImageType('heroImage2');
-                setShowImageUploadOverlay(true);
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              🔄 {t('Actualizar Imagen')}
-            </button>
-          </div>
-
-          {/* Banner Promociones */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              🎯 {t('Banner Promociones')}
-            </h3>
-            <div className="relative group">
-              <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
-                <Image
-                  src={homeImages.promosBannerImage}
-                  alt="Banner Promociones"
-                  width={300}
-                  height={160}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              {/* Overlay de descripción en hover */}
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                <p className="text-white text-center text-sm px-4">
-                  {t('Imagen de fondo para la sección de promociones especiales con texto superpuesto')}
-                </p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                setCurrentImageType('promosBannerImage');
-                setShowImageUploadOverlay(true);
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              🔄 {t('Actualizar Banner')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Overlay para subir imagen */}
-      {showImageUploadOverlay && currentImageType && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">
-                📸 {t('Subir Nueva Imagen')}
-              </h3>
               <button
-                onClick={() => {
-                  setShowImageUploadOverlay(false);
-                  setCurrentImageType(null);
-                }}
-                className="text-gray-400 hover:text-white text-2xl"
+                onClick={() => setShowUploadForm(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2"
               >
-                ×
+                + {t('Subir Imagen')}
               </button>
             </div>
+          </div>
 
-            <div className="space-y-4">
-              <div className="text-sm text-gray-300">
-                {currentImageType === 'heroImage1' && t('Selecciona la nueva imagen para el hero izquierdo')}
-                {currentImageType === 'heroImage2' && t('Selecciona la nueva imagen para el hero derecho')}
-                {currentImageType === 'promosBannerImage' && t('Selecciona la nueva imagen para el banner de promociones')}
+          {/* Imágenes actualmente activas */}
+          <div className="mb-8">
+            <h4 className="text-lg font-medium text-gray-300 mb-4">{t('Imágenes Activas')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Imagen Izquierda */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-white font-medium">{t('Posición Izquierda')}</h5>
+                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">
+                    {imagesByPosition.izquierda.length > 0 ? t('Activa') : t('Vacía')}
+                  </span>
+                </div>
+                {imagesByPosition.izquierda.length > 0 ? (
+                  <div className="space-y-2">
+                    {imagesByPosition.izquierda.map((image) => (
+                      <div key={image.id_imagen} className="bg-black/30 rounded-lg p-3">
+                        <div className="flex gap-3">
+                          <Image
+                            src={image.url}
+                            alt={image.nombre}
+                            width={60}
+                            height={40}
+                            className="w-15 h-10 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h6 className="text-white text-sm font-medium truncate">{image.nombre}</h6>
+                            {image.descripcion && (
+                              <p className="text-gray-400 text-xs truncate">{image.descripcion}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-400 py-8">
+                    <p className="text-sm">{t('No hay imagen asignada')}</p>
+                  </div>
+                )}
               </div>
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    updateHomeImage(currentImageType, file);
-                  }
-                }}
-                className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                disabled={uploadingHomeImage}
-              />
-
-              {uploadingHomeImage && (
-                <div className="text-center text-blue-400">
-                  <p>{t('Subiendo imagen...')}</p>
+              {/* Imagen Derecha */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-white font-medium">{t('Posición Derecha')}</h5>
+                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">
+                    {imagesByPosition.derecha.length > 0 ? t('Activa') : t('Vacía')}
+                  </span>
                 </div>
-              )}
+                {imagesByPosition.derecha.length > 0 ? (
+                  <div className="space-y-2">
+                    {imagesByPosition.derecha.map((image) => (
+                      <div key={image.id_imagen} className="bg-black/30 rounded-lg p-3">
+                        <div className="flex gap-3">
+                          <Image
+                            src={image.url}
+                            alt={image.nombre}
+                            width={60}
+                            height={40}
+                            className="w-15 h-10 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h6 className="text-white text-sm font-medium truncate">{image.nombre}</h6>
+                            {image.descripcion && (
+                              <p className="text-gray-400 text-xs truncate">{image.descripcion}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-400 py-8">
+                    <p className="text-sm">{t('No hay imagen asignada')}</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Todas las imágenes */}
+          <div>
+            <h4 className="text-lg font-medium text-gray-300 mb-4">
+              {t('Todas las Imágenes')} 
+              <span className="text-sm font-normal text-gray-400 ml-2">
+                ({principalImages.length} {t('total')})
+              </span>
+            </h4>
+            
+            {loading ? (
+              <div className="text-center text-white py-8">
+                <p>{t('Cargando imágenes...')}</p>
+              </div>
+            ) : principalImages.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                <p>{t('No se encontraron imágenes')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {principalImages.map((image) => (
+                  <div key={image.id_imagen} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                    <div className="relative group mb-3">
+                      <Image
+                        src={image.url}
+                        alt={image.nombre}
+                        width={300}
+                        height={200}
+                        className="w-full h-32 object-cover rounded"
+                      />
+                      
+                      {/* Overlay con controles */}
+                      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded flex items-center justify-center">
+                        <button
+                          onClick={() => handleDeleteImage(image.id_imagen, image.nombre)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+                        >
+                          🗑️ {t('Eliminar')}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h6 className="text-white font-medium text-sm truncate">{image.nombre}</h6>
+                      {image.descripcion && (
+                        <p className="text-gray-400 text-xs line-clamp-2">{image.descripcion}</p>
+                      )}
+                      
+                      {/* Dropdown de posición */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">{t('Posición')}</label>
+                        <select
+                          value={image.posicion}
+                          onChange={(e) => handlePositionChange(image.id_imagen, e.target.value)}
+                          className="w-full bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-400/50"
+                        >
+                          <option value="inactiva">{t('Inactiva')}</option>
+                          <option value="izquierda">{t('Izquierda')}</option>
+                          <option value="derecha">{t('Derecha')}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
-  );
+
+        {/* Subsección 2: Banner */}
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
+          <h3 className="text-2xl font-semibold text-white flex items-center gap-2 mb-6">
+            🎯 {t('Banner')}
+          </h3>
+          
+          <div className="text-center text-gray-400 py-8">
+            <p>{t('Funcionalidad de banner en desarrollo')}</p>
+          </div>
+        </div>
+
+        {/* Modal para subir imagen */}
+        {showUploadForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">
+                  📸 {t('Subir Nueva Imagen')}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowUploadForm(false);
+                    setUploadFormData({ nombre: '', descripcion: '', posicion: 'inactiva' });
+                  }}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Nombre')} *
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadFormData.nombre}
+                    onChange={(e) => setUploadFormData({...uploadFormData, nombre: e.target.value})}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400/50"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Descripción')}
+                  </label>
+                  <textarea
+                    value={uploadFormData.descripcion}
+                    onChange={(e) => setUploadFormData({...uploadFormData, descripcion: e.target.value})}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400/50"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Posición')}
+                  </label>
+                  <select
+                    value={uploadFormData.posicion}
+                    onChange={(e) => setUploadFormData({...uploadFormData, posicion: e.target.value})}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400/50"
+                  >
+                    <option value="inactiva">{t('Inactiva')}</option>
+                    <option value="izquierda">{t('Izquierda')}</option>
+                    <option value="derecha">{t('Derecha')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Archivo de Imagen')} *
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && uploadFormData.nombre) {
+                        handleImageUpload(file);
+                      } else if (!uploadFormData.nombre) {
+                        alert(t('Por favor ingresa un nombre para la imagen'));
+                      }
+                    }}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                    disabled={uploadingHomeImage}
+                  />
+                </div>
+
+                {uploadingHomeImage && (
+                  <div className="text-center text-blue-400">
+                    <p>{t('Subiendo imagen...')}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderPromotions = () => (
     <div className="space-y-6">
