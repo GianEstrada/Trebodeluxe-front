@@ -10,8 +10,12 @@ export default async function handler(
 
   try {
     // Hacer petición al backend para obtener las imágenes del index
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://trebodeluxe-backend.onrender.com';
+    
+    console.log('Fetching from backend URL:', `${backendUrl}/api/public/index-images`);
+    
     const backendResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/public/index-images`,
+      `${backendUrl}/api/public/index-images`,
       {
         method: 'GET',
         headers: {
