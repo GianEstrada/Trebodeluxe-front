@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useSiteSettings } from "../contexts/SiteSettingsContext";
-import { useMainImages } from "../contexts/MainImagesContext";
+import { useIndexImages } from "../hooks/useIndexImages";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 
@@ -55,8 +55,8 @@ const HomeScreen: NextPage = () => {
   // Usar configuraciones del sitio desde la base de datos
   const { headerSettings, loading: settingsLoading } = useSiteSettings();
   
-  // Usar imágenes principales desde la base de datos
-  const { getImagesByType, loading: imagesLoading } = useMainImages();
+  // Usar imágenes index desde la base de datos
+  const { getImageByState, loading: imagesLoading } = useIndexImages();
   
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -68,10 +68,10 @@ const HomeScreen: NextPage = () => {
     "2x1 en gorras"
   ];
 
-  // Obtener imágenes por tipo desde la base de datos
-  const heroImages = getImagesByType('hero_banner');
-  const promoImages = getImagesByType('promocion_banner');
-  const categoryImages = getImagesByType('categoria_destacada');
+  // Obtener imágenes específicas desde la base de datos
+  const leftImage = getImageByState('principal', 'izquierda');
+  const rightImage = getImageByState('principal', 'derecha');
+  const bannerImage = getImageByState('banner', 'activo');
 
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -990,26 +990,26 @@ const HomeScreen: NextPage = () => {
       {/* Main Images Section */}
       <div className="self-stretch flex flex-col items-center justify-start h-screen">
         <div className="self-stretch flex flex-row items-center justify-start h-full">
-          {heroImages.length > 0 ? (
+          {leftImage || rightImage ? (
             <>
-              {heroImages[0] && (
+              {leftImage && (
                 <Image
                   className="flex-1 relative max-w-full h-full object-cover"
                   width={960}
                   height={904}
                   sizes="100vw"
-                  alt={heroImages[0].titulo || "Imagen principal"}
-                  src={heroImages[0].url}
+                  alt={leftImage.descripcion || "Imagen principal izquierda"}
+                  src={leftImage.url}
                 />
               )}
-              {heroImages[1] && (
+              {rightImage && (
                 <Image
                   className="flex-1 relative max-w-full h-full object-cover"
                   width={960}
                   height={904}
                   sizes="100vw"
-                  alt={heroImages[1].titulo || "Imagen principal"}
-                  src={heroImages[1].url}
+                  alt={rightImage.descripcion || "Imagen principal derecha"}
+                  src={rightImage.url}
                 />
               )}
             </>
@@ -1043,10 +1043,10 @@ const HomeScreen: NextPage = () => {
           <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group">
             {/* Imagen de fondo */}
             <div className="absolute inset-0 rounded-[46px] overflow-hidden">
-              {promoImages.length > 0 && promoImages[0] ? (
+              {bannerImage ? (
                 <Image
-                  src={promoImages[0].url}
-                  alt={promoImages[0].titulo || "Banner Promociones"}
+                  src={bannerImage.url}
+                  alt={bannerImage.descripcion || "Banner Promociones"}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                   priority
@@ -1065,13 +1065,22 @@ const HomeScreen: NextPage = () => {
             {/* Overlay para mejor legibilidad del texto */}
             <div className="absolute inset-0 bg-black/40 rounded-[46px] group-hover:bg-black/30 transition-all duration-300"></div>
             
-            {/* Contenido de texto */}
+            {/* Contenido de texto con descripción en hover */}
             <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
               {t('Promociones Especiales').split(' ')[0]}
             </div>
             <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
               {t('Promociones Especiales').split(' ')[1]}
             </div>
+            
+            {/* Descripción que aparece en hover */}
+            {bannerImage?.descripcion && (
+              <div className="absolute top-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm max-w-xs">
+                  {bannerImage.descripcion}
+                </div>
+              </div>
+            )}
             
             {/* Botón de acción en hover */}
             <div className="absolute bottom-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

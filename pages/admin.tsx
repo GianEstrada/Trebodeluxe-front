@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
-import MainImagesAdmin from '../components/admin/MainImagesAdmin';
+import IndexImagesAdmin from '../components/admin/IndexImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
 import NotesAdmin from '../components/admin/NotesAdmin';
@@ -2409,7 +2409,7 @@ const AdminPage: NextPage = () => {
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
-            🖼️ {t('Imágenes Principales')}
+            🖼️ {t('Imágenes Index')}
           </button>
           <button
             onClick={() => setActiveSection('products')}
@@ -3708,7 +3708,7 @@ const AdminPage: NextPage = () => {
       case 'header':
         return renderHeaderTexts();
       case 'images':
-        return <MainImagesAdmin />;
+        return <IndexImagesAdmin currentLanguage={currentLanguage} />;
       case 'products':
         return renderVariantsList;
       case 'promotions':
