@@ -184,6 +184,7 @@ const AdminPage: NextPage = () => {
   
   // Estados para el formulario de productos/variantes
   const [showVariantForm, setShowVariantForm] = useState(false);
+  const [showEditVariantForm, setShowEditVariantForm] = useState(false);
   const [formType, setFormType] = useState<'nuevo_producto' | 'nueva_variante'>('nuevo_producto');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [additionalVariants, setAdditionalVariants] = useState<number>(0);
@@ -606,13 +607,11 @@ const AdminPage: NextPage = () => {
       if (data.success) {
         const variant = data.variant;
         
-        // Configurar el formulario en modo edición
-        setFormType('nueva_variante');
+        // Configurar el estado de edición
         setEditingVariant(variant);
-        setSelectedProductId(variant.id_producto);
         
-        // Abrir el modal
-        setShowVariantForm(true);
+        // Abrir el modal de edición específico
+        setShowEditVariantForm(true);
       } else {
         alert(t('Error al cargar los datos de la variante'));
       }
@@ -821,6 +820,523 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
+  // Nuevo componente para editar variantes
+  const EditVariantForm = useMemo(() => {
+    const EditVariantFormComponent = () => {
+      const [originalData, setOriginalData] = useState<any>(null);
+      const [editData, setEditData] = useState<{
+        nombre_variante: string;
+        precio: number;
+        precio_original?: number;
+        imagenes: Array<{
+          url: string;
+          public_id: string;
+          file?: File;
+          isLocalPreview?: boolean;
+        }>;
+        tallas: Array<{
+          id_talla: number;
+          nombre_talla: string;
+          cantidad: number;
+          precio?: number;
+        }>;
+      }>({
+        nombre_variante: '',
+        precio: 0,
+        precio_original: undefined,
+        imagenes: [],
+        tallas: []
+      });
+      const [uniquePrice, setUniquePrice] = useState(true);
+      const [hasChanges, setHasChanges] = useState(false);
+      const [isUpdating, setIsUpdating] = useState(false);
+
+      // Cargar datos cuando se abre el formulario
+      useEffect(() => {
+        if (editingVariant) {
+          console.log('📝 Cargando datos de variante para edición:', editingVariant);
+          
+          const initialData = {
+            nombre_variante: editingVariant.nombre_variante,
+            precio: editingVariant.precio,
+            precio_original: editingVariant.precio_original,
+            imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
+              url: img.url,
+              public_id: img.public_id,
+              isLocalPreview: false
+            })) : [],
+            tallas: editingVariant.tallas ? editingVariant.tallas.map((talla: any) => ({
+              id_talla: talla.id_talla,
+              nombre_talla: talla.nombre_talla,
+              cantidad: talla.cantidad
+            })) : editingVariant.tallas_stock ? editingVariant.tallas_stock.map((talla: any) => ({
+              id_talla: talla.id_talla,
+              nombre_talla: talla.nombre_talla,
+              cantidad: talla.cantidad
+            })) : []
+          };
+          
+          setOriginalData(JSON.parse(JSON.stringify(initialData)));
+          setEditData(initialData);
+          setUniquePrice(true); // Por defecto precio único
+        }
+      }, [editingVariant]);
+
+      // Detectar cambios
+      useEffect(() => {
+        if (originalData && editData) {
+          const changed = JSON.stringify(originalData) !== JSON.stringify(editData);
+          setHasChanges(changed);
+        }
+      }, [originalData, editData]);
+
+      const handleImageUpload = async (file: File) => {
+        console.log('📸 Subiendo nueva imagen:', file.name);
+        
+        const previewUrl = URL.createObjectURL(file);
+        const imagePreview = {
+          url: previewUrl,
+          public_id: 'local-preview-' + Date.now(),
+          file: file,
+          isLocalPreview: true
+        };
+        
+        setEditData(prev => ({
+          ...prev,
+          imagenes: [...prev.imagenes, imagePreview]
+        }));
+      };
+
+      const handleRemoveImage = async (imageIndex: number) => {
+        const imageToRemove = editData.imagenes[imageIndex];
+        
+        // Si es una imagen existente en Cloudinary, eliminarla
+        if (!imageToRemove.isLocalPreview && imageToRemove.public_id) {
+          try {
+            const token = getAuthToken();
+            if (!token) {
+              throw new Error('No hay token de autenticación');
+            }
+
+            const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/delete-image', {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ 
+                public_id: imageToRemove.public_id,
+                variant_id: editingVariant?.id_variante 
+              }),
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+              console.warn('Error al eliminar imagen de Cloudinary:', data.message);
+            }
+          } catch (error) {
+            console.error('Error eliminando imagen:', error);
+          }
+        }
+
+        // Remover imagen del estado local
+        setEditData(prev => ({
+          ...prev,
+          imagenes: prev.imagenes.filter((_, index) => index !== imageIndex)
+        }));
+      };
+
+      const uploadLocalImagesToCloudinary = async (imagenes: any[]) => {
+        const uploadedImages = [];
+        
+        for (const imagen of imagenes) {
+          if (imagen.isLocalPreview && imagen.file) {
+            const token = getAuthToken();
+            if (!token) {
+              throw new Error('No hay token de autenticación');
+            }
+            
+            const formData = new FormData();
+            formData.append('image', imagen.file);
+            
+            const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              body: formData,
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+              throw new Error(data.message || 'Error uploading image');
+            }
+            
+            URL.revokeObjectURL(imagen.url);
+            
+            uploadedImages.push({
+              url: data.url,
+              public_id: data.public_id
+            });
+          } else {
+            uploadedImages.push({
+              url: imagen.url,
+              public_id: imagen.public_id
+            });
+          }
+        }
+        
+        return uploadedImages;
+      };
+
+      const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!hasChanges) {
+          alert(t('No hay cambios para guardar'));
+          return;
+        }
+
+        setIsUpdating(true);
+        
+        try {
+          // Subir imágenes locales a Cloudinary
+          const uploadedImages = await uploadLocalImagesToCloudinary(editData.imagenes);
+          
+          const payload = {
+            id_variante: editingVariant?.id_variante,
+            nombre_variante: editData.nombre_variante,
+            precio: editData.precio,
+            precio_original: editData.precio_original,
+            imagenes: uploadedImages,
+            tallas: editData.tallas
+          };
+          
+          const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${editingVariant?.id_variante}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            alert(t('Variante actualizada correctamente'));
+            setShowEditVariantForm(false);
+            setEditingVariant(null);
+            loadVariants(); // Recargar lista
+          } else {
+            alert(t('Error al actualizar: ') + data.message);
+          }
+        } catch (error) {
+          console.error('Error updating variant:', error);
+          alert(t('Error al actualizar la variante'));
+        } finally {
+          setIsUpdating(false);
+        }
+      };
+
+      if (!editingVariant) return null;
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white">
+                ✏️ {t('Editar Variante')}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditVariantForm(false);
+                  setEditingVariant(null);
+                }}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Sección: Información del Producto (Solo lectura) */}
+              <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30">
+                <h4 className="text-lg font-semibold text-blue-300 mb-4 flex items-center">
+                  📦 {t('Información del Producto')} 
+                  <span className="ml-2 text-xs bg-blue-500/20 px-2 py-1 rounded-full">
+                    {t('Solo lectura')}
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t('Nombre del Producto')}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingVariant.nombre_producto}
+                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
+                      disabled
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t('Categoría')}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingVariant.categoria}
+                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
+                      disabled
+                      readOnly
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t('Descripción del Producto')}
+                    </label>
+                    <textarea
+                      value={editingVariant.descripcion_producto}
+                      className="w-full p-2 bg-black/30 border border-white/10 rounded-lg text-gray-300 cursor-not-allowed"
+                      rows={2}
+                      disabled
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección: Datos de la Variante (Editable) */}
+              <div className="bg-green-900/20 p-4 rounded-lg border border-green-500/30">
+                <h4 className="text-lg font-semibold text-green-300 mb-4 flex items-center">
+                  🎨 {t('Datos de la Variante')}
+                  {hasChanges && (
+                    <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full animate-pulse">
+                      ⚠️ {t('Cambios detectados')}
+                    </span>
+                  )}
+                </h4>
+
+                {/* Nombre de la variante */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    {t('Nombre de la Variante')} *
+                  </label>
+                  <input
+                    type="text"
+                    value={editData.nombre_variante}
+                    onChange={(e) => setEditData(prev => ({...prev, nombre_variante: e.target.value}))}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-green-400/50 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Imágenes de la variante */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {t('Imágenes de la Variante')}
+                  </label>
+                  
+                  {/* Vista previa de imágenes existentes */}
+                  {editData.imagenes && editData.imagenes.length > 0 ? (
+                    <div className="mb-3">
+                      <div className="flex flex-wrap gap-3">
+                        {editData.imagenes.map((img, imgIndex) => (
+                          <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative group">
+                            <Image
+                              src={img.url}
+                              alt={`${editData.nombre_variante} - ${imgIndex + 1}`}
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                            
+                            {/* Botón X para eliminar (sin número de orden) */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(imgIndex)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title={t('Eliminar imagen')}
+                            >
+                              ×
+                            </button>
+                            
+                            {/* Indicador de imagen local vs Cloudinary */}
+                            {img.isLocalPreview && (
+                              <div className="absolute bottom-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">
+                                {t('Nueva')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{t('Imágenes actuales de la variante')}</p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm mb-3">{t('No hay imágenes asignadas a esta variante')}</p>
+                  )}
+                  
+                  {/* Input para subir nueva imagen */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                    className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-600 file:text-white hover:file:bg-green-700"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{t('Puedes agregar nuevas imágenes a la variante')}</p>
+                </div>
+
+                {/* Checkbox de precio único */}
+                <div className="mb-4">
+                  <label className="flex items-center text-white">
+                    <input
+                      type="checkbox"
+                      checked={uniquePrice}
+                      onChange={(e) => setUniquePrice(e.target.checked)}
+                      className="mr-2"
+                    />
+                    {t('Precio único para todas las tallas')}
+                  </label>
+                </div>
+
+                {/* Precio único */}
+                {uniquePrice ? (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {t('Precio')} *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editData.precio}
+                      onChange={(e) => setEditData(prev => ({...prev, precio: Number(e.target.value)}))}
+                      className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-green-400/50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                ) : null}
+
+                {/* Tabla de inventario por tallas */}
+                {editData.tallas.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-300 mb-2">{t('Inventario por Tallas')}</h5>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border border-white/20 rounded-lg">
+                        <thead>
+                          <tr className="bg-black/50">
+                            <th className="p-3 text-white text-center border-b border-white/20">
+                              {t('Talla')}
+                            </th>
+                            <th className="p-3 text-white text-center border-b border-white/20">
+                              {t('Cantidad en Stock')}
+                            </th>
+                            {!uniquePrice && (
+                              <th className="p-3 text-white text-center border-b border-white/20">
+                                {t('Precio por Talla')}
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editData.tallas.map((talla) => (
+                            <tr key={talla.id_talla} className="border-b border-white/10">
+                              <td className="p-3 text-white text-center font-medium">
+                                {talla.nombre_talla}
+                              </td>
+                              <td className="p-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={talla.cantidad}
+                                  onChange={(e) => setEditData(prev => ({
+                                    ...prev,
+                                    tallas: prev.tallas.map(t => 
+                                      t.id_talla === talla.id_talla 
+                                        ? {...t, cantidad: Number(e.target.value)}
+                                        : t
+                                    )
+                                  }))}
+                                  className="w-full p-2 bg-black/50 border border-white/20 rounded text-white text-center focus:border-green-400/50 focus:outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              {!uniquePrice && (
+                                <td className="p-3">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={talla.precio || 0}
+                                    onChange={(e) => setEditData(prev => ({
+                                      ...prev,
+                                      tallas: prev.tallas.map(t => 
+                                        t.id_talla === talla.id_talla 
+                                          ? {...t, precio: Number(e.target.value)}
+                                          : t
+                                      )
+                                    }))}
+                                    className="w-full p-2 bg-black/50 border border-white/20 rounded text-white text-center focus:border-green-400/50 focus:outline-none"
+                                    placeholder="0.00"
+                                  />
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={!hasChanges || isUpdating}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                    hasChanges && !isUpdating
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  {isUpdating ? (
+                    <span className="flex items-center justify-center">
+                      <span className="animate-spin mr-2">⏳</span>
+                      {t('Actualizando...')}
+                    </span>
+                  ) : hasChanges ? (
+                    <span className="flex items-center justify-center">
+                      💾 {t('Actualizar Variante')}
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      ✓ {t('Sin cambios')}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditVariantForm(false);
+                    setEditingVariant(null);
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  ❌ {t('Cancelar')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    };
+    
+    return <EditVariantFormComponent />;
+  }, [editingVariant, t, authenticatedFetch, loadVariants]);
+
   const VariantForm = useMemo(() => {
     const VariantFormComponent = () => {
       const [productFormData, setProductFormData] = useState<ProductFormData>({
@@ -856,49 +1372,36 @@ const AdminPage: NextPage = () => {
     const [uploadingVariantIndex, setUploadingVariantIndex] = useState<number | null>(null);
     const [uploadingToCloudinary, setUploadingToCloudinary] = useState(false);
 
-    // useEffect para cargar datos de edición
-    useEffect(() => {
-      if (editingVariant && formType === 'nueva_variante') {
-        console.log('🔍 [DEBUG] Cargando datos de variante para edición:', editingVariant);
-        
-        // Configurar datos del producto (read-only en modo edición)
-        setProductFormData(prev => ({
-          ...prev,
-          producto_nombre: editingVariant.nombre_producto,
-          producto_descripcion: editingVariant.descripcion_producto,
-          categoria: editingVariant.categoria,
-          marca: editingVariant.marca,
-          id_sistema_talla: editingVariant.id_sistema_talla || 0
-        }));
-        
-        // Configurar datos de la variante para edición
-        setSingleVariantData({
-          nombre: editingVariant.nombre_variante,
-          precio: editingVariant.precio,
-          precio_original: editingVariant.precio_original,
-          imagen_url: editingVariant.imagen_url,
-          imagen_public_id: editingVariant.imagen_public_id,
-          imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
-            url: img.url,
-            public_id: img.public_id,
-            isLocalPreview: false
-          })) : [],
-          tallas: editingVariant.tallas ? editingVariant.tallas.map((talla: any) => ({
-            id_talla: talla.id_talla,
-            nombre_talla: talla.nombre_talla,
-            cantidad: talla.cantidad
-          })) : editingVariant.tallas_stock ? editingVariant.tallas_stock.map((talla: any) => ({
-            id_talla: talla.id_talla,
-            nombre_talla: talla.nombre_talla,
-            cantidad: talla.cantidad
-          })) : []
+      // useEffect para resetear formulario al cambiar tipo
+      useEffect(() => {
+        // Resetear datos cuando no estamos editando
+        setProductFormData({
+          producto_nombre: '',
+          producto_descripcion: '',
+          categoria: '',
+          marca: '',
+          id_sistema_talla: 0,
+          variantes: [
+            {
+              nombre: '',
+              precio: 0,
+              precio_original: undefined,
+              imagen_url: undefined,
+              imagen_public_id: undefined,
+              tallas: []
+            }
+          ]
         });
         
-        setUniquePriceValue(editingVariant.precio);
-      }
-    }, [editingVariant, formType]);
-
-    const handleSizeSystemChange = (systemId: number) => {
+        setSingleVariantData({
+          nombre: '',
+          precio: 0,
+          precio_original: undefined,
+          imagen_url: undefined,
+          imagen_public_id: undefined,
+          tallas: []
+        });
+      }, [formType]);    const handleSizeSystemChange = (systemId: number) => {
       const system = sizeSystems.find(s => s.id_sistema_talla === systemId);
       if (system) {
         const tallasDefault = system.tallas.map(talla => ({
@@ -1097,8 +1600,8 @@ const AdminPage: NextPage = () => {
             body: JSON.stringify(updatedProductData),
           });
         } else {
-          // Para nueva variante o edición de variante
-          console.log('🔍 [DEBUG] Procesando variante...', editingVariant ? 'Edición' : 'Nueva');
+          // Para nueva variante
+          console.log('🔍 [DEBUG] Procesando nueva variante...');
           let updatedVariantData = { ...singleVariantData };
           
           if (singleVariantData.imagenes && singleVariantData.imagenes.length > 0) {
@@ -1106,37 +1609,23 @@ const AdminPage: NextPage = () => {
             updatedVariantData.imagenes = uploadedImages;
           }
           
-          if (editingVariant) {
-            // Modo edición - actualizar variante existente
-            const payload = {
-              id_variante: editingVariant.id_variante,
-              ...updatedVariantData
-            };
-            
-            response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/products/variants/${editingVariant.id_variante}`, {
-              method: 'PUT',
-              body: JSON.stringify(payload),
-            });
-          } else {
-            // Modo creación - nueva variante
-            const payload = {
-              id_producto: selectedProductId,
-              ...updatedVariantData
-            };
-            
-            response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
-              method: 'POST',
-              body: JSON.stringify(payload),
-            });
-          }
+          // Modo creación - nueva variante
+          const payload = {
+            id_producto: selectedProductId,
+            ...updatedVariantData
+          };
+          
+          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
         }
         
         const data = await response.json();
         
         if (data.success) {
-          alert(editingVariant ? t('Variante actualizada correctamente') : t('Guardado correctamente'));
+          alert(t('Guardado correctamente'));
           setShowVariantForm(false);
-          setEditingVariant(null); // Limpiar estado de edición
           loadVariants();
           loadProducts();
         } else {
@@ -1155,13 +1644,11 @@ const AdminPage: NextPage = () => {
         <div className="bg-gray-900 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">
-              {formType === 'nuevo_producto' ? t('Nuevo Producto') : 
-               editingVariant ? t('Editar Variante') : t('Nueva Variante')}
+              {formType === 'nuevo_producto' ? t('Nuevo Producto') : t('Nueva Variante')}
             </h3>
             <button
               onClick={() => {
                 setShowVariantForm(false);
-                setEditingVariant(null); // Limpiar estado de edición
               }}
               className="text-gray-400 hover:text-white text-2xl"
             >
@@ -1735,7 +2222,7 @@ const AdminPage: NextPage = () => {
                     {t('Subiendo a Cloudinary...')}
                   </span>
                 ) : (
-                  editingVariant ? t('Actualizar Variante') : t('Guardar')
+                  t('Guardar')
                 )}
               </button>
               <button
@@ -2774,8 +3261,9 @@ const AdminPage: NextPage = () => {
         {renderContent()}
       </div>
 
-      {/* Formulario modal */}
+      {/* Formularios modales */}
       {showVariantForm && VariantForm}
+      {showEditVariantForm && EditVariantForm}
     </div>
   );
 };
