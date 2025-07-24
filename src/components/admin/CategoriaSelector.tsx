@@ -1,0 +1,64 @@
+import React from 'react';
+import { useCategorias } from '../../hooks/useCategorias';
+
+interface CategoriaSelectorProps {
+  value?: number | null;
+  onChange: (categoriaId: number | null) => void;
+  required?: boolean;
+  placeholder?: string;
+  className?: string;
+}
+
+const CategoriaSelector: React.FC<CategoriaSelectorProps> = ({
+  value,
+  onChange,
+  required = false,
+  placeholder = "Seleccionar categoría",
+  className = ""
+}) => {
+  const { categorias, loading, error } = useCategorias();
+
+  if (loading) {
+    return (
+      <select 
+        disabled 
+        className={`w-full p-3 border border-gray-300 rounded-lg bg-gray-100 ${className}`}
+      >
+        <option>Cargando categorías...</option>
+      </select>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-600 text-sm">
+        Error al cargar categorías: {error}
+      </div>
+    );
+  }
+
+  const categoriasActivas = categorias.filter(cat => cat.activo);
+
+  return (
+    <select
+      value={value || ''}
+      onChange={(e) => {
+        const selectedValue = e.target.value;
+        onChange(selectedValue ? parseInt(selectedValue) : null);
+      }}
+      required={required}
+      className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${className}`}
+    >
+      <option value="">{placeholder}</option>
+      {categoriasActivas
+        .sort((a, b) => a.orden - b.orden)
+        .map((categoria) => (
+          <option key={categoria.id_categoria} value={categoria.id_categoria}>
+            {categoria.nombre}
+          </option>
+        ))}
+    </select>
+  );
+};
+
+export default CategoriaSelector;

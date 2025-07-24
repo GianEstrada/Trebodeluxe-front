@@ -10,6 +10,9 @@ import IndexImagesAdmin from '../components/admin/IndexImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
 import NotesAdmin from '../components/admin/NotesAdmin';
+import CategoriasAdmin from '../src/components/admin/CategoriasAdmin';
+import VariantsManagerV2 from '../src/components/admin/VariantsManagerV2';
+import ProductosCategoriaView from '../src/components/admin/ProductosCategoriaView';
 
 interface Product {
   id_producto: number;
@@ -2461,6 +2464,36 @@ const AdminPage: NextPage = () => {
           >
             📏 {t('Sistemas de Tallas')}
           </button>
+          <button
+            onClick={() => setActiveSection('categorias')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'categorias'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📂 {t('Categorías')}
+          </button>
+          <button
+            onClick={() => setActiveSection('variants-v2')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'variants-v2'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🆕 {t('Variantes V2')}
+          </button>
+          <button
+            onClick={() => setActiveSection('productos-categoria')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'productos-categoria'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🏷️ {t('Productos por Categoría')}
+          </button>
         </nav>
       </div>
       <div className="absolute bottom-6 left-6">
@@ -3719,6 +3752,12 @@ const AdminPage: NextPage = () => {
         return renderNotes();
       case 'sizes':
         return renderSizeSystems();
+      case 'categorias':
+        return <CategoriasAdmin />;
+      case 'variants-v2':
+        return <VariantsManagerV2 currentLanguage={currentLanguage} />;
+      case 'productos-categoria':
+        return <ProductosCategoriaView currentLanguage={currentLanguage} />;
       default:
         return renderDashboard();
     }
