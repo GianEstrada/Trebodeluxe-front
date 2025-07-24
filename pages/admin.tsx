@@ -828,6 +828,7 @@ const AdminPage: NextPage = () => {
   // Nuevo componente para editar variantes - Optimizado para evitar re-renders
   const EditVariantForm = useMemo(() => {
     const EditVariantFormComponent = () => {
+      if (!editingVariant) return null;
       const [originalData, setOriginalData] = useState<any>(null);
       const [editData, setEditData] = useState<{
         nombre_variante: string;
@@ -1039,8 +1040,6 @@ const AdminPage: NextPage = () => {
           setIsUpdating(false);
         }
       };
-
-      if (!editingVariant) return null;
 
       return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1340,7 +1339,7 @@ const AdminPage: NextPage = () => {
     };
     
     return <EditVariantFormComponent />;
-  }, [editingVariant, t, authenticatedFetch, loadVariants, getAuthToken]);
+  }, [editingVariant]);
 
   const VariantForm = useMemo(() => {
     const VariantFormComponent = () => {
