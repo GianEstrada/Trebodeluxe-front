@@ -10,9 +10,7 @@ import IndexImagesAdmin from '../components/admin/IndexImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
 import NotesAdmin from '../components/admin/NotesAdmin';
-import CategoriasAdmin from '../src/components/admin/CategoriasAdmin';
-import VariantsManagerV2 from '../src/components/admin/VariantsManagerV2';
-import ProductosCategoriaView from '../src/components/admin/ProductosCategoriaView';
+import CategoriasAdmin from '../components/admin/CategoriasAdmin';
 
 interface Product {
   id_producto: number;
@@ -28,8 +26,6 @@ interface Product {
 interface Variant {
   id_variante: number;
   nombre_variante: string;
-  precio: number;
-  precio_original?: number;
   variante_activa: boolean;
   id_producto: number;
   nombre_producto: string;
@@ -38,6 +34,8 @@ interface Variant {
   marca: string;
   sistema_talla?: string;
   id_sistema_talla?: number;
+  precio: number; // Precio de referencia (mínimo)
+  precio_unico: boolean; // Si todos los precios son iguales
   imagen_url?: string;
   imagen_public_id?: string;
   imagenes?: Array<{
@@ -50,11 +48,13 @@ interface Variant {
     id_talla: number;
     nombre_talla: string;
     cantidad: number;
+    precio: number; // Ahora incluye precio por talla
   }>;
   tallas_stock: Array<{
     id_talla: number;
     nombre_talla: string;
     cantidad: number;
+    precio: number; // Precio específico por talla
   }>;
 }
 
@@ -68,6 +68,29 @@ interface SizeSystem {
   id_sistema_talla: number;
   nombre: string;
   tallas: Talla[];
+}
+
+interface Categoria {
+  id_categoria: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+  orden: number;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+  productos_count?: number;
+}
+
+interface IndexImage {
+  id_imagen: number;
+  nombre: string;
+  descripcion?: string;
+  url: string;
+  public_id?: string;
+  seccion: 'principal' | 'banner';
+  estado: 'activo' | 'inactivo' | 'izquierda' | 'derecha';
+  fecha_creacion: string;
+  fecha_actualizacion: string;
 }
 
 interface Promotion {
@@ -149,10 +172,6 @@ interface PrincipalImage {
 
 interface VariantFormData {
   nombre: string;
-  precio: number;
-  precio_original?: number;
-  imagen_url?: string;
-  imagen_public_id?: string;
   imagenes?: Array<{
     url: string;
     public_id: string;
@@ -163,8 +182,10 @@ interface VariantFormData {
     id_talla: number;
     nombre_talla: string;
     cantidad: number;
-    precio?: number;
+    precio: number; // Ahora cada talla tiene su precio
   }>;
+  precio_unico: boolean; // Para saber si usar precio único
+  precio_referencia?: number; // Precio único para todas las tallas
 }
 
 interface ProductFormData {
@@ -187,6 +208,31 @@ const AdminPage: NextPage = () => {
 
   // Estados para las diferentes secciones
   const [activeSection, setActiveSection] = useState('dashboard');
+  
+  // Estados para Categorías
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriasLoading, setCategoriasLoading] = useState(false);
+  const [categoriaSearchQuery, setCategoriaSearchQuery] = useState('');
+  const [showCategoriaForm, setShowCategoriaForm] = useState(false);
+  const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null);
+  const [categoriaFormData, setCategoriaFormData] = useState({
+    nombre: '',
+    descripcion: '',
+    orden: 0
+  });
+
+  // Estados para Imágenes del Index
+  const [indexImages, setIndexImages] = useState<IndexImage[]>([]);
+  const [indexImagesLoading, setIndexImagesLoading] = useState(false);
+  const [showIndexImageForm, setShowIndexImageForm] = useState(false);
+  const [indexImageFormData, setIndexImageFormData] = useState({
+    nombre: '',
+    descripcion: '',
+    seccion: 'principal' as 'principal' | 'banner',
+    imagen: null as File | null,
+    previewUrl: ''
+  });
+  const [uploadingIndexImage, setUploadingIndexImage] = useState(false);
   
   // Estados para Variants
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -367,7 +413,46 @@ const AdminPage: NextPage = () => {
     loadSizeSystems();
     loadDashboardStats();
     loadHomeImages(); // Cargar imágenes principales
+    loadCategorias(); // Cargar categorías
+    loadIndexImages(); // Cargar imágenes del index
   }, []);
+
+  // Función para cargar categorías - Memoizada
+  const loadCategorias = useCallback(async () => {
+    setCategoriasLoading(true);
+    try {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/categorias/admin', {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCategorias(data.categorias);
+      }
+    } catch (error) {
+      console.error('Error loading categorias:', error);
+    } finally {
+      setCategoriasLoading(false);
+    }
+  }, []);
+
+  // Función para cargar imágenes del index - Memoizada
+  const loadIndexImages = useCallback(async () => {
+    setIndexImagesLoading(true);
+    try {
+      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/index-images');
+      const data = await response.json();
+      if (data.success) {
+        setIndexImages(data.images);
+      }
+    } catch (error) {
+      console.error('Error loading index images:', error);
+    } finally {
+      setIndexImagesLoading(false);
+    }
+  }, [authenticatedFetch]);
 
   // Función para cargar estadísticas del dashboard
   const loadDashboardStats = async () => {
@@ -790,8 +875,8 @@ const AdminPage: NextPage = () => {
                       {/* Precio */}
                       <div className="mb-2">
                         <span className="text-lg font-bold text-white">${variant.precio}</span>
-                        {variant.precio_original && (
-                          <span className="text-sm text-gray-400 line-through ml-2">${variant.precio_original}</span>
+                        {!variant.precio_unico && (
+                          <span className="text-sm text-gray-400 ml-2">{t('Precios variables')}</span>
                         )}
                       </div>
                     </div>
@@ -809,13 +894,27 @@ const AdminPage: NextPage = () => {
                               ? 'bg-green-600 text-white' 
                               : 'bg-gray-600 text-gray-300'
                           }`}
+                          title={`${talla.nombre_talla}: ${talla.cantidad} unidades - $${talla.precio}`}
                         >
-                          {talla.nombre_talla}: {talla.cantidad}
+                          {talla.nombre_talla}: {talla.cantidad} (${talla.precio})
                         </span>
                       ))}
                     </div>
                     {variant.tallas_stock.length === 0 && (
                       <span className="text-xs text-gray-500">{t('Sin tallas configuradas')}</span>
+                    )}
+                  </div>
+                  
+                  {/* Indicador de tipo de precio */}
+                  <div className="text-sm text-gray-300 mb-2">
+                    {variant.precio_unico ? (
+                      <span className="bg-blue-900/30 text-blue-300 px-2 py-1 rounded text-xs">
+                        💰 {t('Precio único')}
+                      </span>
+                    ) : (
+                      <span className="bg-yellow-900/30 text-yellow-300 px-2 py-1 rounded text-xs">
+                        💰 {t('Precios por talla')}
+                      </span>
                     )}
                   </div>
                   
@@ -861,8 +960,8 @@ const AdminPage: NextPage = () => {
         marca: string;
         // Datos de la variante
         nombre_variante: string;
-        precio: number;
-        precio_original?: number;
+        precio_unico: boolean;
+        precio_referencia?: number;
         imagenes: Array<{
           url: string;
           public_id: string;
@@ -873,7 +972,7 @@ const AdminPage: NextPage = () => {
           id_talla: number;
           nombre_talla: string;
           cantidad: number;
-          precio?: number;
+          precio: number;
         }>;
       }>({
         // Datos del producto
@@ -883,8 +982,8 @@ const AdminPage: NextPage = () => {
         marca: '',
         // Datos de la variante
         nombre_variante: '',
-        precio: 0,
-        precio_original: undefined,
+        precio_unico: true,
+        precio_referencia: 0,
         imagenes: [],
         tallas: []
       });
@@ -897,33 +996,33 @@ const AdminPage: NextPage = () => {
         if (editingVariant) {
           console.log('📝 Cargando datos de variante para edición:', editingVariant);
           
-          const initialData = {
-            // Datos del producto
-            nombre_producto: editingVariant.nombre_producto,
-            categoria: editingVariant.categoria,
-            descripcion_producto: editingVariant.descripcion_producto,
-            marca: editingVariant.marca,
-            // Datos de la variante
-            nombre_variante: editingVariant.nombre_variante,
-            precio: editingVariant.precio,
-            precio_original: editingVariant.precio_original,
-            imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
-              url: img.url,
-              public_id: img.public_id,
-              isLocalPreview: false
-            })) : [],
-            tallas: editingVariant.tallas ? editingVariant.tallas.map((talla: any) => ({
-              id_talla: talla.id_talla,
-              nombre_talla: talla.nombre_talla,
-              cantidad: talla.cantidad
-            })) : editingVariant.tallas_stock ? editingVariant.tallas_stock.map((talla: any) => ({
-              id_talla: talla.id_talla,
-              nombre_talla: talla.nombre_talla,
-              cantidad: talla.cantidad
-            })) : []
-          };
-          
-          setOriginalData(JSON.parse(JSON.stringify(initialData)));
+        const initialData = {
+          // Datos del producto
+          nombre_producto: editingVariant.nombre_producto,
+          categoria: editingVariant.categoria,
+          descripcion_producto: editingVariant.descripcion_producto,
+          marca: editingVariant.marca,
+          // Datos de la variante
+          nombre_variante: editingVariant.nombre_variante,
+          precio_unico: editingVariant.precio_unico || true,
+          precio_referencia: editingVariant.precio || 0,
+          imagenes: editingVariant.imagenes ? editingVariant.imagenes.map((img: any) => ({
+            url: img.url,
+            public_id: img.public_id,
+            isLocalPreview: false
+          })) : [],
+          tallas: editingVariant.tallas ? editingVariant.tallas.map((talla: any) => ({
+            id_talla: talla.id_talla,
+            nombre_talla: talla.nombre_talla,
+            cantidad: talla.cantidad,
+            precio: talla.precio || 0
+          })) : editingVariant.tallas_stock ? editingVariant.tallas_stock.map((talla: any) => ({
+            id_talla: talla.id_talla,
+            nombre_talla: talla.nombre_talla,
+            cantidad: talla.cantidad,
+            precio: talla.precio || 0
+          })) : []
+        };          setOriginalData(JSON.parse(JSON.stringify(initialData)));
           setEditData(initialData);
           setUniquePrice(true); // Por defecto precio único
         }
@@ -1060,8 +1159,8 @@ const AdminPage: NextPage = () => {
             // Datos de la variante
             id_variante: editingVariant?.id_variante,
             nombre_variante: editData.nombre_variante,
-            precio: editData.precio,
-            precio_original: editData.precio_original,
+            precio_unico: editData.precio_unico,
+            precio_referencia: editData.precio_referencia,
             imagenes: uploadedImages,
             tallas: editData.tallas
           };
@@ -1273,8 +1372,8 @@ const AdminPage: NextPage = () => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={editData.precio}
-                      onChange={(e) => setEditData(prev => ({...prev, precio: Number(e.target.value)}))}
+                      value={editData.precio_referencia || 0}
+                      onChange={(e) => setEditData(prev => ({...prev, precio_referencia: Number(e.target.value)}))}
                       className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-green-400/50 focus:outline-none"
                       required
                     />
@@ -1411,23 +1510,21 @@ const AdminPage: NextPage = () => {
         variantes: [
           {
             nombre: '',
-            precio: 0,
-            precio_original: undefined,
-            imagen_url: undefined,
-          imagen_public_id: undefined,
-          tallas: []
-        }
-      ]
-    });
+            precio_unico: true,
+            precio_referencia: 0,
+            imagenes: [],
+            tallas: []
+          }
+        ]
+      });
 
-    const [singleVariantData, setSingleVariantData] = useState<VariantFormData>({
-      nombre: '',
-      precio: 0,
-      precio_original: undefined,
-      imagen_url: undefined,
-      imagen_public_id: undefined,
-      tallas: []
-    });
+      const [singleVariantData, setSingleVariantData] = useState<VariantFormData>({
+        nombre: '',
+        precio_unico: true,
+        precio_referencia: 0,
+        imagenes: [],
+        tallas: []
+      });
 
     const [uniquePrice, setUniquePrice] = useState(true);
     const [uniquePriceValue, setUniquePriceValue] = useState(0);
@@ -1447,10 +1544,9 @@ const AdminPage: NextPage = () => {
           variantes: [
             {
               nombre: '',
-              precio: 0,
-              precio_original: undefined,
-              imagen_url: undefined,
-              imagen_public_id: undefined,
+              precio_unico: true,
+              precio_referencia: 0,
+              imagenes: [],
               tallas: []
             }
           ]
@@ -1458,10 +1554,9 @@ const AdminPage: NextPage = () => {
         
         setSingleVariantData({
           nombre: '',
-          precio: 0,
-          precio_original: undefined,
-          imagen_url: undefined,
-          imagen_public_id: undefined,
+          precio_unico: true,
+          precio_referencia: 0,
+          imagenes: [],
           tallas: []
         });
       }, [formType]);    const handleSizeSystemChange = (systemId: number) => {
@@ -1567,10 +1662,9 @@ const AdminPage: NextPage = () => {
           ...prev.variantes,
           {
             nombre: '',
-            precio: 0,
-            precio_original: undefined,
-            imagen_url: undefined,
-            imagen_public_id: undefined,
+            precio_unico: true,
+            precio_referencia: 0,
+            imagenes: [],
             tallas: tallasDefault
           }
         ]
@@ -1852,22 +1946,22 @@ const AdminPage: NextPage = () => {
                         </label>
                         
                         {/* Vista previa de imágenes existentes */}
-                        {(variant.imagenes && variant.imagenes.length > 0) || variant.imagen_url ? (
+                        {variant.imagenes && variant.imagenes.length > 0 ? (
                           <div className="mb-2">
                             <div className="flex flex-wrap gap-2">
-                              {/* Imagen principal (compatibilidad) */}
-                              {variant.imagen_url && (
-                                <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
+                              {/* Imágenes */}
+                              {variant.imagenes.map((imagen, imgIndex) => (
+                                <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
                                   <Image
-                                    src={variant.imagen_url}
+                                    src={imagen.url}
                                     alt={variant.nombre}
                                     width={96}
                                     height={96}
                                     className="w-full h-full object-cover"
                                   />
-                                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded-bl">1</div>
+                                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded-bl">{imgIndex + 1}</div>
                                 </div>
-                              )}
+                              ))}
                               {/* Imágenes adicionales */}
                               {variant.imagenes?.map((img, imgIndex) => (
                                 <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative group">
@@ -1915,10 +2009,10 @@ const AdminPage: NextPage = () => {
                           </p>
                         )}
                         
-                        {variant.imagen_url && (
+                        {variant.imagenes && variant.imagenes.length > 0 && (
                           <p className="text-green-400 text-sm mt-1 flex items-center">
                             <span className="mr-2">✓</span>
-                            {t('Imagen cargada exitosamente')}
+                            {t('Imagen(es) cargada(s) exitosamente')}
                           </p>
                         )}
                       </div>
@@ -2104,23 +2198,10 @@ const AdminPage: NextPage = () => {
                   </label>
                   
                   {/* Vista previa de imágenes existentes */}
-                  {(singleVariantData.imagenes && singleVariantData.imagenes.length > 0) || singleVariantData.imagen_url ? (
+                  {singleVariantData.imagenes && singleVariantData.imagenes.length > 0 ? (
                     <div className="mb-2">
                       <div className="flex flex-wrap gap-2">
-                        {/* Imagen principal (compatibilidad) */}
-                        {singleVariantData.imagen_url && (
-                          <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
-                            <Image
-                              src={singleVariantData.imagen_url}
-                              alt={singleVariantData.nombre}
-                              width={96}
-                              height={96}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded-bl">1</div>
-                          </div>
-                        )}
-                        {/* Imágenes adicionales */}
+                        {/* Imágenes */}
                         {singleVariantData.imagenes?.map((img, imgIndex) => (
                           <div key={imgIndex} className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden relative group">
                             <Image
@@ -2167,10 +2248,10 @@ const AdminPage: NextPage = () => {
                     </p>
                   )}
                   
-                  {singleVariantData.imagen_url && (
+                  {singleVariantData.imagenes && singleVariantData.imagenes.length > 0 && (
                     <p className="text-green-400 text-sm mt-1 flex items-center">
                       <span className="mr-2">✓</span>
-                      {t('Imagen cargada exitosamente')}
+                      {t('Imagen(es) cargada(s) exitosamente')}
                     </p>
                   )}
                 </div>
@@ -2195,8 +2276,8 @@ const AdminPage: NextPage = () => {
                     <input
                       type="number"
                       step="0.01"
-                      value={singleVariantData.precio}
-                      onChange={(e) => setSingleVariantData(prev => ({...prev, precio: Number(e.target.value)}))}
+                      value={singleVariantData.precio_referencia || 0}
+                      onChange={(e) => setSingleVariantData(prev => ({...prev, precio_referencia: Number(e.target.value)}))}
                       className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
                       required
                     />
@@ -2425,6 +2506,16 @@ const AdminPage: NextPage = () => {
             📦 {t('Productos y Variantes')}
           </button>
           <button
+            onClick={() => setActiveSection('categorias')}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              activeSection === 'categorias'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📁 {t('Categorías')}
+          </button>
+          <button
             onClick={() => setActiveSection('promotions')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'promotions'
@@ -2463,36 +2554,6 @@ const AdminPage: NextPage = () => {
             }`}
           >
             📏 {t('Sistemas de Tallas')}
-          </button>
-          <button
-            onClick={() => setActiveSection('categorias')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'categorias'
-                ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            📂 {t('Categorías')}
-          </button>
-          <button
-            onClick={() => setActiveSection('variants-v2')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'variants-v2'
-                ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            🆕 {t('Variantes V2')}
-          </button>
-          <button
-            onClick={() => setActiveSection('productos-categoria')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              activeSection === 'productos-categoria'
-                ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            🏷️ {t('Productos por Categoría')}
           </button>
         </nav>
       </div>
@@ -3742,6 +3803,10 @@ const AdminPage: NextPage = () => {
         return renderHeaderTexts();
       case 'images':
         return <IndexImagesAdmin currentLanguage={currentLanguage} />;
+      case 'index-images':
+        return <IndexImagesAdmin currentLanguage={currentLanguage} />;
+      case 'categorias':
+        return <CategoriasAdmin />;
       case 'products':
         return renderVariantsList;
       case 'promotions':
@@ -3752,12 +3817,6 @@ const AdminPage: NextPage = () => {
         return renderNotes();
       case 'sizes':
         return renderSizeSystems();
-      case 'categorias':
-        return <CategoriasAdmin />;
-      case 'variants-v2':
-        return <VariantsManagerV2 currentLanguage={currentLanguage} />;
-      case 'productos-categoria':
-        return <ProductosCategoriaView currentLanguage={currentLanguage} />;
       default:
         return renderDashboard();
     }
