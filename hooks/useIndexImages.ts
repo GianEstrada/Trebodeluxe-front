@@ -20,11 +20,11 @@ export const useIndexImages = () => {
   const loadImages = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/index-images');
+      const response = await fetch('/api/public/index-images');
       const data = await response.json();
       
       if (data.success) {
-        setImages(data.images);
+        setImages(data.data || []);
         setError(null);
       } else {
         setError(data.error || 'Error al cargar imágenes');

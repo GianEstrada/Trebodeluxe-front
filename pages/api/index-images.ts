@@ -34,7 +34,7 @@ export default async function handler(
       queryParams += `?seccion=${seccion}`;
     }
     
-    const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/public/index-images${queryParams}`, {
+    const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/site-settings/index-images${queryParams}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
