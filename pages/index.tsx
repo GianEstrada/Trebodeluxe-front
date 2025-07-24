@@ -1075,22 +1075,12 @@ const HomeScreen: NextPage = () => {
             
             {/* Descripción que aparece en hover */}
             {bannerImage?.descripcion && (
-              <div className="absolute top-8 left-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute bottom-8 left-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="bg-black/80 backdrop-blur-sm text-white px-4 py-3 rounded-lg text-sm max-w-xs leading-relaxed">
                   {bannerImage.descripcion}
                 </div>
               </div>
             )}
-            
-            {/* Botón de acción en hover */}
-            <div className="absolute bottom-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="bg-green-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 shadow-lg">
-                <span>{t('Ver todas las promociones')}</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
             
 
           </div>
