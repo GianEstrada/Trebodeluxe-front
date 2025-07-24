@@ -314,7 +314,7 @@ const AdminPage: NextPage = () => {
     return token;
   };
 
-  // Función helper para hacer peticiones autenticadas
+  // Función helper para hacer peticiones autenticadas - Memoizada
   const authenticatedFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     if (!token) {
@@ -329,7 +329,7 @@ const AdminPage: NextPage = () => {
         ...options.headers,
       },
     });
-  }, [getAuthToken]);
+  }, []);
 
   // Verificar si el usuario es administrador
   useEffect(() => {
@@ -472,6 +472,7 @@ const AdminPage: NextPage = () => {
     }
   }, [activeSection, sizeSystemsData.length]);
 
+  // Cargar datos iniciales - Memoizado
   const loadVariants = useCallback(async () => {
     setLoading(true);
     try {
@@ -488,7 +489,7 @@ const AdminPage: NextPage = () => {
     }
   }, [authenticatedFetch]);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products');
       const data = await response.json();
@@ -498,9 +499,9 @@ const AdminPage: NextPage = () => {
     } catch (error) {
       console.error('Error loading products:', error);
     }
-  };
+  }, [authenticatedFetch]);
 
-  const loadSizeSystems = async () => {
+  const loadSizeSystems = useCallback(async () => {
     console.log('loadSizeSystems: Iniciando carga de sistemas de tallas...');
     try {
       const url = 'https://trebodeluxe-backend.onrender.com/api/size-systems';
@@ -522,10 +523,10 @@ const AdminPage: NextPage = () => {
     } catch (error) {
       console.error('loadSizeSystems: Error de conexión:', error);
     }
-  };
+  }, []);
 
-  // Función de búsqueda para productos/variantes
-  const searchVariants = (searchTerm: string) => {
+  // Función de búsqueda para productos/variantes - Memoizada
+  const searchVariants = useCallback((searchTerm: string) => {
     if (!searchTerm.trim()) {
       setFilteredVariants(variants);
       return;
@@ -540,12 +541,16 @@ const AdminPage: NextPage = () => {
     );
     
     setFilteredVariants(filtered);
-  };
+  }, [variants]);
 
-  // Efecto para buscar cuando cambia el término de búsqueda
+  // Efecto para buscar cuando cambia el término de búsqueda - Optimizado
   useEffect(() => {
-    searchVariants(variantsSearchQuery);
-  }, [variantsSearchQuery, variants]);
+    const timeoutId = setTimeout(() => {
+      searchVariants(variantsSearchQuery);
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [variantsSearchQuery, searchVariants]);
 
   const uploadImageToCloudinary = async (file: File): Promise<{url: string, public_id: string}> => {
     setUploadingImage(true);
@@ -645,7 +650,7 @@ const AdminPage: NextPage = () => {
     }
   }, [authenticatedFetch, t, loadVariants]);
 
-  const renderVariantsList = () => (
+  const renderVariantsList = useMemo(() => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-white mb-6">{t('Gestión de Productos y Variantes')}</h2>
@@ -818,9 +823,9 @@ const AdminPage: NextPage = () => {
         </div>
       )}
     </div>
-  );
+  ), [t, loading, variantsSearchQuery, filteredVariants, handleEditVariant, handleDeleteVariant, searchVariants]);
 
-  // Nuevo componente para editar variantes
+  // Nuevo componente para editar variantes - Optimizado para evitar re-renders
   const EditVariantForm = useMemo(() => {
     const EditVariantFormComponent = () => {
       const [originalData, setOriginalData] = useState<any>(null);
@@ -1335,7 +1340,7 @@ const AdminPage: NextPage = () => {
     };
     
     return <EditVariantFormComponent />;
-  }, [editingVariant, t, authenticatedFetch, loadVariants]);
+  }, [editingVariant, t, authenticatedFetch, loadVariants, getAuthToken]);
 
   const VariantForm = useMemo(() => {
     const VariantFormComponent = () => {
@@ -3208,7 +3213,7 @@ const AdminPage: NextPage = () => {
     );
   };
 
-  const renderContent = () => {
+  const renderContent = useCallback(() => {
     switch (activeSection) {
       case 'dashboard':
         return renderDashboard();
@@ -3217,7 +3222,7 @@ const AdminPage: NextPage = () => {
       case 'images':
         return <MainImagesAdmin />;
       case 'products':
-        return renderVariantsList();
+        return renderVariantsList;
       case 'promotions':
         return <PromotionsAdmin />;
       case 'orders':
@@ -3229,7 +3234,7 @@ const AdminPage: NextPage = () => {
       default:
         return renderDashboard();
     }
-  };
+  }, [activeSection, renderDashboard, renderVariantsList, renderSizeSystems]);
 
   if (!user) {
     return <div className="min-h-screen bg-black flex items-center justify-center">
