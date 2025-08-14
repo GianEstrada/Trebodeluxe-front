@@ -101,7 +101,18 @@ const OrdersAdmin: React.FC = () => {
         if (value) queryParams.append(key, value.toString());
       });
 
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders?${queryParams}`);
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        console.error('No admin token found');
+        return;
+      }
+
+      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -117,7 +128,18 @@ const OrdersAdmin: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/orders/stats');
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        console.error('No admin token found');
+        return;
+      }
+
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/orders/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -130,7 +152,18 @@ const OrdersAdmin: React.FC = () => {
 
   const fetchOrderDetails = async (orderId: number) => {
     try {
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`);
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        console.error('No admin token found');
+        return;
+      }
+
+      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -151,9 +184,16 @@ const OrdersAdmin: React.FC = () => {
     
     try {
       setUpdating(true);
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        console.error('No admin token found');
+        return;
+      }
+
       const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${selectedOrder.id_pedido}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updateForm)
