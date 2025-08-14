@@ -2,6 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 
+// Función helper para obtener el token de administrador
+const getAdminToken = (): string | null => {
+  try {
+    // Primero intentar obtener adminToken directo
+    const directToken = localStorage.getItem('adminToken');
+    if (directToken) return directToken;
+    
+    // Si no existe, obtener del usuario autenticado
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      // Verificar que sea un usuario admin y tenga token
+      if (user.rol === 'admin' && user.token) {
+        return user.token;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting admin token:', error);
+    return null;
+  }
+};
+
 interface OrderDetail {
   id_detalle: number;
   id_producto: number;
@@ -101,9 +124,9 @@ const OrdersAdmin: React.FC = () => {
         if (value) queryParams.append(key, value.toString());
       });
 
-      const token = localStorage.getItem('adminToken');
+      const token = getAdminToken();
       if (!token) {
-        console.error('No admin token found');
+        console.error('No admin token found - user must be logged in as admin');
         return;
       }
 
@@ -128,9 +151,9 @@ const OrdersAdmin: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getAdminToken();
       if (!token) {
-        console.error('No admin token found');
+        console.error('No admin token found - user must be logged in as admin');
         return;
       }
 
@@ -152,9 +175,9 @@ const OrdersAdmin: React.FC = () => {
 
   const fetchOrderDetails = async (orderId: number) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getAdminToken();
       if (!token) {
-        console.error('No admin token found');
+        console.error('No admin token found - user must be logged in as admin');
         return;
       }
 
@@ -184,9 +207,9 @@ const OrdersAdmin: React.FC = () => {
     
     try {
       setUpdating(true);
-      const token = localStorage.getItem('adminToken');
+      const token = getAdminToken();
       if (!token) {
-        console.error('No admin token found');
+        console.error('No admin token found - user must be logged in as admin');
         return;
       }
 
