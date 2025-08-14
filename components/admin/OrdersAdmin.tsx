@@ -35,12 +35,11 @@ interface Order {
 
 interface OrderStats {
   total_pedidos: number;
-  pendientes: number;
-  procesando: number;
-  en_espera: number;
-  enviados: number;
-  terminados: number;
-  problemas: number;
+  no_revisado: number;
+  en_proceso: number;
+  preparado: number;
+  enviado: number;
+  listo: number;
   ingresos_totales: number;
   ticket_promedio: number;
   pedidos_hoy: number;
@@ -48,12 +47,11 @@ interface OrderStats {
 }
 
 const ESTADOS_PEDIDO = [
-  { value: 'pendiente', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'procesando', label: 'Procesando', color: 'bg-blue-100 text-blue-800' },
-  { value: 'en_espera', label: 'En Espera', color: 'bg-orange-100 text-orange-800' },
+  { value: 'no_revisado', label: 'No Revisado', color: 'bg-gray-100 text-gray-800' },
+  { value: 'en_proceso', label: 'En Proceso', color: 'bg-blue-100 text-blue-800' },
+  { value: 'preparado', label: 'Preparado', color: 'bg-yellow-100 text-yellow-800' },
   { value: 'enviado', label: 'Enviado', color: 'bg-purple-100 text-purple-800' },
-  { value: 'terminado', label: 'Terminado', color: 'bg-green-100 text-green-800' },
-  { value: 'problema', label: 'Problema', color: 'bg-red-100 text-red-800' }
+  { value: 'listo', label: 'Listo', color: 'bg-green-100 text-green-800' }
 ];
 
 const OrdersAdmin: React.FC = () => {
@@ -207,32 +205,48 @@ const OrdersAdmin: React.FC = () => {
 
       {/* Estadísticas */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-blue-600">Total Pedidos</h3>
-            <p className="text-2xl font-bold text-blue-900">{stats.total_pedidos}</p>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-blue-600">Total Pedidos</h3>
+              <p className="text-2xl font-bold text-blue-900">{stats.total_pedidos}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-600">No Revisado</h3>
+              <p className="text-2xl font-bold text-gray-900">{stats.no_revisado}</p>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-blue-600">En Proceso</h3>
+              <p className="text-2xl font-bold text-blue-900">{stats.en_proceso}</p>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-yellow-600">Preparado</h3>
+              <p className="text-2xl font-bold text-yellow-900">{stats.preparado}</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-purple-600">Enviado</h3>
+              <p className="text-2xl font-bold text-purple-900">{stats.enviado}</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-green-600">Listo</h3>
+              <p className="text-2xl font-bold text-green-900">{stats.listo}</p>
+            </div>
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-yellow-600">Pendientes</h3>
-            <p className="text-2xl font-bold text-yellow-900">{stats.pendientes}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-emerald-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-emerald-600">Ingresos Totales</h3>
+              <p className="text-xl font-bold text-emerald-900">{formatCurrency(parseFloat(stats.ingresos_totales.toString()))}</p>
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-indigo-600">Pedidos Hoy</h3>
+              <p className="text-2xl font-bold text-indigo-900">{stats.pedidos_hoy}</p>
+            </div>
+            <div className="bg-pink-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-pink-600">Pedidos Semana</h3>
+              <p className="text-2xl font-bold text-pink-900">{stats.pedidos_semana}</p>
+            </div>
           </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-purple-600">Enviados</h3>
-            <p className="text-2xl font-bold text-purple-900">{stats.enviados}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-green-600">Terminados</h3>
-            <p className="text-2xl font-bold text-green-900">{stats.terminados}</p>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-red-600">Problemas</h3>
-            <p className="text-2xl font-bold text-red-900">{stats.problemas}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-600">Ingresos</h3>
-            <p className="text-xl font-bold text-gray-900">{formatCurrency(parseFloat(stats.ingresos_totales.toString()))}</p>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Filtros y búsqueda */}
@@ -343,9 +357,18 @@ const OrdersAdmin: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
-                        {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
+                          {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
+                        </span>
+                        <button
+                          onClick={() => fetchOrderDetails(order.id_pedido)}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                          title="Cambiar estado"
+                        >
+                          📝
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -364,7 +387,7 @@ const OrdersAdmin: React.FC = () => {
                         onClick={() => fetchOrderDetails(order.id_pedido)}
                         className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                       >
-                        Ver Detalles
+                        Gestionar
                       </button>
                     </td>
                   </tr>
@@ -407,7 +430,7 @@ const OrdersAdmin: React.FC = () => {
             <div className="mt-3">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Pedido #{selectedOrder.id_pedido}
+                  Gestionar Pedido #{selectedOrder.id_pedido}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
