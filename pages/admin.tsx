@@ -1175,6 +1175,9 @@ const AdminPage: NextPage = () => {
           };
 
           console.log('🚀 [DEBUG] Payload enviado al backend:', payload);
+          console.log('🎯 [DEBUG] Precio único:', payload.precio_unico);
+          console.log('💰 [DEBUG] Precio general:', payload.precio);
+          console.log('📦 [DEBUG] Tallas detalle:', payload.tallas);
           
           const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${editingVariant?.id_variante}`, {
             method: 'PUT',
@@ -1366,7 +1369,11 @@ const AdminPage: NextPage = () => {
                     <input
                       type="checkbox"
                       checked={uniquePrice}
-                      onChange={(e) => setUniquePrice(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUniquePrice(checked);
+                        setEditData(prev => ({...prev, precio_unico: checked}));
+                      }}
                       className="mr-2"
                     />
                     {t('Precio único para todas las tallas')}
