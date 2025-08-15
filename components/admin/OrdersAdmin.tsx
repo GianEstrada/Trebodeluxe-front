@@ -1,4 +1,5 @@
 // OrdersAdmin.tsx - Componente para gestión administrativa de pedidos
+// Updated: 2025-08-15 - Fixed token authentication
 
 import React, { useState, useEffect } from 'react';
 
@@ -7,20 +8,29 @@ const getAdminToken = (): string | null => {
   try {
     // Primero intentar obtener adminToken directo
     const directToken = localStorage.getItem('adminToken');
-    if (directToken) return directToken;
+    if (directToken) {
+      console.log('🔑 Using direct adminToken');
+      return directToken;
+    }
     
     // Si no existe, obtener del usuario autenticado
     const userStr = localStorage.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
+      console.log('👤 User found in localStorage:', { usuario: user.usuario, rol: user.rol, hasToken: !!user.token });
       // Verificar que sea un usuario admin y tenga token
       if (user.rol === 'admin' && user.token) {
+        console.log('✅ Using token from authenticated admin user');
         return user.token;
+      } else {
+        console.warn('❌ User is not admin or missing token:', { rol: user.rol, hasToken: !!user.token });
       }
+    } else {
+      console.warn('❌ No user found in localStorage');
     }
     return null;
   } catch (error) {
-    console.error('Error getting admin token:', error);
+    console.error('❌ Error getting admin token:', error);
     return null;
   }
 };
