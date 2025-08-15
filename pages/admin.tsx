@@ -1246,13 +1246,19 @@ const AdminPage: NextPage = () => {
                     <label className="block text-sm font-medium text-gray-300 mb-1">
                       {t('Categoría')} *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={editData.categoria}
                       onChange={(e) => setEditData(prev => ({...prev, categoria: e.target.value}))}
                       className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
                       required
-                    />
+                    >
+                      <option value="">{t('Seleccionar categoría')}</option>
+                      {categorias.map((cat) => (
+                        <option key={cat.id_categoria} value={cat.nombre}>
+                          {cat.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -1880,13 +1886,19 @@ const AdminPage: NextPage = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">
                         {t('Categoría')}
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={productFormData.categoria}
                         onChange={(e) => setProductFormData(prev => ({...prev, categoria: e.target.value}))}
                         className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
                         required
-                      />
+                      >
+                        <option value="">{t('Seleccionar categoría')}</option>
+                        {categorias.map((categoria) => (
+                          <option key={categoria.id_categoria} value={categoria.nombre}>
+                            {categoria.nombre}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-300 mb-1">
