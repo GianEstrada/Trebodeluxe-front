@@ -280,7 +280,7 @@ const CatalogoScreen: NextPage = () => {
         
         // Si no es promociones, cargar productos normales con variantes
         if (activeFilter !== 'promociones') {
-          const variantsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+          const variantsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
           const variantsData = await variantsResponse.json();
           
           if (variantsData.success && variantsData.variants) {

@@ -113,7 +113,7 @@ const ProductPage: NextPage = () => {
     
     try {
       // Obtener todas las variantes y filtrar por producto
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
       const variantsData = await response.json();
       
       if (variantsData.success && variantsData.variants) {
@@ -161,7 +161,7 @@ const ProductPage: NextPage = () => {
 
   const loadRelatedProducts = async (categoria: string, excludeId: number) => {
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
       const variantsData = await response.json();
       
       if (variantsData.success && variantsData.variants) {

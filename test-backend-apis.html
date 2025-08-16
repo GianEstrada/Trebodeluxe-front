@@ -28,6 +28,7 @@
             <h3>Endpoints de Size Systems</h3>
             <button onclick="testSizeSystems()">Get All Size Systems (/api/size-systems)</button>
             <button onclick="testSizeSystemsSearch()">Search Size Systems (/api/size-systems/search)</button>
+            <button onclick="testPublicVariants()">Get Public Variants (/api/products/variants)</button>
         </div>
 
         <div>
@@ -116,6 +117,16 @@
             const result = await makeRequest(`${baseURL}/api/admin/variants`);
             addResult(
                 `Admin Variants - Status: ${result.success ? result.status : 'Failed'}`,
+                result,
+                !result.success
+            );
+        }
+
+        async function testPublicVariants() {
+            addResult('Testing Public Variants...', { status: 'loading' });
+            const result = await makeRequest(`${baseURL}/api/products/variants?limit=5`);
+            addResult(
+                `Public Variants - Status: ${result.success ? result.status : 'Failed'}`,
                 result,
                 !result.success
             );

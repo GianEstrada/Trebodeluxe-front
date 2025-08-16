@@ -39,7 +39,7 @@ export const useVariantsV2 = (): UseVariantsV2 => {
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/variants-v2', {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -65,7 +65,7 @@ export const useVariantsV2 = (): UseVariantsV2 => {
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/variants-v2', {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -93,7 +93,7 @@ export const useVariantsV2 = (): UseVariantsV2 => {
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/admin/variants-v2/${id}`, {
+      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
