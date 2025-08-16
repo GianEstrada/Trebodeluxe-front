@@ -278,47 +278,44 @@ const CatalogoScreen: NextPage = () => {
           filters.busqueda = searchTerm;
         }
         
-        // Si no es promociones, cargar productos normales con variantes
+        // Si no es promociones, cargar productos normales con el nuevo endpoint
         if (activeFilter !== 'promociones') {
-          const variantsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
-          const variantsData = await variantsResponse.json();
+          // Construir URL con parámetros de búsqueda
+          const params = new URLSearchParams();
+          params.append('limit', '20');
+          if (selectedCategory && selectedCategory !== 'todas') {
+            params.append('categoria', selectedCategory);
+          }
+          if (selectedBrand && selectedBrand !== 'todas') {
+            params.append('marca', selectedBrand);
+          }
+          if (searchTerm && searchTerm.trim()) {
+            params.append('search', searchTerm);
+          }
           
-          if (variantsData.success && variantsData.variants) {
-            // Agrupar variantes por producto
-            const productsMap = new Map();
-            
-            variantsData.variants.forEach((variant: any) => {
-              const productKey = variant.id_producto;
-              
-              if (!productsMap.has(productKey)) {
-                productsMap.set(productKey, {
-                  id_producto: variant.id_producto,
-                  nombre: variant.nombre_producto,
-                  descripcion: variant.descripcion_producto,
-                  categoria: variant.categoria,
-                  marca: variant.marca,
-                  variantes: []
-                });
-              }
-              
-              productsMap.get(productKey).variantes.push({
-                id_variante: variant.id_variante,
-                nombre_variante: variant.nombre_variante,
-                precio: typeof variant.precio === 'string' ? parseFloat(variant.precio) : (variant.precio || 0),
-                precio_original: variant.precio_original ? (typeof variant.precio_original === 'string' ? parseFloat(variant.precio_original) : variant.precio_original) : null,
-                imagen_url: variant.imagen_url,
-                activo: variant.variante_activa,
-                tallas: variant.tallas_stock || []
-              });
-            });
-            
-            // Convertir el mapa a array y ordenar variantes
-            const productsArray = Array.from(productsMap.values()).map(product => ({
-              ...product,
-              variantes: product.variantes.sort((a: any, b: any) => a.id_variante - b.id_variante)
+          const catalogResponse = await fetch(`https://trebodeluxe-backend.onrender.com/api/products/catalog-items?${params}`);
+          const catalogData = await catalogResponse.json();
+          
+          if (catalogData.success && catalogData.products) {
+            const processedProducts = catalogData.products.map((product: any) => ({
+              id_producto: product.id_producto,
+              nombre: product.nombre_producto,
+              descripcion: product.descripcion_producto,
+              categoria: product.categoria,
+              marca: product.marca,
+              precio_minimo: parseFloat(product.precio_minimo) || 0,
+              stock_total: parseInt(product.stock_total) || 0,
+              imagenes: product.imagenes || [],
+              variantes: [{
+                id_variante: product.id_variante,
+                nombre_variante: product.nombre_variante,
+                precio: parseFloat(product.precio_minimo) || 0,
+                stock: parseInt(product.stock_total) || 0,
+                activo: product.variante_activa
+              }]
             }));
             
-            setAllProducts(productsArray);
+            setAllProducts(processedProducts);
           }
         }
         
