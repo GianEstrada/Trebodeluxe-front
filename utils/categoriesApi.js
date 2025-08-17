@@ -47,6 +47,51 @@ export const categoriesApi = {
         category: null
       };
     }
+  },
+
+  /**
+   * Obtener las categorías activas que tienen contenido (productos, variantes o promociones)
+   * @param {number} limit - Número máximo de categorías a devolver (por defecto 5)
+   * @returns {Promise<Object>} Lista de categorías activas con contenido
+   */
+  async getActiveCategoriesWithContent(limit = 5) {
+    try {
+      // Obtener todas las categorías
+      const categoriesResponse = await this.getAll();
+      if (!categoriesResponse.success) {
+        throw new Error('No se pudieron obtener las categorías');
+      }
+
+      // Obtener productos para verificar qué categorías tienen contenido
+      const productsResponse = await apiRequest('/api/products');
+      const products = productsResponse.products || [];
+
+      // Filtrar categorías que tienen productos
+      const categoriesWithContent = categoriesResponse.categories.filter(category => {
+        const hasProducts = products.some(product => 
+          product.categoria === category.nombre || 
+          product.categoria_id === category.id_categoria
+        );
+        return hasProducts;
+      });
+
+      // Limitar el número de categorías devueltas
+      const limitedCategories = categoriesWithContent.slice(0, limit);
+
+      return {
+        success: true,
+        categories: limitedCategories,
+        total: categoriesWithContent.length
+      };
+    } catch (error) {
+      console.error('Error getting active categories with content:', error);
+      return {
+        success: false,
+        error: error.message,
+        categories: [],
+        total: 0
+      };
+    }
   }
 };
 

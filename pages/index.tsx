@@ -8,6 +8,7 @@ import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useIndexImages } from "../hooks/useIndexImages";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
+import { categoriesApi } from "../utils/categoriesApi";
 import { useCategories } from "../hooks/useCategories";
 
 // Definir el tipo para los productos
@@ -41,6 +42,9 @@ const HomeScreen: NextPage = () => {
   const [recentByCategory, setRecentByCategory] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estado para las categorías activas con contenido
+  const [activeCategoriesWithContent, setActiveCategoriesWithContent] = useState<any[]>([]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -114,6 +118,43 @@ const HomeScreen: NextPage = () => {
     return featuredProducts.filter(product => product.category === selectedCategory);
   };
 
+  // Función para cargar categorías activas con contenido
+  const loadActiveCategoriesWithContent = async () => {
+    try {
+      // Obtener todas las categorías con contenido
+      const response = await categoriesApi.getActiveCategoriesWithContent(5) as any;
+      if (response.success && response.categories) {
+        setActiveCategoriesWithContent(response.categories);
+        
+        // Si hay categorías activas, establecer la primera como seleccionada
+        if (response.categories.length > 0) {
+          setSelectedCategory(response.categories[0].nombre);
+        }
+      } else {
+        // Fallback a categorías por defecto si no hay respuesta de la API
+        const fallbackCategories = [
+          { id_categoria: 1, nombre: 'Camisetas' },
+          { id_categoria: 2, nombre: 'Polos' },
+          { id_categoria: 3, nombre: 'Zapatos' },
+          { id_categoria: 4, nombre: 'Gorras' },
+          { id_categoria: 5, nombre: 'Accesorios' }
+        ];
+        setActiveCategoriesWithContent(fallbackCategories);
+      }
+    } catch (error) {
+      console.error('Error cargando categorías activas:', error);
+      // Fallback en caso de error
+      const fallbackCategories = [
+        { id_categoria: 1, nombre: 'Camisetas' },
+        { id_categoria: 2, nombre: 'Polos' },
+        { id_categoria: 3, nombre: 'Zapatos' },
+        { id_categoria: 4, nombre: 'Gorras' },
+        { id_categoria: 5, nombre: 'Accesorios' }
+      ];
+      setActiveCategoriesWithContent(fallbackCategories);
+    }
+  };
+
   // Cargar productos recientes y por categoría desde la API
   useEffect(() => {
     const loadProducts = async () => {
@@ -138,6 +179,9 @@ const HomeScreen: NextPage = () => {
           });
           setRecentByCategory(transformedByCategory);
         }
+
+        // Cargar categorías activas con contenido
+        await loadActiveCategoriesWithContent();
 
       } catch (err: any) {
         console.error('Error cargando productos:', err);
@@ -1016,7 +1060,7 @@ const HomeScreen: NextPage = () => {
       {/* Promociones Section */}
       <div className="self-stretch flex flex-col items-start justify-start !p-4 text-[96px] min-h-0 flex-shrink-0">
         <Link href="/catalogo?filter=promociones" className="no-underline w-full">
-          <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group">
+          <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group [box-shadow:none] hover:[box-shadow:none]">
             {/* Imagen de fondo */}
             <div className="absolute inset-0 rounded-[46px] overflow-hidden">
               {bannerImage ? (
@@ -1131,78 +1175,21 @@ const HomeScreen: NextPage = () => {
 
       <div className="self-stretch flex flex-col items-start justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 gap-[101px] text-center text-black">
         <div className="self-stretch flex flex-row items-center justify-start">
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Camisetas' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Camisetas')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Camisetas' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Camisetas')}
+          {activeCategoriesWithContent.map((category, index) => (
+            <div 
+              key={category.id_categoria}
+              className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
+                selectedCategory === category.nombre ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
+              }`}
+              onClick={() => setSelectedCategory(category.nombre)}
+            >
+              <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
+                selectedCategory === category.nombre ? 'text-white' : 'hover:text-white'
+              }`}>
+                {t(category.nombre)}
+              </div>
             </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Polos' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Polos')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Polos' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Polos')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Zapatos' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Zapatos')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Zapatos' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Zapatos')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Gorras' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Gorras')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Gorras' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Gorras')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Accesorios' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Accesorios')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Accesorios' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Accesorios')}
-            </div>
-          </div>
-          <div 
-            className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-              selectedCategory === 'Pantalones' ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-            }`}
-            onClick={() => setSelectedCategory('Pantalones')}
-          >
-            <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-              selectedCategory === 'Pantalones' ? 'text-white' : 'hover:text-white'
-            }`}>
-              {t('Pantalones')}
-            </div>
-          </div>
+          ))}
         </div>
 
       </div>
