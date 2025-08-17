@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
+interface Category {
+  id_categoria: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+}
+
 interface Promotion {
   id_promocion: number;
   nombre: string;
@@ -32,7 +39,9 @@ interface PromotionsAdminProps {
 const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,8 +118,43 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await fetch(`${API_BASE_URL}/api/categorias`);
+      const data = await response.json();
+      
+      if (data.success && data.categorias) {
+        setCategories(data.categorias);
+      } else {
+        console.warn('No se pudieron cargar las categorías:', data);
+        // Fallback con categorías hardcodeadas si no se pueden cargar
+        setCategories([
+          { id_categoria: 1, nombre: 'Playeras', activo: true },
+          { id_categoria: 2, nombre: 'Hoodies', activo: true },
+          { id_categoria: 3, nombre: 'Pantalones', activo: true },
+          { id_categoria: 4, nombre: 'Zapatos', activo: true },
+          { id_categoria: 5, nombre: 'Accesorios', activo: true }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      // Fallback con categorías hardcodeadas en caso de error
+      setCategories([
+        { id_categoria: 1, nombre: 'Playeras', activo: true },
+        { id_categoria: 2, nombre: 'Hoodies', activo: true },
+        { id_categoria: 3, nombre: 'Pantalones', activo: true },
+        { id_categoria: 4, nombre: 'Zapatos', activo: true },
+        { id_categoria: 5, nombre: 'Accesorios', activo: true }
+      ]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
   useEffect(() => {
     fetchPromotions();
+    fetchCategories();
   }, []);
 
   const resetForm = () => {
@@ -590,13 +634,25 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Categoría
                   </label>
-                  <input
-                    type="text"
-                    value={formData.aplicacion_categoria}
-                    onChange={(e) => setFormData({...formData, aplicacion_categoria: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    placeholder="Camisetas, Pantalones, etc."
-                  />
+                  {loadingCategories ? (
+                    <div className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-500">
+                      Cargando categorías...
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.aplicacion_categoria}
+                      onChange={(e) => setFormData({...formData, aplicacion_categoria: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      required
+                    >
+                      <option value="">Selecciona una categoría</option>
+                      {categories.map((category) => (
+                        <option key={category.id_categoria} value={category.id_categoria.toString()}>
+                          {category.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
