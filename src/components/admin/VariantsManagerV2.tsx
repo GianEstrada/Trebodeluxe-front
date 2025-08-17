@@ -13,11 +13,22 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
   const [productos, setProductos] = useState<any[]>([]);
   const [sistemasTalla, setSistemasTalla] = useState<any[]>([]);
   const [formLoading, setFormLoading] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [filteredVariants, setFilteredVariants] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProductos();
     fetchSistemasTalla();
   }, []);
+
+  useEffect(() => {
+    // Filtrar variantes según el estado del checkbox
+    if (showInactive) {
+      setFilteredVariants(variants);
+    } else {
+      setFilteredVariants(variants.filter(variant => variant.variante_activa !== false));
+    }
+  }, [variants, showInactive]);
 
   const fetchProductos = async () => {
     try {
@@ -149,15 +160,31 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
         />
       )}
 
+      {/* Filtros */}
+      <div className="bg-white shadow p-4 rounded-lg mb-6">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="showInactiveVariants"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="showInactiveVariants" className="text-sm font-medium text-gray-700">
+            Mostrar variantes inactivas
+          </label>
+        </div>
+      </div>
+
       {/* Lista de Variantes */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">Variantes ({variants.length})</h2>
+          <h2 className="text-lg font-semibold">Variantes ({filteredVariants.length})</h2>
         </div>
 
-        {variants.length === 0 ? (
+        {filteredVariants.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No hay variantes registradas
+            {showInactive ? 'No hay variantes registradas' : 'No hay variantes activas'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -177,6 +204,9 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
                     Stock Total
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Imagen
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -185,7 +215,7 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {variants.map((variant) => {
+                {filteredVariants.map((variant) => {
                   const stockTotal = variant.tallas_stock.reduce((sum, talla) => sum + (talla.cantidad || 0), 0);
                   
                   return (
@@ -224,6 +254,15 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {stockTotal} unidades
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          variant.variante_activa 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {variant.variante_activa ? 'Activa' : 'Inactiva'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -184,12 +184,15 @@ const OrdersAdmin: React.FC = () => {
   };
 
   const fetchOrderDetails = async (orderId: number) => {
+    console.log('🔍 Fetching order details for ID:', orderId);
     try {
       const token = getAdminToken();
       if (!token) {
-        console.error('No admin token found - user must be logged in as admin');
+        console.error('❌ No admin token found - user must be logged in as admin');
+        alert('No se encontró token de autenticación. Por favor, inicia sesión como administrador.');
         return;
       }
+      console.log('✅ Token found, making request');
 
       const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`, {
         headers: {
@@ -197,18 +200,26 @@ const OrdersAdmin: React.FC = () => {
           'Content-Type': 'application/json'
         }
       });
+      
+      console.log('📡 Response status:', response.status);
       const data = await response.json();
+      console.log('📄 Response data:', data);
       
       if (data.success) {
+        console.log('✅ Setting selected order and showing modal');
         setSelectedOrder(data.data);
         setUpdateForm({
           estado: data.data.estado,
           notas: data.data.notas || ''
         });
         setShowModal(true);
+      } else {
+        console.error('❌ API returned success: false', data);
+        alert(`Error: ${data.message || 'No se pudo cargar el pedido'}`);
       }
     } catch (error) {
-      console.error('Error fetching order details:', error);
+      console.error('❌ Error fetching order details:', error);
+      alert('Error al cargar los detalles del pedido');
     }
   };
 
@@ -305,11 +316,7 @@ const OrdersAdmin: React.FC = () => {
               <p className="text-2xl font-bold text-green-900">{stats.listo}</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-emerald-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-emerald-600">Ingresos Totales</h3>
-              <p className="text-xl font-bold text-emerald-900">{formatCurrency(parseFloat(stats.ingresos_totales.toString()))}</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-indigo-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-indigo-600">Pedidos Hoy</h3>
               <p className="text-2xl font-bold text-indigo-900">{stats.pedidos_hoy}</p>

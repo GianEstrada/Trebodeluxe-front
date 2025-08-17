@@ -68,11 +68,13 @@ interface Size {
 const ProductManagement: React.FC = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [sizesSystems, setSizeSystems] = useState<SizeSystem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
   // Formulario de producto
   const [productForm, setProductForm] = useState({
@@ -90,6 +92,15 @@ const ProductManagement: React.FC = () => {
       loadSizeSystems();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Filtrar productos según el estado del checkbox
+    if (showInactive) {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(products.filter(product => product.activo));
+    }
+  }, [products, showInactive]);
 
   const loadProducts = async () => {
     try {
@@ -336,10 +347,26 @@ const ProductManagement: React.FC = () => {
         </div>
       )}
 
+      {/* Filtros */}
+      <div className="bg-white shadow p-4 rounded-lg mb-6">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="showInactiveProducts"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="showInactiveProducts" className="text-sm font-medium text-gray-700">
+            Mostrar productos inactivos
+          </label>
+        </div>
+      </div>
+
       {/* Lista de productos */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <li key={product.id_producto}>
               <div className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
