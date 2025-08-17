@@ -224,12 +224,19 @@ export const productUtils = {
     // Obtener todas las tallas disponibles en stock
     const availableSizes = product.tallas_disponibles && product.tallas_disponibles.length > 0 ? 
       product.tallas_disponibles.map(t => t.nombre_talla).join(', ') : 
-      (product.stock && product.stock.length > 0 ? 
-        [...new Set(product.stock
-          .filter(s => s.cantidad > 0)
-          .map(s => s.talla_nombre || s.talla)
+      // Si no tenemos tallas_disponibles, buscar en las variantes
+      (sortedVariants.some(v => v.tallas_stock && v.tallas_stock.length > 0) ? 
+        [...new Set(sortedVariants
+          .filter(v => v.tallas_stock && v.tallas_stock.length > 0)
+          .flatMap(v => v.tallas_stock.map(t => t.nombre_talla))
           .filter(Boolean))]
-          .join(', ') : 'Sin tallas');
+          .join(', ') : 
+        (product.stock && product.stock.length > 0 ? 
+          [...new Set(product.stock
+            .filter(s => s.cantidad > 0)
+            .map(s => s.talla_nombre || s.talla)
+            .filter(Boolean))]
+            .join(', ') : 'Sin tallas'));
 
     return {
       id: product.id_producto,
@@ -242,7 +249,10 @@ export const productUtils = {
       color: allColors || 'Sin color',
       size: availableSizes,
       description: product.descripcion,
-      inStock: product.tiene_stock || (product.stock && product.stock.some(s => s.cantidad > 0)) || false,
+      inStock: product.tiene_stock || 
+        (product.variantes && product.variantes.some(v => v.disponible && v.stock_total > 0)) ||
+        (product.stock && product.stock.some(s => s.cantidad > 0)) || 
+        false,
       // Datos adicionales de la nueva estructura
       variantes: product.variantes || [],
       tallas_disponibles: product.tallas_disponibles || [],

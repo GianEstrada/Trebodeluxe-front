@@ -1073,7 +1073,7 @@ const HomeScreen: NextPage = () => {
       {/* Promociones Section */}
       <div className="self-stretch flex flex-col items-start justify-start !p-4 text-[96px] min-h-0 flex-shrink-0">
         <Link href="/catalogo?filter=promociones" className="no-underline w-full">
-          <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group [box-shadow:none] hover:[box-shadow:none]">
+          <div className="self-stretch rounded-[46px] flex-1 min-h-[500px] flex flex-col items-start justify-start !p-8 box-border relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-300 group [box-shadow:none] hover:[box-shadow:none] [filter:none] hover:[filter:none]">
             {/* Imagen de fondo */}
             <div className="absolute inset-0 rounded-[46px] overflow-hidden">
               {bannerImage ? (
@@ -1099,10 +1099,10 @@ const HomeScreen: NextPage = () => {
             <div className="absolute inset-0 bg-black/40 rounded-[46px] group-hover:bg-black/30 transition-all duration-300"></div>
             
             {/* Contenido de texto con descripción en hover */}
-            <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
+            <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300">
               {t('Promociones Especiales').split(' ')[0]}
             </div>
-            <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-green-300 transition-colors duration-300">
+            <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300">
               {t('Promociones Especiales').split(' ')[1]}
             </div>
             
