@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { useTokenManager } from "../src/hooks/useTokenManager";
 
 const LoginScreen: NextPage = () => {
   const [usuario, setUsuario] = useState("");
@@ -14,6 +15,7 @@ const LoginScreen: NextPage = () => {
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   const { login } = useAuth();
+  const { setToken } = useTokenManager();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {

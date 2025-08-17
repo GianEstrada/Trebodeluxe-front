@@ -146,6 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('adminToken', result.token); // Para el nuevo sistema de tokens
       } else {
         throw new Error(result.message || 'Error al iniciar sesión');
       }

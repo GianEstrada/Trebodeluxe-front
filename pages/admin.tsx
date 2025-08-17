@@ -6,6 +6,8 @@ import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
+import { useTokenManager } from '../src/hooks/useTokenManager';
+import { AdminProtected } from '../src/components/AdminProtected';
 import IndexImagesAdmin from '../components/admin/IndexImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
@@ -203,6 +205,7 @@ interface ProductFormData {
 const AdminPage: NextPage = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { makeAuthenticatedRequest, getToken } = useTokenManager();
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   
@@ -372,42 +375,13 @@ const AdminPage: NextPage = () => {
     }
   ]);
 
-  // Función helper para obtener token
-  const getAuthToken = () => {
-    let token = user?.token;
-    if (!token) {
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        token = userData.token;
-      }
-    }
-    return token;
-  };
-
-  // Función helper para hacer peticiones autenticadas - Memoizada
-  const authenticatedFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error('No hay token de autenticación disponible');
-    }
-
-    return fetch(url, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-  }, []);
-
   // Verificar si el usuario es administrador
   useEffect(() => {
-    if (!user) {
+    const token = getToken();
+    if (!user || !token) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, getToken, router]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -426,7 +400,7 @@ const AdminPage: NextPage = () => {
     try {
       const response = await fetch('https://trebodeluxe-backend.onrender.com/api/categorias/admin', {
         headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
+          'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -445,7 +419,7 @@ const AdminPage: NextPage = () => {
   const loadIndexImages = useCallback(async () => {
     setIndexImagesLoading(true);
     try {
-      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/index-images');
+      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/index-images');
       const data = await response.json();
       if (data.success) {
         setIndexImages(data.images);
@@ -455,7 +429,7 @@ const AdminPage: NextPage = () => {
     } finally {
       setIndexImagesLoading(false);
     }
-  }, [authenticatedFetch]);
+  }, [makeAuthenticatedRequest]);
 
   // Función para cargar estadísticas del dashboard
   const loadDashboardStats = async () => {
@@ -478,7 +452,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar variants
       try {
-        const variantsResponse = await authenticatedFetch(`${baseUrl}/api/admin/variants`);
+        const variantsResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/variants`);
         variantsData = await variantsResponse.json();
         console.log('📦 Variants data:', variantsData);
       } catch (error) {
@@ -487,7 +461,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar promotions
       try {
-        const promotionsResponse = await authenticatedFetch(`${baseUrl}/api/admin/promotions`);
+        const promotionsResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/promotions`);
         promotionsData = await promotionsResponse.json();
         console.log('🏷️ Promotions data:', promotionsData);
       } catch (error) {
@@ -496,10 +470,10 @@ const AdminPage: NextPage = () => {
 
       // Cargar orders (intentar diferentes endpoints)
       try {
-        const ordersResponse = await authenticatedFetch(`${baseUrl}/api/admin/orders`);
+        const ordersResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/orders`);
         if (!ordersResponse.ok) {
           // Intentar endpoint alternativo
-          const altOrdersResponse = await authenticatedFetch(`${baseUrl}/api/orders`);
+          const altOrdersResponse = await makeAuthenticatedRequest(`${baseUrl}/api/orders`);
           ordersData = await altOrdersResponse.json();
         } else {
           ordersData = await ordersResponse.json();
@@ -587,7 +561,7 @@ const AdminPage: NextPage = () => {
   const loadVariants = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/variants');
       const data = await response.json();
       if (data.success) {
         setVariants(data.variants);
@@ -598,11 +572,11 @@ const AdminPage: NextPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [authenticatedFetch]);
+  }, [makeAuthenticatedRequest]);
 
   const loadProducts = useCallback(async () => {
     try {
-      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products');
+      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/products');
       const data = await response.json();
       if (data.success) {
         setProducts(data.products);
@@ -610,7 +584,7 @@ const AdminPage: NextPage = () => {
     } catch (error) {
       console.error('Error loading products:', error);
     }
-  }, [authenticatedFetch]);
+  }, [makeAuthenticatedRequest]);
 
   const loadSizeSystems = useCallback(async () => {
     console.log('loadSizeSystems: Iniciando carga de sistemas de tallas...');
@@ -717,7 +691,7 @@ const AdminPage: NextPage = () => {
       console.log('🔍 [DEBUG] Editando variante:', variantId);
       
       // Obtener los datos de la variante
-      const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`);
+      const response = await makeAuthenticatedRequest(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -735,7 +709,7 @@ const AdminPage: NextPage = () => {
       console.error('Error loading variant for edit:', error);
       alert(t('Error al cargar los datos de la variante'));
     }
-  }, [authenticatedFetch, t]);
+  }, [makeAuthenticatedRequest, t]);
 
   const handleDeleteVariant = useCallback(async (variantId: number, variantName: string) => {
     if (!confirm(t(`¿Estás seguro de que deseas eliminar la variante "${variantName}"?`))) {
@@ -743,7 +717,7 @@ const AdminPage: NextPage = () => {
     }
 
     try {
-      const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`, {
+      const response = await makeAuthenticatedRequest(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${variantId}`, {
         method: 'DELETE'
       });
       
@@ -759,7 +733,7 @@ const AdminPage: NextPage = () => {
       console.error('Error deleting variant:', error);
       alert(t('Error al eliminar la variante'));
     }
-  }, [authenticatedFetch, t, loadVariants]);
+  }, [makeAuthenticatedRequest, t, loadVariants]);
 
   const renderVariantsList = useMemo(() => (
     <div className="space-y-6">
@@ -1068,7 +1042,7 @@ const AdminPage: NextPage = () => {
         // Si es una imagen existente en Cloudinary, eliminarla
         if (!imageToRemove.isLocalPreview && imageToRemove.public_id) {
           try {
-            const token = getAuthToken();
+            const token = getToken();
             if (!token) {
               throw new Error('No hay token de autenticación');
             }
@@ -1106,7 +1080,7 @@ const AdminPage: NextPage = () => {
         
         for (const imagen of imagenes) {
           if (imagen.isLocalPreview && imagen.file) {
-            const token = getAuthToken();
+            const token = getToken();
             if (!token) {
               throw new Error('No hay token de autenticación');
             }
@@ -1179,7 +1153,7 @@ const AdminPage: NextPage = () => {
           console.log('💰 [DEBUG] Precio general:', payload.precio);
           console.log('📦 [DEBUG] Tallas detalle:', payload.tallas);
           
-          const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${editingVariant?.id_variante}`, {
+          const response = await makeAuthenticatedRequest(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${editingVariant?.id_variante}`, {
             method: 'PUT',
             body: JSON.stringify(payload),
           });
@@ -1706,7 +1680,7 @@ const AdminPage: NextPage = () => {
           console.log('🔍 [DEBUG] Subiendo imagen local:', imagen.file.name);
           
           // Obtener token
-          const token = getAuthToken();
+          const token = getToken();
           if (!token) {
             throw new Error('No hay token de autenticación');
           }
@@ -1776,7 +1750,7 @@ const AdminPage: NextPage = () => {
             variantes: updatedVariantes
           };
           
-          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products', {
+          response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/products', {
             method: 'POST',
             body: JSON.stringify(updatedProductData),
           });
@@ -1796,7 +1770,7 @@ const AdminPage: NextPage = () => {
             ...updatedVariantData
           };
           
-          response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
+          response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
             method: 'POST',
             body: JSON.stringify(payload),
           });
@@ -2643,7 +2617,7 @@ const AdminPage: NextPage = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      const token = getAuthToken();
+      const token = getToken();
       if (!token) {
         throw new Error('No hay token de autenticación');
       }
@@ -2662,7 +2636,7 @@ const AdminPage: NextPage = () => {
       }
       
       // Actualizar en el backend
-      const updateResponse = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/home-images', {
+      const updateResponse = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/home-images', {
         method: 'PUT',
         body: JSON.stringify({
           imageType,
@@ -3034,7 +3008,7 @@ const AdminPage: NextPage = () => {
           ? `https://trebodeluxe-backend.onrender.com/api/admin/principal-images?search=${encodeURIComponent(search)}`
           : 'https://trebodeluxe-backend.onrender.com/api/admin/principal-images';
         
-        const response = await authenticatedFetch(url);
+        const response = await makeAuthenticatedRequest(url);
         const data = await response.json();
         
         if (data.success) {
@@ -3047,7 +3021,7 @@ const AdminPage: NextPage = () => {
       } finally {
         setLoading(false);
       }
-    }, [authenticatedFetch]);
+    }, [makeAuthenticatedRequest]);
 
     // Cargar imágenes al montar el componente
     useEffect(() => {
@@ -3057,7 +3031,7 @@ const AdminPage: NextPage = () => {
     // Manejar cambio de posición
     const handlePositionChange = async (imageId: number, newPosition: string) => {
       try {
-        const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}/position`, {
+        const response = await makeAuthenticatedRequest(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}/position`, {
           method: 'PUT',
           body: JSON.stringify({ posicion: newPosition }),
         });
@@ -3084,7 +3058,7 @@ const AdminPage: NextPage = () => {
         const imageData = await uploadImageToCloudinary(file);
         
         // Crear registro en base de datos
-        const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/principal-images', {
+        const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/principal-images', {
           method: 'POST',
           body: JSON.stringify({
             nombre: uploadFormData.nombre,
@@ -3120,7 +3094,7 @@ const AdminPage: NextPage = () => {
       }
 
       try {
-        const response = await authenticatedFetch(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}`, {
+        const response = await makeAuthenticatedRequest(`https://trebodeluxe-backend.onrender.com/api/admin/principal-images/${imageId}`, {
           method: 'DELETE',
         });
         
@@ -3889,4 +3863,11 @@ const AdminPage: NextPage = () => {
   );
 };
 
-export default AdminPage;
+// Envolver el componente con AdminProtected para gestionar la autenticación
+const ProtectedAdminPage: NextPage = () => (
+  <AdminProtected>
+    <AdminPage />
+  </AdminProtected>
+);
+
+export default ProtectedAdminPage;
