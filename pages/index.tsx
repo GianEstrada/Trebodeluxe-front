@@ -143,33 +143,8 @@ const HomeScreen: NextPage = () => {
         console.error('Error cargando productos:', err);
         setError(err.message);
         
-        // Productos de fallback en caso de error
-        setFeaturedProducts([
-          {
-            id: 1,
-            name: "Camiseta Básica Premium",
-            price: 29.99,
-            originalPrice: 39.99,
-            image: "/look-polo-2-1@2x.png",
-            category: "Camisetas",
-            brand: "Treboluxe",
-            color: "Azul",
-            size: "M",
-            inStock: true
-          },
-          {
-            id: 2,
-            name: "Polo Clásico Elegante",
-            price: 49.99,
-            originalPrice: 59.99,
-            image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-            category: "Polos",
-            brand: "Treboluxe",
-            color: "Blanco",
-            size: "L",
-            inStock: true
-          }
-        ]);
+        // No mostrar productos fallback, solo productos de la base de datos
+        setFeaturedProducts([]);
       } finally {
         setLoading(false);
       }
@@ -1027,25 +1002,13 @@ const HomeScreen: NextPage = () => {
               )}
             </>
           ) : (
-            <>
-              {/* Imágenes de fallback */}
-              <Image
-                className="flex-1 relative max-w-full h-full object-cover"
-                width={960}
-                height={904}
-                sizes="100vw"
-                alt="Imagen principal"
-                src="/look-polo-2-1@2x.png"
-              />
-              <Image
-                className="flex-1 relative max-w-full h-full object-cover"
-                width={960}
-                height={904}
-                sizes="100vw"
-                alt="Imagen principal"
-                src="/797e7904b64e13508ab322be3107e368-1@2x.png"
-              />
-            </>
+            <div className="flex-1 h-full flex items-center justify-center bg-gray-900/50">
+              <div className="text-center text-white/50">
+                <div className="text-6xl mb-4">📷</div>
+                <p className="text-lg">{t('No hay imágenes configuradas')}</p>
+                <p className="text-sm">{t('Configure las imágenes desde el panel de administrador')}</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

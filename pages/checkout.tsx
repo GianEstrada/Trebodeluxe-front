@@ -66,28 +66,7 @@ const CheckoutPage: NextPage = () => {
 
   // Estados del checkout
   const [cartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: "Camiseta Básica Premium",
-      price: 24.99,
-      originalPrice: 29.99,
-      image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-      size: "M",
-      color: "Blanco",
-      quantity: 2,
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Polo Clásico Elegante",
-      price: 34.99,
-      originalPrice: 44.99,
-      image: "/look-polo-2-1@2x.png",
-      size: "L",
-      color: "Azul",
-      quantity: 1,
-      inStock: true
-    }
+    // Carrito vacío por defecto - productos solo desde la base de datos
   ]);
 
   // Información personal

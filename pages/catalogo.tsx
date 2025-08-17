@@ -341,33 +341,8 @@ const CatalogoScreen: NextPage = () => {
         console.error('Error cargando datos:', err);
         setError(err.message || 'Error al cargar productos');
         
-        // Productos de fallback en caso de error
-        setAllProducts([
-          {
-            id: 1,
-            name: "Camiseta Básica",
-            price: 29.99,
-            originalPrice: 39.99,
-            image: "/look-polo-2-1@2x.png",
-            category: "Camisetas",
-            brand: "Treboluxe",
-            color: "Azul",
-            size: "M",
-            inStock: true
-          },
-          {
-            id: 2,
-            name: "Polo Clásico",
-            price: 49.99,
-            originalPrice: 59.99,
-            image: "/797e7904b64e13508ab322be3107e368-1@2x.png",
-            category: "Polos",
-            brand: "Treboluxe",
-            color: "Blanco",
-            size: "L",
-            inStock: true
-          }
-        ]);
+        // No mostrar productos fallback, solo productos de la base de datos
+        setAllProducts([]);
       } finally {
         setLoading(false);
       }
