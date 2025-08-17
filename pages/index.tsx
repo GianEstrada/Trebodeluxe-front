@@ -8,6 +8,7 @@ import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useIndexImages } from "../hooks/useIndexImages";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
+import { useCategories } from "../hooks/useCategories";
 
 // Definir el tipo para los productos
 interface Product {
@@ -57,6 +58,9 @@ const HomeScreen: NextPage = () => {
   
   // Usar imágenes index desde la base de datos
   const { getImageByState, loading: imagesLoading } = useIndexImages();
+
+  // Usar categorías dinámicas desde la API
+  const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -355,66 +359,75 @@ const HomeScreen: NextPage = () => {
                     <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
                       <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
                       <div className="space-y-1">
-                        <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Camisas')}</span>
-                            <span className="text-gray-400">→</span>
+                        {/* Mostrar indicador de carga */}
+                        {categoriesLoading && (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="text-white text-sm">{t('Cargando categorías...')}</div>
                           </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Pantalones')}</span>
-                            <span className="text-gray-400">→</span>
+                        )}
+
+                        {/* Mostrar error si ocurre */}
+                        {categoriesError && (
+                          <div className="text-red-300 text-sm px-4 py-2">
+                            {t('Error al cargar categorías')}
                           </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Vestidos')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Abrigos y Chaquetas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Faldas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Jeans')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Ropa Interior')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Trajes de Baño')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Accesorios de Moda')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=calzado" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Calzado')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
+                        )}
+
+                        {/* Renderizar categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
+                          <Link 
+                            key={category.id} 
+                            href={`/catalogo?categoria=${category.slug}`} 
+                            className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{t(category.name)}</span>
+                              <span className="text-gray-400">→</span>
+                            </div>
+                          </Link>
+                        ))}
+
+                        {/* Fallback con categorías estáticas si no hay categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
+                          <>
+                            <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Camisas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Pantalones')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Vestidos')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Abrigos y Chaquetas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Faldas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Jeans')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                          </>
+                        )}
                       </div>
                       
                       <div className="mt-8 pt-6 border-t border-gray-700">

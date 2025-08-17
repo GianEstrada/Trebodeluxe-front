@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
+import { useCategories } from "../hooks/useCategories";
 
 // Componente para los botones de acción de cada card de producto
 const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addItem }: any) => {
@@ -82,6 +83,9 @@ const CatalogoScreen: NextPage = () => {
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   const { user, isAuthenticated, logout } = useAuth();
+
+  // Usar categorías dinámicas desde la API
+  const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
   // Estados específicos del catálogo
   const [searchTerm, setSearchTerm] = useState("");
@@ -93,7 +97,7 @@ const CatalogoScreen: NextPage = () => {
   
   // Estados para datos del API
   const [allProducts, setAllProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]); // Mantenemos compatibilidad
   const [brands, setBrands] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -371,6 +375,14 @@ const CatalogoScreen: NextPage = () => {
 
     loadData();
   }, [activeFilter, selectedCategory, searchTerm]);
+
+  // Sincronizar categorías dinámicas con el estado local para compatibilidad
+  useEffect(() => {
+    if (!categoriesLoading && !categoriesError && activeCategories.length > 0) {
+      const categoryNames = activeCategories.map(cat => cat.name);
+      setCategories(categoryNames);
+    }
+  }, [activeCategories, categoriesLoading, categoriesError]);
   
   // Recargar cuando cambian los filtros URL
   useEffect(() => {
@@ -1139,14 +1151,32 @@ const CatalogoScreen: NextPage = () => {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-              disabled={loading}
+              disabled={loading || categoriesLoading}
             >
               <option value="Todas" className="text-black">{t('Todas las categorías')}</option>
-              {Array.isArray(categories) && categories.map(category => (
-                <option key={category} value={category} className="text-black">
-                  {t(category)}
+              
+              {/* Usar categorías dinámicas si están disponibles */}
+              {!categoriesLoading && !categoriesError && activeCategories.length > 0 ? (
+                activeCategories.map(category => (
+                  <option key={category.id} value={category.name} className="text-black">
+                    {t(category.name)}
+                  </option>
+                ))
+              ) : (
+                /* Fallback con categorías estáticas para compatibilidad */
+                Array.isArray(categories) && categories.map(category => (
+                  <option key={category} value={category} className="text-black">
+                    {t(category)}
+                  </option>
+                ))
+              )}
+
+              {/* Mostrar indicador de carga */}
+              {categoriesLoading && (
+                <option value="" className="text-gray-500" disabled>
+                  {t('Cargando categorías...')}
                 </option>
-              ))}
+              )}
             </select>
             
             <select
