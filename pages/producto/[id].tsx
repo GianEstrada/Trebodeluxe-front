@@ -84,6 +84,9 @@ const ProductPage: NextPage = () => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
+  // Estados para animación del carrusel
+  const [isImageTransitioning, setIsImageTransitioning] = useState(false);
+  
   // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -153,22 +156,11 @@ const ProductPage: NextPage = () => {
         
         setProductData(productData);
         
-        // Debug: mostrar los datos en consola
-        console.log('🔍 DATOS DEL PRODUCTO CARGADOS:', productData);
-        console.log('🔍 TALLAS DISPONIBLES:', productData.tallas_disponibles);
-        console.log('🔍 VARIANTES:', productData.variantes);
-        
-        // Debug temporal: mostrar datos en la UI
-        if (typeof window !== 'undefined') {
-          (window as any).productDataDebug = productData;
-          console.table(productData.tallas_disponibles);
-        }
-        
         // Para productos relacionados, usamos productos recientes de la misma categoría
         const relatedResponse = await productsApi.getRecentByCategory(4) as any;
         if (relatedResponse.success && relatedResponse.products) {
           const relatedProducts = relatedResponse.products
-            .filter((p: any) => p.id_producto !== product.id_producto)
+            .filter((p: any) => p.id_producto !== product.id_producto && p.categoria_nombre === product.categoria_nombre)
             .slice(0, 4)
             .map((p: any) => ({
               id_producto: p.id_producto,
@@ -181,6 +173,25 @@ const ProductPage: NextPage = () => {
             }));
           
           setRelatedProducts(relatedProducts);
+        } else {
+          // Si no hay productos por categoría específica, usar productos recientes generales
+          const fallbackResponse = await productsApi.getRecent(8) as any;
+          if (fallbackResponse.success && fallbackResponse.products) {
+            const fallbackProducts = fallbackResponse.products
+              .filter((p: any) => p.id_producto !== product.id_producto)
+              .slice(0, 4)
+              .map((p: any) => ({
+                id_producto: p.id_producto,
+                nombre: p.nombre,
+                descripcion: p.descripcion,
+                categoria_nombre: p.categoria_nombre,
+                marca: p.marca,
+                variantes: p.variantes || [],
+                tallas_disponibles: p.tallas_disponibles || []
+              }));
+            
+            setRelatedProducts(fallbackProducts);
+          }
         }
       } else {
         setError('Producto no encontrado');
@@ -229,7 +240,11 @@ const ProductPage: NextPage = () => {
   };
 
   const handleImageChange = (index: number) => {
-    setSelectedImageIndex(index);
+    setIsImageTransitioning(true);
+    setTimeout(() => {
+      setSelectedImageIndex(index);
+      setIsImageTransitioning(false);
+    }, 150);
   };
 
   const handleAddToCart = () => {
@@ -1022,6 +1037,119 @@ const ProductPage: NextPage = () => {
         </div>
       </div>
 
+      {/* Productos Recomendados */}
+      {relatedProducts.length > 0 && (
+        <div className="container mx-auto px-4 py-12">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {t('Productos Recomendados')}
+            </h2>
+            <p className="text-gray-400">
+              {t('Productos recientes de la misma categoría')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedProducts.map((product) => {
+              // Obtener la primera variante disponible
+              const firstVariant = product.variantes.find(v => v.disponible) || product.variantes[0];
+              if (!firstVariant) return null;
+
+              // Obtener la primera imagen de la primera variante
+              const firstImage = firstVariant.imagenes?.[0]?.url || '/sin-ttulo1-2@2x.png';
+              
+              // Calcular descuento si existe
+              const discount = firstVariant.descuento_porcentaje || 0;
+              
+              // Verificar si tiene stock
+              const hasStock = firstVariant.stock_total > 0;
+              
+              // Calcular precio original si hay descuento
+              const originalPrice = discount > 0 && firstVariant.precio 
+                ? (firstVariant.precio / (1 - discount / 100)) 
+                : firstVariant.precio;
+
+              return (
+                <Link 
+                  key={product.id_producto} 
+                  href={`/producto/${product.id_producto}?variante=${firstVariant.id_variante}`}
+                  className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group no-underline transform hover:scale-105"
+                >
+                  <div className="relative aspect-square mb-4 rounded-lg overflow-hidden bg-white/5">
+                    <Image
+                      src={firstImage}
+                      alt={`${product.nombre} - ${firstVariant.nombre}`}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/sin-ttulo1-2@2x.png';
+                      }}
+                    />
+                    {discount > 0 && (
+                      <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                        -{discount}%
+                      </div>
+                    )}
+                    {!hasStock && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm bg-red-500 px-3 py-1 rounded-full">
+                          {t('Agotado')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-white font-semibold text-base group-hover:text-green-300 transition-colors line-clamp-2 min-h-[48px]">
+                      {product.nombre}
+                    </h3>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{product.marca}</span>
+                      <span>{t(product.categoria_nombre)}</span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {firstVariant.precio && (
+                        <>
+                          <span className="text-green-400 font-bold text-lg">
+                            {formatPrice(firstVariant.precio)}
+                          </span>
+                          {discount > 0 && originalPrice && (
+                            <span className="text-gray-400 line-through text-sm">
+                              {formatPrice(originalPrice)}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    
+                    <button className={`w-full py-2 rounded-lg font-medium text-sm transition-all duration-200 mt-3 ${
+                      hasStock 
+                        ? 'bg-white text-black hover:bg-green-400 hover:text-white transform hover:scale-105' 
+                        : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    }`}>
+                      {hasStock ? t('Ver producto') : t('Sin stock')}
+                    </button>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          
+          {/* Botón para ver más productos de la categoría */}
+          <div className="text-center mt-8">
+            <Link 
+              href={`/catalogo?categoria=${encodeURIComponent(productData.categoria_nombre)}`}
+              className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-all duration-200 transform hover:scale-105"
+            >
+              {t('Ver todos los productos de')} {t(productData.categoria_nombre)}
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <div className="px-8 py-4">
         <nav className="text-sm text-gray-400">
@@ -1041,16 +1169,18 @@ const ProductPage: NextPage = () => {
             <div className="relative aspect-square bg-white/10 rounded-lg overflow-hidden">
               {selectedVariant && selectedVariant.imagenes && selectedVariant.imagenes.length > 0 ? (
                 <>
-                  <Image
-                    src={selectedVariant.imagenes[selectedImageIndex]?.url || '/sin-ttulo1-2@2x.png'}
-                    alt={`${productData.nombre} - ${selectedVariant.nombre} - Imagen ${selectedImageIndex + 1}`}
-                    fill
-                    className="object-cover transition-all duration-300"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/sin-ttulo1-2@2x.png';
-                    }}
-                  />
+                  <div className={`transition-opacity duration-300 ${isImageTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                    <Image
+                      src={selectedVariant.imagenes[selectedImageIndex]?.url || '/sin-ttulo1-2@2x.png'}
+                      alt={`${productData.nombre} - ${selectedVariant.nombre} - Imagen ${selectedImageIndex + 1}`}
+                      fill
+                      className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/sin-ttulo1-2@2x.png';
+                      }}
+                    />
+                  </div>
                   
                   {/* Indicadores de descuento */}
                   {selectedVariant.descuento_porcentaje && (
@@ -1158,52 +1288,14 @@ const ProductPage: NextPage = () => {
               </div>
             )}
 
-            {/* DEBUG TEMPORAL - Remover después */}
-            <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-4">
-              <h4 className="text-red-400 font-bold mb-2">🔧 DEBUG INFO</h4>
-              <div className="text-sm text-white space-y-1">
-                <p><strong>Product Data:</strong> {productData ? '✅ Loaded' : '❌ Not loaded'}</p>
-                <p><strong>Tallas Array:</strong> {productData?.tallas_disponibles ? '✅ Exists' : '❌ Missing'}</p>
-                <p><strong>Tallas Length:</strong> {productData?.tallas_disponibles?.length || 0}</p>
-                <p><strong>Condition Check:</strong> {(productData?.tallas_disponibles && productData.tallas_disponibles.length > 0) ? '✅ Should render' : '❌ Will not render'}</p>
-                {productData?.tallas_disponibles && productData.tallas_disponibles.length > 0 ? (
-                  <div>
-                    <p><strong>Tallas found:</strong></p>
-                    {productData.tallas_disponibles.map((talla, index) => (
-                      <p key={index} className="ml-4">- {talla.nombre_talla} (ID: {talla.id_talla}, Stock: {talla.cantidad})</p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-red-400"><strong>No tallas to display</strong></p>
-                )}
-                <button 
-                  onClick={() => {
-                    console.log('🔍 FULL Product Data:', productData);
-                    console.log('🔍 Tallas disponibles specifically:', productData?.tallas_disponibles);
-                    alert('Check console for full debug info');
-                  }}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-xs mt-2 hover:bg-red-700"
-                >
-                  Log Full Debug Info
-                </button>
-              </div>
-            </div>
-
-            {/* Botones de tallas - Condición simplificada para debug */}
-            {productData && (
+            {/* Botones de tallas */}
+            {productData.tallas_disponibles && productData.tallas_disponibles.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">
                   {t('Tallas disponibles')} ({productData.sistema_talla_nombre || t('Sistema estándar')}):
                 </h3>
-                
-                {/* Mostrar mensaje si no hay tallas */}
-                {(!productData.tallas_disponibles || productData.tallas_disponibles.length === 0) ? (
-                  <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-400">
-                    ⚠️ No hay tallas disponibles para este producto
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {productData.tallas_disponibles.map((size) => {
+                <div className="flex flex-wrap gap-3">
+                  {productData.tallas_disponibles.map((size) => {
                     const hasStock = size.cantidad && size.cantidad > 0;
                     const isSelected = selectedSize?.id_talla === size.id_talla;
                     
@@ -1232,9 +1324,7 @@ const ProductPage: NextPage = () => {
                       </button>
                     );
                   })}
-                  </div>
-                )}
-                
+                </div>
                 <div className="mt-3 text-sm text-gray-400">
                   <span>💡 {t('Consejo')}: {t('Selecciona una talla para ver la disponibilidad')}</span>
                 </div>
@@ -1301,15 +1391,7 @@ const ProductPage: NextPage = () => {
             {/* Información adicional */}
             <div className="space-y-4 pt-4 border-t border-white/20">
               <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <span>🚚</span>
-                <span>Envío gratis en pedidos mayores a $500 MXN</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <span>↩️</span>
-                <span>Devoluciones gratis en 30 días</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <span>🔒</span>
+                <span></span>
                 <span>Compra 100% segura</span>
               </div>
             </div>
@@ -1324,92 +1406,6 @@ const ProductPage: NextPage = () => {
           </div>
         </div>
 
-        {/* Productos relacionados */}
-        {relatedProducts.length > 0 && (
-          <div className="mt-16">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('PRODUCTOS RECOMENDADOS')}</h2>
-              <p className="text-gray-300 text-lg">{t('Otros productos de la categoría')} {t(productData.categoria_nombre)}</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((product) => {
-                const firstVariant = product.variantes[0];
-                if (!firstVariant) return null;
-
-                const hasStock = firstVariant.disponible && firstVariant.stock_total > 0;
-                const firstImage = firstVariant.imagenes?.[0]?.url || '/sin-ttulo1-2@2x.png';
-                const discount = firstVariant.descuento_porcentaje || 0;
-                const originalPrice = discount > 0 ? (firstVariant.precio! / (1 - discount / 100)) : firstVariant.precio;
-
-                return (
-                  <Link 
-                    key={product.id_producto} 
-                    href={`/producto/${product.id_producto}?variante=${firstVariant.id_variante}`}
-                    className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group no-underline"
-                  >
-                    <div className="relative aspect-square mb-4 rounded-lg overflow-hidden">
-                      <Image
-                        src={firstImage}
-                        alt={`${product.nombre} - ${firstVariant.nombre}`}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/sin-ttulo1-2@2x.png';
-                        }}
-                      />
-                      {discount > 0 && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                          {discount}% OFF
-                        </div>
-                      )}
-                      {!hasStock && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="text-white font-bold">{t('Agotado')}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-green-300 transition-colors line-clamp-2">
-                      {product.nombre}
-                    </h3>
-                    <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.categoria_nombre)}</p>
-                    <p className="text-gray-300 text-sm mb-4">{t('Marca')}: {product.marca}</p>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className="text-green-400 font-bold text-lg">{formatPrice(firstVariant.precio)}</span>
-                      {discount > 0 && (
-                        <span className="text-gray-400 line-through text-sm">
-                          {formatPrice(originalPrice!)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="mt-4">
-                      <button className={`w-full py-2 rounded-lg font-medium text-sm transition-colors duration-200 ${
-                        hasStock 
-                          ? 'bg-white text-black hover:bg-gray-100' 
-                          : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      }`}>
-                        {hasStock ? t('Ver producto') : t('Agotado')}
-                      </button>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-            
-            {/* Botón para ver más productos de la categoría */}
-            <div className="text-center mt-8">
-              <Link 
-                href={`/catalogo?categoria=${encodeURIComponent(productData.categoria_nombre)}`}
-                className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200"
-              >
-                {t('Ver todos los productos de')} {t(productData.categoria_nombre)}
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* Footer completo */}
