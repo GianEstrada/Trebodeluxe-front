@@ -203,14 +203,19 @@ export const productUtils = {
     // Ordenar variantes por ID ascendente y obtener la primera para precio
     const sortedVariants = product.variantes ? 
       [...product.variantes].sort((a, b) => a.id_variante - b.id_variante) : [];
-    const firstVariant = sortedVariants[0];
+    
+    // Buscar la primera variante que tenga precio válido (no null/undefined)
+    const variantWithPrice = sortedVariants.find(v => 
+      v.precio !== null && v.precio !== undefined && v.precio > 0
+    );
+    const firstVariant = variantWithPrice || sortedVariants[0];
     const firstImage = firstVariant && firstVariant.imagenes && firstVariant.imagenes[0];
 
     // Obtener todos los nombres de variantes (colores) separados por coma
     const allColors = sortedVariants.length > 0 ? 
       sortedVariants.map(v => v.nombre).join(', ') : '';
 
-    // Obtener precio correcto de la primera variante
+    // Obtener precio correcto de la variante con precio válido
     // El precio viene del backend como string o number, hay que manejarlo correctamente
     let correctPrice = 0;
     if (firstVariant && firstVariant.precio !== null && firstVariant.precio !== undefined) {
