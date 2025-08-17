@@ -121,16 +121,20 @@ const HomeScreen: NextPage = () => {
   // Función para cargar categorías activas con contenido
   const loadActiveCategoriesWithContent = async () => {
     try {
-      // Obtener todas las categorías con contenido
-      const response = await categoriesApi.getActiveCategoriesWithContent() as any;
-      if (response.success && response.categories) {
+      console.log('🔄 Cargando categorías dinámicas...');
+      // Obtener todas las categorías activas directamente desde el endpoint público
+      const response = await categoriesApi.getAll() as any;
+      console.log('📊 Respuesta de categorías:', response);
+      
+      if (response.success && response.categories && response.categories.length > 0) {
+        console.log('✅ Categorías cargadas exitosamente:', response.categories);
         setActiveCategoriesWithContent(response.categories);
         
         // Si hay categorías activas, establecer la primera como seleccionada
-        if (response.categories.length > 0) {
-          setSelectedCategory(response.categories[0].nombre);
-        }
+        setSelectedCategory(response.categories[0].nombre);
+        console.log('🎯 Categoría seleccionada:', response.categories[0].nombre);
       } else {
+        console.log('⚠️ No hay categorías de la API, usando fallback');
         // Fallback a categorías por defecto si no hay respuesta de la API
         const fallbackCategories = [
           { id_categoria: 1, nombre: 'Camisetas' },
@@ -141,9 +145,10 @@ const HomeScreen: NextPage = () => {
           { id_categoria: 6, nombre: 'Pantalones' }
         ];
         setActiveCategoriesWithContent(fallbackCategories);
+        setSelectedCategory('Camisetas');
       }
     } catch (error) {
-      console.error('Error cargando categorías activas:', error);
+      console.error('❌ Error cargando categorías activas:', error);
       // Fallback en caso de error
       const fallbackCategories = [
         { id_categoria: 1, nombre: 'Camisetas' },
@@ -154,6 +159,7 @@ const HomeScreen: NextPage = () => {
         { id_categoria: 6, nombre: 'Pantalones' }
       ];
       setActiveCategoriesWithContent(fallbackCategories);
+      setSelectedCategory('Camisetas');
     }
   };
 
@@ -198,6 +204,11 @@ const HomeScreen: NextPage = () => {
 
     loadProducts();
   }, []);
+
+  // useEffect para debuggear categorías
+  useEffect(() => {
+    console.log('🎨 Estado de categorías actualizado:', activeCategoriesWithContent);
+  }, [activeCategoriesWithContent]);
 
   // Cargar preferencias guardadas
   useEffect(() => {
@@ -1192,6 +1203,11 @@ const HomeScreen: NextPage = () => {
               </div>
             </div>
           ))}
+          {activeCategoriesWithContent.length === 0 && (
+            <div className="flex-1 relative h-[90px] bg-gray-100 flex items-center justify-center">
+              <div className="text-gray-500">Cargando categorías...</div>
+            </div>
+          )}
         </div>
 
       </div>
