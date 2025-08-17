@@ -122,7 +122,7 @@ const HomeScreen: NextPage = () => {
   const loadActiveCategoriesWithContent = async () => {
     try {
       // Obtener todas las categorías con contenido
-      const response = await categoriesApi.getActiveCategoriesWithContent(5) as any;
+      const response = await categoriesApi.getActiveCategoriesWithContent() as any;
       if (response.success && response.categories) {
         setActiveCategoriesWithContent(response.categories);
         
@@ -137,7 +137,8 @@ const HomeScreen: NextPage = () => {
           { id_categoria: 2, nombre: 'Polos' },
           { id_categoria: 3, nombre: 'Zapatos' },
           { id_categoria: 4, nombre: 'Gorras' },
-          { id_categoria: 5, nombre: 'Accesorios' }
+          { id_categoria: 5, nombre: 'Accesorios' },
+          { id_categoria: 6, nombre: 'Pantalones' }
         ];
         setActiveCategoriesWithContent(fallbackCategories);
       }
@@ -149,7 +150,8 @@ const HomeScreen: NextPage = () => {
         { id_categoria: 2, nombre: 'Polos' },
         { id_categoria: 3, nombre: 'Zapatos' },
         { id_categoria: 4, nombre: 'Gorras' },
-        { id_categoria: 5, nombre: 'Accesorios' }
+        { id_categoria: 5, nombre: 'Accesorios' },
+        { id_categoria: 6, nombre: 'Pantalones' }
       ];
       setActiveCategoriesWithContent(fallbackCategories);
     }

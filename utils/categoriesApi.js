@@ -92,6 +92,27 @@ export const categoriesApi = {
         total: 0
       };
     }
+  },
+
+  /**
+   * Obtener categorías activas con contenido (sin límite)
+   * @returns {Promise<Object>} Lista de categorías con contenido
+   */
+  async getActiveCategoriesWithContent() {
+    try {
+      const response = await apiRequest('/api/categorias/activas-con-contenido');
+      return {
+        success: true,
+        categories: response.categorias || []
+      };
+    } catch (error) {
+      console.error('Error getting active categories with content:', error);
+      return {
+        success: false,
+        error: error.message,
+        categories: []
+      };
+    }
   }
 };
 
