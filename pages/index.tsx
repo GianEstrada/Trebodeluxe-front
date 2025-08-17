@@ -94,17 +94,18 @@ const HomeScreen: NextPage = () => {
   };
 
   // Función para formatear precio con la moneda seleccionada
+  // Los precios en la BD ya están en pesos mexicanos (MXN)
   const formatPrice = (price: number) => {
     const exchangeRates = {
-      'EUR': 1,
-      'USD': 1.1,
-      'MXN': 20.5
+      'MXN': 1,        // Moneda base - sin conversión
+      'USD': 0.053,    // 1 peso = ~0.053 USD
+      'EUR': 0.049     // 1 peso = ~0.049 EUR
     };
     
     const symbols = {
-      'EUR': '€',
+      'MXN': '$',
       'USD': '$',
-      'MXN': '$'
+      'EUR': '€'
     };
     
     const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
