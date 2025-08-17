@@ -1406,6 +1406,118 @@ const ProductPage: NextPage = () => {
           </div>
         </div>
 
+        {/* Productos Recomendados */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-16">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-white mb-2">
+                {t('Productos Recomendados')}
+              </h2>
+              <p className="text-gray-400">
+                {t('Productos recientes de la misma categoría')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.map((product) => {
+                // Obtener la primera variante disponible
+                const firstVariant = product.variantes.find(v => v.disponible) || product.variantes[0];
+                if (!firstVariant) return null;
+
+                // Obtener la primera imagen de la primera variante
+                const firstImage = firstVariant.imagenes?.[0]?.url || '/sin-ttulo1-2@2x.png';
+                
+                // Calcular descuento si existe
+                const discount = firstVariant.descuento_porcentaje || 0;
+                
+                // Verificar si tiene stock
+                const hasStock = firstVariant.stock_total > 0;
+                
+                // Calcular precio original si hay descuento
+                const originalPrice = discount > 0 && firstVariant.precio 
+                  ? (firstVariant.precio / (1 - discount / 100)) 
+                  : firstVariant.precio;
+
+                return (
+                  <Link 
+                    key={product.id_producto} 
+                    href={`/producto/${product.id_producto}?variante=${firstVariant.id_variante}`}
+                    className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group no-underline transform hover:scale-105"
+                  >
+                    <div className="relative aspect-square mb-4 rounded-lg overflow-hidden bg-white/5">
+                      <Image
+                        src={firstImage}
+                        alt={`${product.nombre} - ${firstVariant.nombre}`}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/sin-ttulo1-2@2x.png';
+                        }}
+                      />
+                      {discount > 0 && (
+                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                          -{discount}%
+                        </div>
+                      )}
+                      {!hasStock && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white font-bold text-sm bg-red-500 px-3 py-1 rounded-full">
+                            {t('Agotado')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-white font-semibold text-base group-hover:text-green-300 transition-colors line-clamp-2 min-h-[48px]">
+                        {product.nombre}
+                      </h3>
+                      
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <span>{product.marca}</span>
+                        <span>{t(product.categoria_nombre)}</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {firstVariant.precio && (
+                          <>
+                            <span className="text-green-400 font-bold text-lg">
+                              {formatPrice(firstVariant.precio)}
+                            </span>
+                            {discount > 0 && originalPrice && (
+                              <span className="text-gray-400 line-through text-sm">
+                                {formatPrice(originalPrice)}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      
+                      <button className={`w-full py-2 rounded-lg font-medium text-sm transition-all duration-200 mt-3 ${
+                        hasStock 
+                          ? 'bg-white text-black hover:bg-green-400 hover:text-white transform hover:scale-105' 
+                          : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      }`}>
+                        {hasStock ? t('Ver producto') : t('Sin stock')}
+                      </button>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+            
+            {/* Botón para ver más productos de la categoría */}
+            <div className="text-center mt-8">
+              <Link 
+                href={`/catalogo?categoria=${encodeURIComponent(productData.categoria_nombre)}`}
+                className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-all duration-200 transform hover:scale-105"
+              >
+                {t('Ver todos los productos de')} {t(productData.categoria_nombre)}
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Footer completo */}
