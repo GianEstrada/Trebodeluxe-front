@@ -9,30 +9,43 @@ import { useCart } from '../../contexts/CartContext';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../../utils/roles';
 
-// Definimos las interfaces para los datos de la nueva estructura
-interface Talla {
+// Interfaces para la nueva estructura de datos
+interface ImagenVariante {
+  id_imagen: number;
+  url: string;
+  public_id: string;
+  orden: number;
+}
+
+interface TallaDisponible {
   id_talla: number;
   nombre_talla: string;
-  cantidad: number;
+  cantidad?: number;
 }
 
 interface Variante {
   id_variante: number;
+  nombre: string;
   nombre_variante: string;
-  precio: number;
+  precio: number | null;
   precio_original?: number;
+  descuento_porcentaje: number | null;
   imagen_url?: string;
-  activo: boolean;
-  tallas: Talla[];
+  imagenes: ImagenVariante[];
+  stock_total: number;
+  disponible: boolean;
+  tallas_disponibles?: TallaDisponible[];
 }
 
 interface ProductData {
   id_producto: number;
   nombre: string;
   descripcion: string;
-  categoria: string;
+  categoria_nombre: string;
   marca: string;
+  sistema_talla_nombre?: string;
   variantes: Variante[];
+  tallas_disponibles: TallaDisponible[];
 }
 
 const ProductPage: NextPage = () => {
@@ -49,7 +62,8 @@ const ProductPage: NextPage = () => {
   // Estados específicos del producto
   const [productData, setProductData] = useState<ProductData | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<Variante | null>(null);
-  const [selectedSize, setSelectedSize] = useState<Talla | null>(null);
+  const [selectedSize, setSelectedSize] = useState<TallaDisponible | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,21 +98,28 @@ const ProductPage: NextPage = () => {
     }
   }, [id]);
 
-  // Seleccionar variante cuando cambie la URL
+  // Seleccionar variante cuando cambie la URL o se carguen los datos
   useEffect(() => {
     if (productData && variante) {
       const variant = productData.variantes.find(v => v.id_variante === parseInt(variante as string));
       if (variant) {
         setSelectedVariant(variant);
-        // Seleccionar la primera talla disponible
-        const firstAvailableSize = variant.tallas.find(t => t.cantidad > 0);
-        setSelectedSize(firstAvailableSize || variant.tallas[0] || null);
+        setSelectedImageIndex(0); // Reset image carousel
+        // Seleccionar la primera talla disponible que tenga stock
+        const firstAvailableSize = productData.tallas_disponibles.find(t => 
+          // Buscar si esta talla tiene stock para esta variante específica
+          // Por ahora seleccionamos la primera talla disponible
+          true // TODO: implementar lógica de stock por talla
+        );
+        setSelectedSize(firstAvailableSize || productData.tallas_disponibles[0] || null);
       }
     } else if (productData && productData.variantes.length > 0) {
-      // Si no hay variante especificada, seleccionar la primera
-      setSelectedVariant(productData.variantes[0]);
-      const firstAvailableSize = productData.variantes[0].tallas.find(t => t.cantidad > 0);
-      setSelectedSize(firstAvailableSize || productData.variantes[0].tallas[0] || null);
+      // Si no hay variante especificada, seleccionar la primera con stock
+      const firstAvailableVariant = productData.variantes.find(v => v.disponible && v.stock_total > 0) || productData.variantes[0];
+      setSelectedVariant(firstAvailableVariant);
+      setSelectedImageIndex(0);
+      const firstAvailableSize = productData.tallas_disponibles[0] || null;
+      setSelectedSize(firstAvailableSize);
     }
   }, [productData, variante]);
 
@@ -112,39 +133,46 @@ const ProductPage: NextPage = () => {
     setError(null);
     
     try {
-      // Obtener todas las variantes y filtrar por producto
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
-      const variantsData = await response.json();
+      // Usar el endpoint correcto de productos recientes y filtrar por ID
+      const response = await fetch(`http://localhost:5000/api/products/recent?limit=50`);
+      const data = await response.json();
       
-      if (variantsData.success && variantsData.variants) {
-        // Filtrar variantes del producto específico
-        const productVariants = variantsData.variants.filter((v: any) => 
-          v.id_producto === parseInt(id as string)
-        );
+      if (data.success && data.products) {
+        // Buscar el producto específico por ID
+        const product = data.products.find((p: any) => p.id_producto === parseInt(id as string));
         
-        if (productVariants.length > 0) {
-          const firstVariant = productVariants[0];
-          const product: ProductData = {
-            id_producto: firstVariant.id_producto,
-            nombre: firstVariant.nombre_producto,
-            descripcion: firstVariant.descripcion_producto,
-            categoria: firstVariant.categoria,
-            marca: firstVariant.marca,
-            variantes: productVariants.map((v: any) => ({
-              id_variante: v.id_variante,
-              nombre_variante: v.nombre_variante,
-              precio: typeof v.precio === 'string' ? parseFloat(v.precio) : (v.precio || 0),
-              precio_original: v.precio_original ? (typeof v.precio_original === 'string' ? parseFloat(v.precio_original) : v.precio_original) : undefined,
-              imagen_url: v.imagen_url,
-              activo: v.variante_activa,
-              tallas: v.tallas_stock || []
-            }))
+        if (product) {
+          const productData: ProductData = {
+            id_producto: product.id_producto,
+            nombre: product.nombre,
+            descripcion: product.descripcion,
+            categoria_nombre: product.categoria_nombre,
+            marca: product.marca,
+            sistema_talla_nombre: product.sistema_talla_nombre,
+            variantes: product.variantes || [],
+            tallas_disponibles: product.tallas_disponibles || []
           };
           
-          setProductData(product);
+          setProductData(productData);
           
           // Cargar productos relacionados de la misma categoría
-          loadRelatedProducts(firstVariant.categoria, firstVariant.id_producto);
+          const relatedProducts = data.products
+            .filter((p: any) => 
+              p.categoria_nombre === product.categoria_nombre && 
+              p.id_producto !== product.id_producto
+            )
+            .slice(0, 4)
+            .map((p: any) => ({
+              id_producto: p.id_producto,
+              nombre: p.nombre,
+              descripcion: p.descripcion,
+              categoria_nombre: p.categoria_nombre,
+              marca: p.marca,
+              variantes: p.variantes || [],
+              tallas_disponibles: p.tallas_disponibles || []
+            }));
+          
+          setRelatedProducts(relatedProducts);
         } else {
           setError('Producto no encontrado');
         }
@@ -205,15 +233,17 @@ const ProductPage: NextPage = () => {
 
   const handleVariantChange = (variant: Variante) => {
     setSelectedVariant(variant);
-    // Actualizar URL
+    setSelectedImageIndex(0); // Reset carousel
+    // Cambiar la URL para reflejar la nueva variante
     router.push(`/producto/${id}?variante=${variant.id_variante}`, undefined, { shallow: true });
-    // Seleccionar primera talla disponible
-    const firstAvailableSize = variant.tallas.find(t => t.cantidad > 0);
-    setSelectedSize(firstAvailableSize || variant.tallas[0] || null);
   };
 
-  const handleSizeChange = (size: Talla) => {
+  const handleSizeChange = (size: TallaDisponible) => {
     setSelectedSize(size);
+  };
+
+  const handleImageChange = (index: number) => {
+    setSelectedImageIndex(index);
   };
 
   const handleAddToCart = () => {
@@ -222,8 +252,9 @@ const ProductPage: NextPage = () => {
       return;
     }
 
-    if (selectedSize.cantidad === 0) {
-      alert(t('Talla sin stock'));
+    // Validar que haya precio válido
+    if (!selectedVariant.precio || selectedVariant.precio <= 0) {
+      alert(t('Esta variante no está disponible'));
       return;
     }
 
@@ -231,13 +262,13 @@ const ProductPage: NextPage = () => {
       id_variante: selectedVariant.id_variante,
       id_producto: productData.id_producto,
       nombre_producto: productData.nombre,
-      nombre_variante: selectedVariant.nombre_variante,
-      imagen_url: selectedVariant.imagen_url,
+      nombre_variante: selectedVariant.nombre,
+      imagen_url: selectedVariant.imagenes[0]?.url || '/sin-ttulo1-2@2x.png',
       precio: selectedVariant.precio,
-      precio_original: selectedVariant.precio_original,
+      precio_original: selectedVariant.precio, // Por ahora usamos el mismo precio
       id_talla: selectedSize.id_talla,
       nombre_talla: selectedSize.nombre_talla,
-      categoria: productData.categoria,
+      categoria: productData.categoria_nombre,
       marca: productData.marca
     };
 
@@ -1019,80 +1050,152 @@ const ProductPage: NextPage = () => {
       {/* Contenido principal */}
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Columna izquierda - Imagen */}
+          {/* Columna izquierda - Carrusel de imágenes */}
           <div className="space-y-4">
             <div className="relative aspect-square bg-white/10 rounded-lg overflow-hidden">
-              <Image
-                src={selectedVariant?.imagen_url || '/sin-ttulo1-2@2x.png'}
-                alt={`${productData.nombre} - ${selectedVariant?.nombre_variante}`}
-                fill
-                className="object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/sin-ttulo1-2@2x.png';
-                }}
-              />
-              {selectedVariant?.precio_original && (
-                <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-lg font-bold">
-                  {calculateDiscount(selectedVariant.precio_original, selectedVariant.precio)}% OFF
-                </div>
+              {selectedVariant && selectedVariant.imagenes && selectedVariant.imagenes.length > 0 ? (
+                <>
+                  <Image
+                    src={selectedVariant.imagenes[selectedImageIndex]?.url || '/sin-ttulo1-2@2x.png'}
+                    alt={`${productData.nombre} - ${selectedVariant.nombre} - Imagen ${selectedImageIndex + 1}`}
+                    fill
+                    className="object-cover transition-all duration-300"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/sin-ttulo1-2@2x.png';
+                    }}
+                  />
+                  
+                  {/* Indicadores de descuento */}
+                  {selectedVariant.descuento_porcentaje && (
+                    <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-lg font-bold">
+                      {selectedVariant.descuento_porcentaje}% OFF
+                    </div>
+                  )}
+                  
+                  {/* Navegación del carrusel */}
+                  {selectedVariant.imagenes.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => handleImageChange(
+                          selectedImageIndex > 0 
+                            ? selectedImageIndex - 1 
+                            : selectedVariant.imagenes.length - 1
+                        )}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() => handleImageChange(
+                          selectedImageIndex < selectedVariant.imagenes.length - 1 
+                            ? selectedImageIndex + 1 
+                            : 0
+                        )}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                      >
+                        →
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <Image
+                  src="/sin-ttulo1-2@2x.png"
+                  alt={productData.nombre}
+                  fill
+                  className="object-cover"
+                />
               )}
             </div>
+            
+            {/* Thumbnails del carrusel */}
+            {selectedVariant && selectedVariant.imagenes && selectedVariant.imagenes.length > 1 && (
+              <div className="flex space-x-2 overflow-x-auto">
+                {selectedVariant.imagenes.map((imagen, index) => (
+                  <button
+                    key={imagen.id_imagen}
+                    onClick={() => handleImageChange(index)}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                      index === selectedImageIndex 
+                        ? 'border-green-400' 
+                        : 'border-white/20 hover:border-white/40'
+                    }`}
+                  >
+                    <Image
+                      src={imagen.url}
+                      alt={`${productData.nombre} - Vista ${index + 1}`}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/sin-ttulo1-2@2x.png';
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Columna derecha - Información del producto */}
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">{productData.nombre}</h1>
-              <p className="text-gray-400">{productData.categoria} • {productData.marca}</p>
+              <p className="text-gray-400">{productData.categoria_nombre} • {productData.marca}</p>
             </div>
 
-            {/* Variantes */}
+            {/* Botones de variantes */}
             {productData.variantes.length > 1 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">{t('Variantes')}:</h3>
-                <div className="flex flex-wrap gap-2">
+                <h3 className="text-lg font-semibold mb-3">{t('Colores disponibles')}:</h3>
+                <div className="flex flex-wrap gap-3">
                   {productData.variantes.map((variant) => (
                     <button
                       key={variant.id_variante}
                       onClick={() => handleVariantChange(variant)}
-                      className={`px-4 py-2 rounded-lg border transition-colors ${
+                      disabled={!variant.disponible || variant.stock_total <= 0}
+                      className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 font-medium ${
                         selectedVariant?.id_variante === variant.id_variante
-                          ? 'border-green-400 bg-green-400/20 text-green-400'
-                          : 'border-white/30 hover:border-white/50'
+                          ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg'
+                          : variant.disponible && variant.stock_total > 0
+                          ? 'border-white/30 hover:border-white/50 hover:bg-white/10'
+                          : 'border-gray-600 text-gray-500 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      {variant.nombre_variante}
+                      {variant.nombre}
+                      {variant.stock_total <= 0 && ' (Agotado)'}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Tallas */}
-            {selectedVariant && selectedVariant.tallas.length > 0 && (
+            {/* Botones de tallas */}
+            {productData.tallas_disponibles && productData.tallas_disponibles.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">{t('Tallas')}:</h3>
+                <h3 className="text-lg font-semibold mb-3">{t('Tallas disponibles')}:</h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedVariant.tallas.map((size) => (
+                  {productData.tallas_disponibles.map((size) => (
                     <button
                       key={size.id_talla}
                       onClick={() => handleSizeChange(size)}
-                      disabled={size.cantidad === 0}
-                      className={`px-4 py-2 rounded-lg border transition-colors ${
-                        size.cantidad === 0
-                          ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                          : selectedSize?.id_talla === size.id_talla
-                          ? 'border-green-400 bg-green-400/20 text-green-400'
-                          : 'border-white/30 hover:border-white/50'
+                      className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium min-w-[60px] ${
+                        selectedSize?.id_talla === size.id_talla
+                          ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg'
+                          : 'border-white/30 hover:border-white/50 hover:bg-white/10'
                       }`}
                     >
                       {size.nombre_talla}
-                      {size.cantidad === 0 && ' (Agotado)'}
-                      {size.cantidad > 0 && size.cantidad <= 5 && ` (${size.cantidad} disponibles)`}
                     </button>
                   ))}
                 </div>
+                {productData.sistema_talla_nombre && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    Sistema de tallas: {productData.sistema_talla_nombre}
+                  </p>
+                )}
               </div>
             )}
 
@@ -1100,18 +1203,11 @@ const ProductPage: NextPage = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-4">
                 <span className="text-3xl font-bold text-green-400">
-                  {selectedVariant && formatPrice(selectedVariant.precio)}
+                  {selectedVariant && selectedVariant.precio && formatPrice(selectedVariant.precio)}
                 </span>
-                {selectedVariant?.precio_original && (
-                  <span className="text-xl text-gray-400 line-through">
-                    {formatPrice(selectedVariant.precio_original)}
-                  </span>
-                )}
               </div>
-              {selectedVariant?.precio_original && (
-                <p className="text-sm text-green-300">
-                  Ahorras {formatPrice((typeof selectedVariant.precio_original === 'string' ? parseFloat(selectedVariant.precio_original) : selectedVariant.precio_original) - (typeof selectedVariant.precio === 'string' ? parseFloat(selectedVariant.precio) : selectedVariant.precio))}
-                </p>
+              {selectedVariant && !selectedVariant.precio && (
+                <p className="text-red-400 font-medium">Precio no disponible</p>
               )}
             </div>
 
@@ -1191,15 +1287,17 @@ const ProductPage: NextPage = () => {
           <div className="mt-16">
             <div className="mb-8 text-center">
               <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('PRODUCTOS RECOMENDADOS')}</h2>
-              <p className="text-gray-300 text-lg">{t('Otros productos de la categoría')} {t(productData.categoria)}</p>
+              <p className="text-gray-300 text-lg">{t('Otros productos de la categoría')} {t(productData.categoria_nombre)}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedProducts.map((product) => {
                 const firstVariant = product.variantes[0];
                 if (!firstVariant) return null;
 
-                const hasStock = firstVariant.tallas.some(t => t.cantidad > 0);
-                const discount = calculateDiscount(firstVariant.precio_original, firstVariant.precio);
+                const hasStock = firstVariant.disponible && firstVariant.stock_total > 0;
+                const firstImage = firstVariant.imagenes?.[0]?.url || '/sin-ttulo1-2@2x.png';
+                const discount = firstVariant.descuento_porcentaje || 0;
+                const originalPrice = discount > 0 ? (firstVariant.precio! / (1 - discount / 100)) : firstVariant.precio;
 
                 return (
                   <Link 
@@ -1209,8 +1307,8 @@ const ProductPage: NextPage = () => {
                   >
                     <div className="relative aspect-square mb-4 rounded-lg overflow-hidden">
                       <Image
-                        src={firstVariant.imagen_url || '/sin-ttulo1-2@2x.png'}
-                        alt={`${product.nombre} - ${firstVariant.nombre_variante}`}
+                        src={firstImage}
+                        alt={`${product.nombre} - ${firstVariant.nombre}`}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform"
                         onError={(e) => {
@@ -1233,14 +1331,14 @@ const ProductPage: NextPage = () => {
                     <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-green-300 transition-colors line-clamp-2">
                       {product.nombre}
                     </h3>
-                    <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.categoria)}</p>
+                    <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.categoria_nombre)}</p>
                     <p className="text-gray-300 text-sm mb-4">{t('Marca')}: {product.marca}</p>
                     
                     <div className="flex items-center space-x-2">
                       <span className="text-green-400 font-bold text-lg">{formatPrice(firstVariant.precio)}</span>
                       {discount > 0 && (
                         <span className="text-gray-400 line-through text-sm">
-                          {formatPrice(firstVariant.precio_original!)}
+                          {formatPrice(originalPrice!)}
                         </span>
                       )}
                     </div>
@@ -1262,10 +1360,10 @@ const ProductPage: NextPage = () => {
             {/* Botón para ver más productos de la categoría */}
             <div className="text-center mt-8">
               <Link 
-                href={`/catalogo?categoria=${encodeURIComponent(productData.categoria)}`}
+                href={`/catalogo?categoria=${encodeURIComponent(productData.categoria_nombre)}`}
                 className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200"
               >
-                {t('Ver todos los productos de')} {t(productData.categoria)}
+                {t('Ver todos los productos de')} {t(productData.categoria_nombre)}
               </Link>
             </div>
           </div>
