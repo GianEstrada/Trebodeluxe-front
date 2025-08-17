@@ -216,7 +216,7 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredVariants.map((variant) => {
-                  const stockTotal = variant.tallas_stock.reduce((sum, talla) => sum + (talla.cantidad || 0), 0);
+                  const stockTotal = variant.tallas_stock.reduce((sum: number, talla: any) => sum + (talla.cantidad || 0), 0);
                   
                   return (
                     <tr key={variant.id_variante} className="hover:bg-gray-50">
