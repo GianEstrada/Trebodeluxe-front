@@ -200,8 +200,23 @@ export const productUtils = {
   transformToLegacyFormat(product) {
     if (!product) return null;
 
-    const firstVariant = product.variantes && product.variantes[0];
+    // Ordenar variantes por ID ascendente y obtener la primera para precio
+    const sortedVariants = product.variantes ? 
+      [...product.variantes].sort((a, b) => a.id_variante - b.id_variante) : [];
+    const firstVariant = sortedVariants[0];
     const firstImage = firstVariant && firstVariant.imagenes && firstVariant.imagenes[0];
+
+    // Obtener todos los nombres de variantes (colores) separados por coma
+    const allColors = sortedVariants.length > 0 ? 
+      sortedVariants.map(v => v.nombre).join(', ') : '';
+
+    // Obtener todas las tallas disponibles en stock
+    const availableSizes = product.stock && product.stock.length > 0 ? 
+      [...new Set(product.stock
+        .filter(s => s.cantidad > 0)
+        .map(s => s.talla_nombre || s.talla)
+        .filter(Boolean))]
+        .join(', ') : '';
 
     return {
       id: product.id_producto,
@@ -209,10 +224,12 @@ export const productUtils = {
       price: firstVariant ? parseFloat(firstVariant.precio) : (product.precio_minimo ? parseFloat(product.precio_minimo) : 0),
       originalPrice: firstVariant ? parseFloat(firstVariant.precio_original || firstVariant.precio) : (product.precio_minimo ? parseFloat(product.precio_minimo) * 1.25 : 0),
       image: firstImage ? firstImage.url : (product.imagen_principal || '/sin-ttulo1-2@2x.png'),
-      category: product.categoria,
-      brand: product.marca,
+      category: product.categoria || product.categoria_nombre || 'Sin categoría',
+      brand: product.marca || 'Sin marca',
+      color: allColors || 'Sin color',
+      size: availableSizes || 'Sin tallas',
       description: product.descripcion,
-      inStock: product.tiene_stock || false,
+      inStock: product.tiene_stock || (product.stock && product.stock.some(s => s.cantidad > 0)) || false,
       // Datos adicionales de la nueva estructura
       variantes: product.variantes || [],
       tallas_disponibles: product.tallas_disponibles || [],
