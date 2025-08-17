@@ -210,24 +210,37 @@ export const productUtils = {
     const allColors = sortedVariants.length > 0 ? 
       sortedVariants.map(v => v.nombre).join(', ') : '';
 
+    // Obtener precio correcto de la primera variante
+    // El precio viene del backend como string o number, hay que manejarlo correctamente
+    let correctPrice = 0;
+    if (firstVariant && firstVariant.precio !== null && firstVariant.precio !== undefined) {
+      // Si el precio viene como string, parsearlo
+      correctPrice = typeof firstVariant.precio === 'string' ? 
+        parseFloat(firstVariant.precio) : firstVariant.precio;
+    } else if (product.precio_minimo) {
+      correctPrice = parseFloat(product.precio_minimo);
+    }
+
     // Obtener todas las tallas disponibles en stock
-    const availableSizes = product.stock && product.stock.length > 0 ? 
-      [...new Set(product.stock
-        .filter(s => s.cantidad > 0)
-        .map(s => s.talla_nombre || s.talla)
-        .filter(Boolean))]
-        .join(', ') : '';
+    const availableSizes = product.tallas_disponibles && product.tallas_disponibles.length > 0 ? 
+      product.tallas_disponibles.map(t => t.nombre_talla).join(', ') : 
+      (product.stock && product.stock.length > 0 ? 
+        [...new Set(product.stock
+          .filter(s => s.cantidad > 0)
+          .map(s => s.talla_nombre || s.talla)
+          .filter(Boolean))]
+          .join(', ') : 'Sin tallas');
 
     return {
       id: product.id_producto,
       name: product.nombre || product.producto_nombre,
-      price: firstVariant ? parseFloat(firstVariant.precio) : (product.precio_minimo ? parseFloat(product.precio_minimo) : 0),
-      originalPrice: firstVariant ? parseFloat(firstVariant.precio_original || firstVariant.precio) : (product.precio_minimo ? parseFloat(product.precio_minimo) * 1.25 : 0),
+      price: correctPrice,
+      originalPrice: correctPrice * 1.25, // Precio original simulado (25% más)
       image: firstImage ? firstImage.url : (product.imagen_principal || '/sin-ttulo1-2@2x.png'),
       category: product.categoria || product.categoria_nombre || 'Sin categoría',
       brand: product.marca || 'Sin marca',
       color: allColors || 'Sin color',
-      size: availableSizes || 'Sin tallas',
+      size: availableSizes,
       description: product.descripcion,
       inStock: product.tiene_stock || (product.stock && product.stock.some(s => s.cantidad > 0)) || false,
       // Datos adicionales de la nueva estructura
