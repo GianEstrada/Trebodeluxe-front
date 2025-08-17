@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../../utils/roles';
+import { productsApi } from '../../utils/productsApi';
 
 // Interfaces para la nueva estructura de datos
 interface ImagenVariante {
@@ -133,34 +134,30 @@ const ProductPage: NextPage = () => {
     setError(null);
     
     try {
-      // Usar el endpoint correcto de productos recientes y filtrar por ID
-      const response = await fetch(`http://localhost:5000/api/products/recent?limit=50`);
-      const data = await response.json();
+      // Usar la API utility para obtener el producto por ID
+      const data = await productsApi.getById(id as string) as any;
       
-      if (data.success && data.products) {
-        // Buscar el producto específico por ID
-        const product = data.products.find((p: any) => p.id_producto === parseInt(id as string));
+      if (data.success && data.product) {
+        const product = data.product;
         
-        if (product) {
-          const productData: ProductData = {
-            id_producto: product.id_producto,
-            nombre: product.nombre,
-            descripcion: product.descripcion,
-            categoria_nombre: product.categoria_nombre,
-            marca: product.marca,
-            sistema_talla_nombre: product.sistema_talla_nombre,
-            variantes: product.variantes || [],
-            tallas_disponibles: product.tallas_disponibles || []
-          };
-          
-          setProductData(productData);
-          
-          // Cargar productos relacionados de la misma categoría
-          const relatedProducts = data.products
-            .filter((p: any) => 
-              p.categoria_nombre === product.categoria_nombre && 
-              p.id_producto !== product.id_producto
-            )
+        const productData: ProductData = {
+          id_producto: product.id_producto,
+          nombre: product.nombre,
+          descripcion: product.descripcion,
+          categoria_nombre: product.categoria_nombre,
+          marca: product.marca,
+          sistema_talla_nombre: product.sistema_talla_nombre,
+          variantes: product.variantes || [],
+          tallas_disponibles: product.tallas_disponibles || []
+        };
+        
+        setProductData(productData);
+        
+        // Para productos relacionados, usamos productos recientes de la misma categoría
+        const relatedResponse = await productsApi.getRecentByCategory(4) as any;
+        if (relatedResponse.success && relatedResponse.products) {
+          const relatedProducts = relatedResponse.products
+            .filter((p: any) => p.id_producto !== product.id_producto)
             .slice(0, 4)
             .map((p: any) => ({
               id_producto: p.id_producto,
@@ -173,11 +170,9 @@ const ProductPage: NextPage = () => {
             }));
           
           setRelatedProducts(relatedProducts);
-        } else {
-          setError('Producto no encontrado');
         }
       } else {
-        setError('Error al cargar el producto');
+        setError('Producto no encontrado');
       }
     } catch (err) {
       console.error('Error loading product:', err);
@@ -185,46 +180,26 @@ const ProductPage: NextPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadRelatedProducts = async (categoria: string, excludeId: number) => {
+  };  const loadRelatedProducts = async (categoria: string, excludeId: number) => {
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/products/variants');
-      const variantsData = await response.json();
+      const response = await productsApi.getRecent(20) as any;
       
-      if (variantsData.success && variantsData.variants) {
-        // Agrupar por producto y filtrar por categoría
-        const productsMap = new Map();
-        
-        variantsData.variants
-          .filter((v: any) => v.categoria === categoria && v.id_producto !== excludeId)
-          .forEach((variant: any) => {
-            const productKey = variant.id_producto;
-            
-            if (!productsMap.has(productKey)) {
-              productsMap.set(productKey, {
-                id_producto: variant.id_producto,
-                nombre: variant.nombre_producto,
-                descripcion: variant.descripcion_producto,
-                categoria: variant.categoria,
-                marca: variant.marca,
-                variantes: []
-              });
-            }
-            
-            productsMap.get(productKey).variantes.push({
-              id_variante: variant.id_variante,
-              nombre_variante: variant.nombre_variante,
-              precio: typeof variant.precio === 'string' ? parseFloat(variant.precio) : (variant.precio || 0),
-              precio_original: variant.precio_original ? (typeof variant.precio_original === 'string' ? parseFloat(variant.precio_original) : variant.precio_original) : undefined,
-              imagen_url: variant.imagen_url,
-              activo: variant.variante_activa,
-              tallas: variant.tallas_stock || []
-            });
-          });
-        
-        const relatedArray = Array.from(productsMap.values()).slice(0, 4);
-        setRelatedProducts(relatedArray);
+      if (response.success && response.products) {
+        // Filtrar productos de la misma categoría
+        const relatedProducts = response.products
+          .filter((p: any) => p.categoria_nombre === categoria && p.id_producto !== excludeId)
+          .slice(0, 4)
+          .map((p: any) => ({
+            id_producto: p.id_producto,
+            nombre: p.nombre,
+            descripcion: p.descripcion,
+            categoria_nombre: p.categoria_nombre,
+            marca: p.marca,
+            variantes: p.variantes || [],
+            tallas_disponibles: p.tallas_disponibles || []
+          }));
+
+        setRelatedProducts(relatedProducts);
       }
     } catch (err) {
       console.error('Error loading related products:', err);
