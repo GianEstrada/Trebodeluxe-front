@@ -10,6 +10,15 @@ interface Category {
   activo: boolean;
 }
 
+interface Product {
+  id: number;
+  label: string;
+  nombre: string;
+  descripcion?: string;
+  marca?: string;
+  activo: boolean;
+}
+
 interface Promotion {
   id_promocion: number;
   nombre: string;
@@ -40,12 +49,19 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Estados para búsqueda y filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
 
   // Función helper para obtener token
   const getAuthToken = () => {
@@ -102,7 +118,22 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
   const fetchPromotions = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/promotions?page=${page}&limit=10`);
+      
+      // Construir parámetros de consulta
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10'
+      });
+      
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+      
+      if (!showInactive) {
+        params.append('active', 'true');
+      }
+      
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/promotions?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {
@@ -115,6 +146,30 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
       alert('Error al cargar las promociones');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async (search = '') => {
+    try {
+      setLoadingProducts(true);
+      const params = new URLSearchParams();
+      
+      if (search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/promotions/products/dropdown?${params.toString()}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setProducts(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      // Fallback products si no se pueden cargar
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -155,7 +210,28 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
   useEffect(() => {
     fetchPromotions();
     fetchCategories();
+    fetchProducts();
   }, []);
+
+  // Efecto para búsqueda en tiempo real
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPromotions(1); // Resetear a página 1 cuando se busca
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, showInactive]);
+
+  // Efecto para búsqueda de productos
+  useEffect(() => {
+    if (formData.aplicacion_tipo === 'producto') {
+      const timer = setTimeout(() => {
+        fetchProducts(productSearch);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [productSearch, formData.aplicacion_tipo]);
 
   const resetForm = () => {
     setFormData({
@@ -333,6 +409,36 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
         >
           ➕ Crear Nueva Promoción
         </button>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+          {/* Search Bar */}
+          <div className="flex-1 min-w-0">
+            <input
+              type="text"
+              placeholder="Buscar promociones por nombre o código..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          
+          {/* Show Inactive Checkbox */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="showInactive"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="showInactive" className="text-sm font-medium text-gray-700">
+              Mostrar promociones inactivas
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* Promotions Table */}
@@ -659,15 +765,42 @@ const PromotionsAdmin: React.FC<PromotionsAdminProps> = ({ onClose }) => {
               {formData.aplicacion_tipo === 'producto' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID del Producto
+                    Producto
                   </label>
-                  <input
-                    type="number"
-                    min="1"
+                  
+                  {/* Search input for products */}
+                  <div className="mb-2">
+                    <input
+                      type="text"
+                      placeholder="Buscar productos..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  
+                  {/* Product dropdown */}
+                  <select
                     value={formData.aplicacion_producto}
                     onChange={(e) => setFormData({...formData, aplicacion_producto: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                    disabled={loadingProducts}
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id.toString()}>
+                        {product.label}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {loadingProducts && (
+                    <p className="text-xs text-gray-500 mt-1">Cargando productos...</p>
+                  )}
+                  
+                  {!loadingProducts && products.length === 0 && productSearch && (
+                    <p className="text-xs text-gray-500 mt-1">No se encontraron productos</p>
+                  )}
                 </div>
               )}
 
