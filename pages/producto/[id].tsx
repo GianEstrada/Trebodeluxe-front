@@ -153,6 +153,17 @@ const ProductPage: NextPage = () => {
         
         setProductData(productData);
         
+        // Debug: mostrar los datos en consola
+        console.log('🔍 DATOS DEL PRODUCTO CARGADOS:', productData);
+        console.log('🔍 TALLAS DISPONIBLES:', productData.tallas_disponibles);
+        console.log('🔍 VARIANTES:', productData.variantes);
+        
+        // Debug temporal: mostrar datos en la UI
+        if (typeof window !== 'undefined') {
+          (window as any).productDataDebug = productData;
+          console.table(productData.tallas_disponibles);
+        }
+        
         // Para productos relacionados, usamos productos recientes de la misma categoría
         const relatedResponse = await productsApi.getRecentByCategory(4) as any;
         if (relatedResponse.success && relatedResponse.products) {
@@ -1147,30 +1158,86 @@ const ProductPage: NextPage = () => {
               </div>
             )}
 
-            {/* Botones de tallas */}
-            {productData.tallas_disponibles && productData.tallas_disponibles.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">{t('Tallas disponibles')}:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {productData.tallas_disponibles.map((size) => (
-                    <button
-                      key={size.id_talla}
-                      onClick={() => handleSizeChange(size)}
-                      className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium min-w-[60px] ${
-                        selectedSize?.id_talla === size.id_talla
-                          ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg'
-                          : 'border-white/30 hover:border-white/50 hover:bg-white/10'
-                      }`}
-                    >
-                      {size.nombre_talla}
-                    </button>
-                  ))}
-                </div>
-                {productData.sistema_talla_nombre && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Sistema de tallas: {productData.sistema_talla_nombre}
-                  </p>
+            {/* DEBUG TEMPORAL - Remover después */}
+            <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-4">
+              <h4 className="text-red-400 font-bold mb-2">🔧 DEBUG INFO</h4>
+              <div className="text-sm text-white space-y-1">
+                <p><strong>Product Data:</strong> {productData ? '✅ Loaded' : '❌ Not loaded'}</p>
+                <p><strong>Tallas Array:</strong> {productData?.tallas_disponibles ? '✅ Exists' : '❌ Missing'}</p>
+                <p><strong>Tallas Length:</strong> {productData?.tallas_disponibles?.length || 0}</p>
+                <p><strong>Condition Check:</strong> {(productData?.tallas_disponibles && productData.tallas_disponibles.length > 0) ? '✅ Should render' : '❌ Will not render'}</p>
+                {productData?.tallas_disponibles && productData.tallas_disponibles.length > 0 ? (
+                  <div>
+                    <p><strong>Tallas found:</strong></p>
+                    {productData.tallas_disponibles.map((talla, index) => (
+                      <p key={index} className="ml-4">- {talla.nombre_talla} (ID: {talla.id_talla}, Stock: {talla.cantidad})</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-red-400"><strong>No tallas to display</strong></p>
                 )}
+                <button 
+                  onClick={() => {
+                    console.log('🔍 FULL Product Data:', productData);
+                    console.log('🔍 Tallas disponibles specifically:', productData?.tallas_disponibles);
+                    alert('Check console for full debug info');
+                  }}
+                  className="bg-red-600 text-white px-3 py-1 rounded text-xs mt-2 hover:bg-red-700"
+                >
+                  Log Full Debug Info
+                </button>
+              </div>
+            </div>
+
+            {/* Botones de tallas - Condición simplificada para debug */}
+            {productData && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  {t('Tallas disponibles')} ({productData.sistema_talla_nombre || t('Sistema estándar')}):
+                </h3>
+                
+                {/* Mostrar mensaje si no hay tallas */}
+                {(!productData.tallas_disponibles || productData.tallas_disponibles.length === 0) ? (
+                  <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-400">
+                    ⚠️ No hay tallas disponibles para este producto
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {productData.tallas_disponibles.map((size) => {
+                    const hasStock = size.cantidad && size.cantidad > 0;
+                    const isSelected = selectedSize?.id_talla === size.id_talla;
+                    
+                    return (
+                      <button
+                        key={size.id_talla}
+                        onClick={() => hasStock ? handleSizeChange(size) : null}
+                        disabled={!hasStock}
+                        className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium min-w-[60px] text-center ${
+                          isSelected && hasStock
+                            ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg transform scale-105'
+                            : hasStock
+                            ? 'border-white/30 hover:border-white/50 hover:bg-white/10 hover:transform hover:scale-105 text-white'
+                            : 'border-gray-600 bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                        title={
+                          hasStock 
+                            ? `${size.nombre_talla} - Stock: ${size.cantidad}` 
+                            : `${size.nombre_talla} - Agotado`
+                        }
+                      >
+                        <div className="text-sm font-bold">{size.nombre_talla}</div>
+                        <div className="text-xs mt-1">
+                          {hasStock ? `Stock: ${size.cantidad}` : t('Agotado')}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  </div>
+                )}
+                
+                <div className="mt-3 text-sm text-gray-400">
+                  <span>💡 {t('Consejo')}: {t('Selecciona una talla para ver la disponibilidad')}</span>
+                </div>
               </div>
             )}
 
