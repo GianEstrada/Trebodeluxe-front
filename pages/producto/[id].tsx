@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../../contexts/NewCartContext';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../../utils/roles';
 import { productsApi } from '../../utils/productsApi';
@@ -53,7 +53,7 @@ const ProductPage: NextPage = () => {
   const router = useRouter();
   const { id, variante } = router.query;
   const { user, isAuthenticated, logout } = useAuth();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   
   // Estados para idioma
   const [currentLanguage, setCurrentLanguage] = useState("es");
@@ -247,7 +247,7 @@ const ProductPage: NextPage = () => {
     }, 150);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedVariant || !selectedSize || !productData) {
       alert(t('Selecciona una variante y talla'));
       return;
@@ -259,30 +259,29 @@ const ProductPage: NextPage = () => {
       return;
     }
 
-    const cartItem = {
-      id_variante: selectedVariant.id_variante,
-      id_producto: productData.id_producto,
-      nombre_producto: productData.nombre,
-      nombre_variante: selectedVariant.nombre,
-      imagen_url: selectedVariant.imagenes[0]?.url || '/sin-ttulo1-2@2x.png',
-      precio: selectedVariant.precio,
-      precio_original: selectedVariant.precio, // Por ahora usamos el mismo precio
-      id_talla: selectedSize.id_talla,
-      nombre_talla: selectedSize.nombre_talla,
-      categoria: productData.categoria_nombre,
-      marca: productData.marca
-    };
-
-    addItem(cartItem, quantity);
-    alert(t('Producto agregado al carrito'));
+    try {
+      // Usar la nueva función addToCart con los parámetros correctos
+      await addToCart(
+        productData.id_producto,
+        selectedVariant.id_variante,
+        selectedSize.id_talla,
+        quantity
+      );
+      
+      // Nota: El toast/notificación se maneja automáticamente en el Context
+      // Ya no necesitamos el alert manual
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert(t('Error al agregar al carrito. Inténtalo de nuevo.'));
+    }
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
+  const handleBuyNow = async () => {
+    await handleAddToCart();
     // Redirigir al checkout después de agregar al carrito
     setTimeout(() => {
       router.push('/checkout');
-    }, 500);
+    }, 1000); // Dar más tiempo para que se complete la operación
   };
 
   const formatPrice = (price: number | string | null | undefined) => {

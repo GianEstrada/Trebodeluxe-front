@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
-import { useCart } from "../contexts/CartContext";
+import { useCart } from "../contexts/NewCartContext";
 import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useIndexImages } from "../hooks/useIndexImages";
 import { canAccessAdminPanel } from "../utils/roles";
@@ -59,7 +59,7 @@ const HomeScreen: NextPage = () => {
   const { user, isAuthenticated, logout } = useAuth();
   
   // Usar el carrito integrado con la base de datos
-  const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
+  const { items: cartItems, totalItems, totalFinal, removeFromCart, updateQuantity, clearCart, isLoading, addToCart } = useCart();
   
   // Usar configuraciones del sitio desde la base de datos
   const { headerSettings, loading: settingsLoading } = useSiteSettings();
@@ -315,10 +315,19 @@ const HomeScreen: NextPage = () => {
   };
 
   // Función para agregar al carrito
-  const handleAddToCart = (product: Product) => {
-    if (handleAuthRequiredAction()) {
-      // Lógica para agregar al carrito
-      console.log('Agregando al carrito:', product);
+  const handleAddToCart = async (product: Product) => {
+    try {
+      // Para la página de inicio, necesitamos datos adicionales que no están disponibles
+      // en la interfaz Product básica (variantId, tallaId)
+      console.error('❌ No se puede agregar desde las cards del index');
+      console.error('❌ Product data available:', product);
+      console.error('❌ Missing: variantId, tallaId');
+      
+      // Mostrar mensaje al usuario
+      alert(t('Para agregar al carrito, ve a la página del producto donde puedes seleccionar talla y variante.'));
+      
+    } catch (error) {
+      console.error('Error in handleAddToCart:', error);
     }
   };
 
@@ -953,13 +962,13 @@ const HomeScreen: NextPage = () => {
                           </div>
                         ) : (
                           cartItems.map((item) => (
-                            <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                            <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
                               <div className="flex items-start gap-3">
                                 <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0">
-                                  {item.imagen_url && (
+                                  {item.image && (
                                     <Image
-                                      src={item.imagen_url}
-                                      alt={item.nombre_producto}
+                                      src={item.image}
+                                      alt={item.name}
                                       width={64}
                                       height={64}
                                       className="w-full h-full object-cover rounded-lg"
@@ -967,21 +976,21 @@ const HomeScreen: NextPage = () => {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-medium truncate">{item.nombre_producto}</h4>
-                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.nombre_talla}, {item.nombre_variante}</p>
+                                  <h4 className="text-white font-medium truncate">{item.name}</h4>
+                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.precio)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, Math.max(0, item.cantidad - 1))}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
                                         -
                                       </button>
-                                      <span className="text-white text-sm w-8 text-center">{item.cantidad}</span>
+                                      <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
@@ -991,7 +1000,7 @@ const HomeScreen: NextPage = () => {
                                   </div>
                                 </div>
                                 <button 
-                                  onClick={() => removeItem(item.id_variante, item.id_talla)}
+                                  onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
                                   className="text-red-400 hover:text-red-300 transition-colors"
                                   disabled={isLoading}
                                 >
@@ -1010,7 +1019,7 @@ const HomeScreen: NextPage = () => {
                         <div className="mt-6 pt-4 border-t border-white/20">
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Subtotal:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalPrice)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalFinal)}</span>
                           </div>
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Envío:')}</span>
@@ -1018,7 +1027,7 @@ const HomeScreen: NextPage = () => {
                           </div>
                           <div className="flex justify-between items-center mb-6 text-lg">
                             <span className="text-white font-bold">{t('Total:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalPrice)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalFinal)}</span>
                           </div>
                           
                           <div className="space-y-3">
@@ -1183,8 +1192,8 @@ const HomeScreen: NextPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       if (product.inStock) {
-                        // Aquí puedes agregar la lógica para añadir al carrito
-                        console.log('Producto añadido al carrito:', product.name);
+                        // Usar la función handleAddToCart
+                        handleAddToCart(product);
                       }
                     }}
                   >
@@ -1290,8 +1299,8 @@ const HomeScreen: NextPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       if (product.inStock) {
-                        // Aquí puedes agregar la lógica para añadir al carrito
-                        console.log('Producto añadido al carrito:', product.name);
+                        // Usar la función handleAddToCart  
+                        handleAddToCart(product);
                       }
                     }}
                   >

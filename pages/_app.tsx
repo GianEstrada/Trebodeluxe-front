@@ -6,7 +6,7 @@ import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import { SiteSettingsProvider } from "../contexts/SiteSettingsContext";
 import { MainImagesProvider } from "../contexts/MainImagesContext";
-import { CartProvider } from "../contexts/CartContext";
+import { CartProvider } from "../contexts/NewCartContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 // Componente unificado para manejo de carga
