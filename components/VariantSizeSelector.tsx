@@ -5,18 +5,25 @@ import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 
 interface Variant {
   id_variante: number;
-  nombre_variante: string;
-  imagen_url?: string;
+  nombre: string;  // La API devuelve 'nombre', no 'nombre_variante'
   precio: number;
-  precio_original?: number;
-  tallas: Talla[];
+  stock_disponible: number;
+  tallas_disponibles?: Talla[];  // La API devuelve 'tallas_disponibles'
+  imagenes?: ImagenVariante[];
 }
 
 interface Talla {
   id_talla: number;
   nombre_talla: string;
-  stock_disponible: number;
-  sistematalla?: string;
+  cantidad: number;  // La API devuelve 'cantidad', no 'stock_disponible'
+  precio: number;
+}
+
+interface ImagenVariante {
+  id_imagen: number;
+  url: string;
+  public_id: string;
+  orden: number;
 }
 
 interface Product {
@@ -58,8 +65,8 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
 
   // Auto-select first available size when variant changes
   useEffect(() => {
-    if (selectedVariant && selectedVariant.tallas && selectedVariant.tallas.length > 0) {
-      const availableTalla = selectedVariant.tallas.find(talla => talla.stock_disponible > 0);
+    if (selectedVariant && selectedVariant.tallas_disponibles && selectedVariant.tallas_disponibles.length > 0) {
+      const availableTalla = selectedVariant.tallas_disponibles.find(talla => talla.cantidad > 0);
       setSelectedTalla(availableTalla || null);
     }
   }, [selectedVariant]);
@@ -70,7 +77,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
       return;
     }
 
-    if (selectedTalla.stock_disponible < quantity) {
+    if (selectedTalla.cantidad < quantity) {
       alert(t('Stock insuficiente'));
       return;
     }
@@ -119,11 +126,11 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                   }`}
                 >
                   <div className="flex items-center space-x-2">
-                    {variant.imagen_url && (
+                    {variant.imagenes && variant.imagenes.length > 0 && (
                       <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
                         <Image
-                          src={variant.imagen_url}
-                          alt={variant.nombre_variante}
+                          src={variant.imagenes[0].url}
+                          alt={variant.nombre}
                           width={48}
                           height={48}
                           className="w-full h-full object-cover"
@@ -131,8 +138,8 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                       </div>
                     )}
                     <div className="text-left min-w-0 flex-1">
-                      <p className="text-white text-sm font-medium truncate">{variant.nombre_variante}</p>
-                      <p className="text-green-400 text-xs font-bold">${variant.precio.toFixed(2)}</p>
+                      <p className="text-white text-sm font-medium truncate">{variant.nombre}</p>
+                      <p className="text-green-400 text-xs font-bold">${variant.precio?.toFixed(2) || 'N/A'}</p>
                     </div>
                   </div>
                 </button>
@@ -141,26 +148,26 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           </div>
 
           {/* Size Selection */}
-          {selectedVariant && (
+          {selectedVariant && selectedVariant.tallas_disponibles && (
             <div>
               <h4 className="text-white font-medium mb-3">{t('Selecciona Talla')}</h4>
               <div className="grid grid-cols-3 gap-2">
-                {selectedVariant.tallas.map((talla) => (
+                {selectedVariant.tallas_disponibles.map((talla) => (
                   <button
                     key={talla.id_talla}
                     onClick={() => setSelectedTalla(talla)}
-                    disabled={talla.stock_disponible === 0}
+                    disabled={talla.cantidad === 0}
                     className={`p-3 rounded-lg border text-center transition-all ${
                       selectedTalla?.id_talla === talla.id_talla
                         ? 'border-blue-500 bg-blue-500/20 text-white'
-                        : talla.stock_disponible === 0
+                        : talla.cantidad === 0
                         ? 'border-red-500/30 bg-red-500/10 text-red-400 cursor-not-allowed'
                         : 'border-white/20 bg-white/5 hover:bg-white/10 text-white'
                     }`}
                   >
                     <p className="font-medium">{talla.nombre_talla}</p>
                     <p className="text-xs opacity-70">
-                      {talla.stock_disponible === 0 ? t('Sin stock') : `${talla.stock_disponible} ${t('disponible')}`}
+                      {talla.cantidad === 0 ? t('Sin stock') : `${talla.cantidad} ${t('disponible')}`}
                     </p>
                   </button>
                 ))}
@@ -169,7 +176,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           )}
 
           {/* Quantity Selection */}
-          {selectedTalla && selectedTalla.stock_disponible > 0 && (
+          {selectedTalla && selectedTalla.cantidad > 0 && (
             <div>
               <h4 className="text-white font-medium mb-3">{t('Cantidad')}</h4>
               <div className="flex items-center space-x-3">
@@ -182,14 +189,14 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                 </button>
                 <span className="text-white font-medium text-lg w-12 text-center">{quantity}</span>
                 <button
-                  onClick={() => setQuantity(Math.min(selectedTalla.stock_disponible, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(selectedTalla.cantidad, quantity + 1))}
                   className="w-10 h-10 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-colors"
-                  disabled={quantity >= selectedTalla.stock_disponible}
+                  disabled={quantity >= selectedTalla.cantidad}
                 >
                   +
                 </button>
                 <span className="text-gray-400 text-sm ml-2">
-                  {t('Máximo')}: {selectedTalla.stock_disponible}
+                  {t('Máximo')}: {selectedTalla.cantidad}
                 </span>
               </div>
             </div>
@@ -218,7 +225,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           </button>
           <button
             onClick={handleAddToCart}
-            disabled={!selectedVariant || !selectedTalla || selectedTalla.stock_disponible === 0 || isLoading}
+            disabled={!selectedVariant || !selectedTalla || selectedTalla.cantidad === 0 || isLoading}
             className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? t('Agregando...') : t('Agregar al Carrito')}
