@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCart } from '../../contexts/PersistentCartContext';
-import CartModal from './CartModal';
+import { useCart } from '../../contexts/NewCartContext';
+import CartModal from './CartModalClean';
 
 interface CartIconProps {
   className?: string;

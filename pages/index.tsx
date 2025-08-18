@@ -1477,46 +1477,66 @@ const HomeScreen: NextPage = () => {
                 {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
               </p>
               <div className="flex flex-row items-center justify-start gap-4">
-                <Image
-                  className="w-6 relative h-6 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Facebook"
-                  src="/figma.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Instagram"
-                  src="/logo-instagram.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Twitter/X"
-                  src="/x-logo.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="YouTube"
-                  src="/logo-youtube.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="LinkedIn"
-                  src="/linkedin.svg"
-                />
+                <a 
+                  href="https://www.facebook.com/profile.php?id=61576338298512"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Facebook"
+                    src="/facebook-icon.svg"
+                  />
+                </a>
+                <a 
+                  href="https://www.instagram.com/treboluxe"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Instagram"
+                    src="/logo-instagram.svg"
+                  />
+                </a>
+                <a 
+                  href="https://www.tiktok.com/@treboluxe5"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="TikTok"
+                    src="/tiktok-icon.svg"
+                  />
+                </a>
+                <a 
+                  href="https://twitter.com/treboluxe?s=21"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Twitter/X"
+                    src="/x-logo.svg"
+                  />
+                </a>
               </div>
             </div>
           </div>
@@ -1540,27 +1560,7 @@ const HomeScreen: NextPage = () => {
             </div>
             <div className="w-full">
               <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Envíos y entregas')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cambios y devoluciones')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
                 {t('Tabla de tallas')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Gift cards')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Programa de fidelidad')}
               </div>
             </div>
           </div>
@@ -1628,27 +1628,7 @@ const HomeScreen: NextPage = () => {
             </div>
             <div className="w-full">
               <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Centro de ayuda')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Chat en vivo')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Seguimiento de pedidos')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
                 {t('Reportar un problema')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ubicación de tiendas')}
               </div>
             </div>
           </div>
@@ -1667,32 +1647,7 @@ const HomeScreen: NextPage = () => {
             </div>
             <div className="w-full">
               <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de privacidad')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de cookies')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Aviso legal')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
                 {t('Sobre nosotros')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Trabaja con nosotros')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sostenibilidad')}
               </div>
             </div>
           </div>
