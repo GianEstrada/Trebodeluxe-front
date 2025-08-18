@@ -11,6 +11,7 @@ import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { categoriesApi } from "../utils/categoriesApi";
 import { useCategories } from "../hooks/useCategories";
+import VariantSizeSelector from "../components/VariantSizeSelector";
 
 // Definir el tipo para los productos
 interface Product {
@@ -46,6 +47,10 @@ const HomeScreen: NextPage = () => {
   
   // Estado para las categorías activas con contenido
   const [activeCategoriesWithContent, setActiveCategoriesWithContent] = useState<any[]>([]);
+  
+  // Estados para el selector de variantes/tallas
+  const [showVariantSelector, setShowVariantSelector] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -314,21 +319,35 @@ const HomeScreen: NextPage = () => {
     return true;
   };
 
-  // Función para agregar al carrito
+  // Función para agregar al carrito - abre el selector
   const handleAddToCart = async (product: Product) => {
     try {
-      // Para la página de inicio, necesitamos datos adicionales que no están disponibles
-      // en la interfaz Product básica (variantId, tallaId)
-      console.error('❌ No se puede agregar desde las cards del index');
-      console.error('❌ Product data available:', product);
-      console.error('❌ Missing: variantId, tallaId');
-      
-      // Mostrar mensaje al usuario
-      alert(t('Para agregar al carrito, ve a la página del producto donde puedes seleccionar talla y variante.'));
-      
+      // Buscar el producto completo con variantes desde la API
+      const productDetail: any = await productsApi.getById(product.id);
+      if (productDetail && productDetail.variantes?.length > 0) {
+        handleOpenVariantSelector(productDetail);
+      } else {
+        alert(t('Producto no disponible'));
+      }
     } catch (error) {
-      console.error('Error in handleAddToCart:', error);
+      console.error('Error al cargar detalles del producto:', error);
+      alert(t('Error al cargar el producto'));
     }
+  };
+
+  // Funciones para el selector de variantes y tallas
+  const handleOpenVariantSelector = (product: any) => {
+    setSelectedProduct(product);
+    setShowVariantSelector(true);
+  };
+
+  const handleCloseVariantSelector = () => {
+    setShowVariantSelector(false);
+    setSelectedProduct(null);
+  };
+
+  const handleAddToCartFromSelector = async (productId: number, variantId: number, tallaId: number, quantity: number) => {
+    await addToCart(productId, variantId, tallaId, quantity);
   };
 
   return (
@@ -1665,6 +1684,17 @@ const HomeScreen: NextPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Selector de Variantes y Tallas */}
+      {selectedProduct && (
+        <VariantSizeSelector
+          isOpen={showVariantSelector}
+          onClose={handleCloseVariantSelector}
+          product={selectedProduct}
+          onAddToCart={handleAddToCartFromSelector}
+          currentLanguage={currentLanguage}
+        />
+      )}
       
       </div>
     </div>

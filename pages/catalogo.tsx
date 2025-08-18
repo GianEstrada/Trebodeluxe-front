@@ -9,12 +9,13 @@ import { useCart } from "../contexts/NewCartContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { useCategories } from "../hooks/useCategories";
+import VariantSizeSelector from "../components/VariantSizeSelector";
 
 // Componente para los botones de acción de cada card de producto
-const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToCart }: any) => {
+const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToCart, onOpenSelector }: any) => {
   const [quantity, setQuantity] = useState(1);
 
-  const handleAddToCart = async () => {
+  const handleQuickAddToCart = async () => {
     if (!hasStock || !defaultSize) {
       alert(t('Producto sin stock disponible'));
       return;
@@ -27,11 +28,17 @@ const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToC
         defaultSize.id_talla,
         quantity
       );
-      // El toast se mostrará automáticamente desde el contexto
     } catch (error) {
       console.error('Error al agregar al carrito:', error);
       alert(t('Error al agregar producto al carrito'));
     }
+  };
+
+  const handleOpenSelector = () => {
+    onOpenSelector({
+      ...product,
+      variantes: [variant] // Solo pasamos la variante actual para simplificar
+    });
   };
 
   return (
@@ -46,7 +53,7 @@ const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToC
         
         <button
           disabled={!hasStock}
-          onClick={handleAddToCart}
+          onClick={handleOpenSelector}
           className={`flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-200 text-sm ${
             hasStock 
               ? 'bg-white text-black hover:bg-gray-100' 
@@ -71,6 +78,10 @@ const CatalogoScreen: NextPage = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
+
+  // Estado para el selector de variantes/tallas
+  const [showVariantSelector, setShowVariantSelector] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   
   // Estados para idioma y moneda
   const [currentLanguage, setCurrentLanguage] = useState("es");
@@ -162,6 +173,21 @@ const CatalogoScreen: NextPage = () => {
     const symbol = symbols[currentCurrency as keyof typeof symbols];
     
     return `${symbol}${convertedPrice}`;
+  };
+
+  // Funciones para el selector de variantes y tallas
+  const handleOpenVariantSelector = (product: any) => {
+    setSelectedProduct(product);
+    setShowVariantSelector(true);
+  };
+
+  const handleCloseVariantSelector = () => {
+    setShowVariantSelector(false);
+    setSelectedProduct(null);
+  };
+
+  const handleAddToCartFromSelector = async (productId: number, variantId: number, tallaId: number, quantity: number) => {
+    await addToCart(productId, variantId, tallaId, quantity);
   };
 
   // Función para manejar la búsqueda
@@ -1359,6 +1385,7 @@ const CatalogoScreen: NextPage = () => {
                       hasStock={hasStock}
                       t={t}
                       addToCart={addToCart}
+                      onOpenSelector={handleOpenVariantSelector}
                     />
                   </div>
                 </div>
@@ -1367,6 +1394,17 @@ const CatalogoScreen: NextPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Selector de Variantes y Tallas */}
+      {selectedProduct && (
+        <VariantSizeSelector
+          isOpen={showVariantSelector}
+          onClose={handleCloseVariantSelector}
+          product={selectedProduct}
+          onAddToCart={handleAddToCartFromSelector}
+          currentLanguage={currentLanguage}
+        />
+      )}
     </div>
   );
 };
