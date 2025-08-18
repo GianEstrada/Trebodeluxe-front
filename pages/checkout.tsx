@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
-import { useCart } from '../contexts/CartContext';
+import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../utils/roles';
 
@@ -54,7 +54,7 @@ const CheckoutPage: NextPage = () => {
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
 
   // Usar el carrito integrado con la base de datos
-  const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
+  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading } = useCart();
 
   // Información personal
   const [personalInfo, setPersonalInfo] = useState({
@@ -831,13 +831,13 @@ const CheckoutPage: NextPage = () => {
                           </div>
                         ) : (
                           cartItems.map((item) => (
-                            <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                            <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
                               <div className="flex items-start gap-3">
                                 <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0">
-                                  {item.imagen_url && (
+                                  {item.image && (
                                     <Image
-                                      src={item.imagen_url}
-                                      alt={item.nombre_producto}
+                                      src={item.image}
+                                      alt={item.name}
                                       width={64}
                                       height={64}
                                       className="w-full h-full object-cover rounded-lg"
@@ -845,21 +845,21 @@ const CheckoutPage: NextPage = () => {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-medium truncate">{item.nombre_producto}</h4>
-                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.nombre_talla}, {item.nombre_variante}</p>
+                                  <h4 className="text-white font-medium truncate">{item.name}</h4>
+                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.precio)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, Math.max(0, item.cantidad - 1))}
+                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
-                                        disabled={isLoading}
+                                        disabled={isLoading || item.quantity <= 1}
                                       >
                                         -
                                       </button>
-                                      <span className="text-white text-sm w-8 text-center">{item.cantidad}</span>
+                                      <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, item.quantity + 1)}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
@@ -869,7 +869,7 @@ const CheckoutPage: NextPage = () => {
                                   </div>
                                 </div>
                                 <button 
-                                  onClick={() => removeItem(item.id_variante, item.id_talla)}
+                                  onClick={() => removeFromCart(0, item.variantId, item.tallaId)}
                                   className="text-red-400 hover:text-red-300 transition-colors"
                                   disabled={isLoading}
                                 >
@@ -1167,12 +1167,12 @@ const CheckoutPage: NextPage = () => {
               {/* Lista de productos */}
               <div className="space-y-4 mb-6">
                 {cartItems.map((item) => (
-                  <div key={`${item.id_variante}-${item.id_talla}`} className="flex items-center space-x-3">
+                  <div key={`${item.variantId}-${item.tallaId}`} className="flex items-center space-x-3">
                     <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                      {item.imagen_url && (
+                      {item.image && (
                         <Image
-                          src={item.imagen_url}
-                          alt={item.nombre_producto}
+                          src={item.image}
+                          alt={item.name}
                           width={64}
                           height={64}
                           className="w-full h-full object-cover"
@@ -1180,12 +1180,12 @@ const CheckoutPage: NextPage = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-white text-sm font-medium truncate">{item.nombre_producto}</h3>
+                      <h3 className="text-white text-sm font-medium truncate">{item.name}</h3>
                       <p className="text-gray-400 text-xs">
-                        {item.nombre_talla} | {item.nombre_variante} | {t('Cantidad')}: {item.cantidad}
+                        {item.tallaName} | {item.variantName} | {t('Cantidad')}: {item.quantity}
                       </p>
                       <p className="text-green-400 text-sm font-bold">
-                        {formatPrice(item.precio * item.cantidad)}
+                        {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
                   </div>
