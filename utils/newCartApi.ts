@@ -1,5 +1,5 @@
 // utils/newCartApi.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface AddToCartRequest {
   productId: number;
@@ -61,21 +61,73 @@ interface CartItem {
 // Gestión del token de sesión para usuarios no autenticados
 let sessionToken: string | null = null;
 
-const getSessionToken = (): string | null => {
+const generateSessionToken = (): string => {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 15);
+  const browserFingerprint = typeof window !== 'undefined' 
+    ? btoa(navigator.userAgent + (screen.width + screen.height).toString()).substring(0, 10)
+    : 'server';
+  return `session_${timestamp}_${randomString}_${browserFingerprint}`;
+};
+
+const getSessionToken = (): string => {
   if (typeof window !== 'undefined') {
-    return sessionToken || localStorage.getItem('cart-session-token');
+    // Primero revisar en memoria
+    if (sessionToken) {
+      return sessionToken;
+    }
+    
+    // Luego revisar en localStorage
+    const storedToken = localStorage.getItem('cart-session-token');
+    if (storedToken) {
+      sessionToken = storedToken;
+      return storedToken;
+    }
+    
+    // Si no hay token, generar uno nuevo
+    const newToken = generateSessionToken();
+    setSessionToken(newToken);
+    return newToken;
   }
-  return sessionToken;
+  
+  // En servidor, usar token en memoria o generar uno temporal
+  return sessionToken || generateSessionToken();
 };
 
 const setSessionToken = (token: string) => {
   sessionToken = token;
   if (typeof window !== 'undefined') {
     localStorage.setItem('cart-session-token', token);
+    // También guardarlo con fecha de expiración (30 días)
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 30);
+    localStorage.setItem('cart-session-expires', expirationDate.toISOString());
+  }
+};
+
+const isTokenExpired = (): boolean => {
+  if (typeof window !== 'undefined') {
+    const expirationStr = localStorage.getItem('cart-session-expires');
+    if (expirationStr) {
+      const expirationDate = new Date(expirationStr);
+      return new Date() > expirationDate;
+    }
+  }
+  return false;
+};
+
+const clearExpiredToken = () => {
+  if (typeof window !== 'undefined' && isTokenExpired()) {
+    localStorage.removeItem('cart-session-token');
+    localStorage.removeItem('cart-session-expires');
+    sessionToken = null;
   }
 };
 
 const getAuthHeaders = () => {
+  // Limpiar tokens expirados antes de usar
+  clearExpiredToken();
+  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -87,27 +139,48 @@ const getAuthHeaders = () => {
   
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
-  // Agregar token de sesión si está disponible
-  const currentSessionToken = getSessionToken();
-  if (currentSessionToken) {
-    headers['X-Session-Token'] = currentSessionToken;
+  } else {
+    // Si no hay usuario autenticado, usar token de sesión
+    const currentSessionToken = getSessionToken();
+    if (currentSessionToken) {
+      headers['X-Session-Token'] = currentSessionToken;
+    }
   }
 
   return headers;
 };
 
 const handleResponse = async (response: Response): Promise<any> => {
-  const data = await response.json();
+  // Log para debugging
+  console.log('🔍 Cart API Response:', {
+    url: response.url,
+    status: response.status,
+    statusText: response.statusText,
+    headers: Object.fromEntries(response.headers.entries())
+  });
+
+  let data;
+  try {
+    data = await response.json();
+    console.log('📦 Cart API Data:', data);
+  } catch (error) {
+    console.error('❌ Error parsing JSON response:', error);
+    throw new Error('Invalid JSON response from server');
+  }
   
   // Capturar token de sesión si viene en los headers
   const newSessionToken = response.headers.get('X-Session-Token');
   if (newSessionToken) {
+    console.log('🔑 New session token received:', newSessionToken);
     setSessionToken(newSessionToken);
   }
 
   if (!response.ok) {
+    console.error('❌ Cart API Error:', {
+      status: response.status,
+      message: data.message || `HTTP error! status: ${response.status}`,
+      data
+    });
     throw new Error(data.message || `HTTP error! status: ${response.status}`);
   }
 
@@ -117,14 +190,18 @@ const handleResponse = async (response: Response): Promise<any> => {
 // Obtener el carrito actual
 export const getCart = async (): Promise<CartResponse> => {
   try {
+    console.log('🛒 Getting cart...');
+    const headers = getAuthHeaders();
+    console.log('📡 Request headers:', headers);
+    
     const response = await fetch(`${API_BASE_URL}/api/cart`, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers,
     });
 
     return handleResponse(response);
   } catch (error) {
-    console.error('Error getting cart:', error);
+    console.error('❌ Error getting cart:', error);
     throw error;
   }
 };
@@ -147,15 +224,21 @@ export const getCartCount = async (): Promise<{ success: boolean; totalItems: nu
 // Agregar producto al carrito
 export const addToCart = async (request: AddToCartRequest): Promise<CartResponse> => {
   try {
+    console.log('➕ Adding to cart:', request);
+    const headers = getAuthHeaders();
+    console.log('📡 Request headers:', headers);
+    
     const response = await fetch(`${API_BASE_URL}/api/cart/add`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify(request),
     });
 
-    return handleResponse(response);
+    const result = await handleResponse(response);
+    console.log('✅ Product added successfully:', result);
+    return result;
   } catch (error) {
-    console.error('Error adding to cart:', error);
+    console.error('❌ Error adding to cart:', error);
     throw error;
   }
 };

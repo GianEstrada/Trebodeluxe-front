@@ -1,37 +1,38 @@
-// contexts/NewCartContext.tsx
+// contexts/PersistentCartContext.tsx
 'use client';
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import * as newCartApi from '../utils/newCartApi';
-import { useAuth } from '../contexts/AuthContext';
+import persistentCartApi from '../utils/persistentCartApi';
+import type { CartItem, CartResponse } from '../utils/persistentCartApi';
+import { useAuth } from './AuthContext';
 
-// Interface para los items del carrito basado en la respuesta del backend
-export interface CartItem {
-  id: string; // Se mapea desde id_contenido para mantener compatibilidad
-  id_contenido: number; // ID real del contenido del carrito
+// Interface para los items del carrito adaptado para el frontend
+export interface FrontendCartItem {
+  id: string;
+  id_contenido: number;
   id_carrito: number;
-  productId: number; // Se mapea desde id_producto
-  variantId: number; // Se mapea desde id_variante
-  tallaId: number; // Se mapea desde id_talla
-  quantity: number; // Se mapea desde cantidad
-  name: string; // Se mapea desde nombre_producto
-  description?: string; // Se mapea desde descripcion_producto
-  variantName: string; // Se mapea desde nombre_variante
-  tallaName: string; // Se mapea desde nombre_talla
-  sistematalla: string; // Sistema de tallas
-  price: number; // Precio original
-  stock: number; // Se mapea desde stock_disponible
-  image: string; // Se mapea desde imagen_variante
-  totalItemPrice: number; // Precio total del item (precio * cantidad)
-  finalPrice: number; // Precio final después de descuentos
-  hasDiscount: boolean; // Indica si tiene descuento
-  discountPercentage: number; // Porcentaje de descuento aplicado
-  fechaAgregado: string; // Fecha cuando se agregó al carrito
+  productId: number;
+  variantId: number;
+  tallaId: number;
+  quantity: number;
+  name: string;
+  description?: string;
+  variantName: string;
+  tallaName: string;
+  sistematalla: string;
+  price: number;
+  stock: number;
+  image: string;
+  totalItemPrice: number;
+  finalPrice: number;
+  hasDiscount: boolean;
+  discountPercentage: number;
+  fechaAgregado: string;
 }
 
 // Estado del carrito
 interface CartState {
-  items: CartItem[];
+  items: FrontendCartItem[];
   totalItems: number;
   totalOriginal: number;
   totalFinal: number;
@@ -40,14 +41,40 @@ interface CartState {
   isLoading: boolean;
   error: string | null;
   cartId: number | null;
+  isInitialized: boolean;
 }
 
 // Acciones del reducer
 type CartAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_CART'; payload: newCartApi.CartResponse }
-  | { type: 'CLEAR_CART' };
+  | { type: 'SET_CART'; payload: CartResponse }
+  | { type: 'CLEAR_CART' }
+  | { type: 'SET_INITIALIZED'; payload: boolean };
+
+// Función para mapear CartItem a FrontendCartItem
+const mapToFrontendItem = (item: CartItem): FrontendCartItem => ({
+  id: item.id_contenido.toString(),
+  id_contenido: item.id_contenido,
+  id_carrito: item.id_carrito,
+  productId: item.id_producto,
+  variantId: item.id_variante,
+  tallaId: item.id_talla,
+  quantity: item.cantidad,
+  name: item.nombre_producto,
+  description: item.descripcion_producto,
+  variantName: item.nombre_variante,
+  tallaName: item.nombre_talla,
+  sistematalla: item.sistema_talla,
+  price: item.precio,
+  stock: item.stock_disponible,
+  image: item.imagen_variante,
+  totalItemPrice: item.precio_total_item,
+  finalPrice: item.precio_final_item,
+  hasDiscount: item.tiene_descuento,
+  discountPercentage: item.descuento_porcentaje,
+  fechaAgregado: item.fecha_agregado,
+});
 
 // Reducer del carrito
 const cartReducer = (state: CartState, action: CartAction): CartState => {
@@ -58,32 +85,14 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'SET_ERROR':
       return { ...state, error: action.payload, isLoading: false };
     
+    case 'SET_INITIALIZED':
+      return { ...state, isInitialized: action.payload };
+    
     case 'SET_CART':
       const { cart } = action.payload;
       return {
         ...state,
-        items: cart.items.map(item => ({
-          id: item.id_contenido.toString(),
-          id_contenido: item.id_contenido,
-          id_carrito: item.id_carrito,
-          productId: item.id_producto,
-          variantId: item.id_variante,
-          tallaId: item.id_talla,
-          quantity: item.cantidad,
-          name: item.nombre_producto,
-          description: item.descripcion_producto,
-          variantName: item.nombre_variante,
-          tallaName: item.nombre_talla,
-          sistematalla: item.sistema_talla,
-          price: item.precio,
-          stock: item.stock_disponible,
-          image: item.imagen_variante,
-          totalItemPrice: item.precio_total_item,
-          finalPrice: item.precio_final_item,
-          hasDiscount: item.tiene_descuento,
-          discountPercentage: item.descuento_porcentaje,
-          fechaAgregado: item.fecha_agregado,
-        })),
+        items: cart.items.map(mapToFrontendItem),
         totalItems: cart.totalItems,
         totalOriginal: cart.totalOriginal,
         totalFinal: cart.totalFinal,
@@ -92,6 +101,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         cartId: cart.id,
         isLoading: false,
         error: null,
+        isInitialized: true,
       };
     
     case 'CLEAR_CART':
@@ -124,12 +134,13 @@ const initialCartState: CartState = {
   isLoading: false,
   error: null,
   cartId: null,
+  isInitialized: false,
 };
 
 // Contexto del carrito
 interface CartContextType {
   // Estado
-  items: CartItem[];
+  items: FrontendCartItem[];
   totalItems: number;
   totalOriginal: number;
   totalFinal: number;
@@ -138,6 +149,7 @@ interface CartContextType {
   isLoading: boolean;
   error: string | null;
   cartId: number | null;
+  isInitialized: boolean;
 
   // Acciones
   addToCart: (productId: number, variantId: number, tallaId: number, quantity: number) => Promise<void>;
@@ -145,6 +157,7 @@ interface CartContextType {
   removeFromCart: (productId: number, variantId: number, tallaId: number) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
+  getStorageInfo: () => any;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -165,34 +178,33 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialCartState);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth ? useAuth() : { isAuthenticated: false, user: null };
 
   // Función para manejar errores
-  const handleError = (error: any) => {
+  const handleError = (error: any, context: string) => {
     const message = error.message || 'Error desconocido en el carrito';
-    console.error('Cart error:', error);
+    console.error(`❌ Cart error (${context}):`, error);
     dispatch({ type: 'SET_ERROR', payload: message });
   };
 
   // Refrescar el carrito desde la API
   const refreshCart = useCallback(async () => {
     try {
-      console.log('🔄 Refreshing cart...');
+      console.log('🔄 Refrescando carrito...');
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await newCartApi.getCart();
-      console.log('✅ Cart loaded successfully:', response);
-      dispatch({ type: 'SET_CART', payload: response });
-    } catch (error: any) {
-      console.log('⚠️ Cart refresh error:', error);
       
+      const response = await persistentCartApi.getCart();
+      dispatch({ type: 'SET_CART', payload: response });
+      
+      console.log('✅ Carrito refrescado exitosamente');
+    } catch (error: any) {
       // Si el error es que no hay carrito, no es un error real
-      if (error.message?.includes('404') || 
-          error.message?.includes('not found') ||
-          error.message?.includes('No se encontró carrito')) {
-        console.log('📝 No cart found, starting with empty cart');
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
         dispatch({ type: 'CLEAR_CART' });
+        dispatch({ type: 'SET_INITIALIZED', payload: true });
+        console.log('ℹ️ No hay carrito existente, iniciando vacío');
       } else {
-        handleError(error);
+        handleError(error, 'refreshCart');
       }
     }
   }, []);
@@ -205,16 +217,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     quantity: number
   ) => {
     try {
+      console.log(`➕ Agregando al carrito: Producto ${productId}, Variante ${variantId}, Talla ${tallaId}, Cantidad ${quantity}`);
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await newCartApi.addToCart({
+      
+      const response = await persistentCartApi.addToCart({
         productId,
         variantId,
         tallaId,
         cantidad: quantity,
       });
+      
       dispatch({ type: 'SET_CART', payload: response });
+      console.log('✅ Producto agregado exitosamente al carrito');
     } catch (error: any) {
-      handleError(error);
+      handleError(error, 'addToCart');
     }
   }, []);
 
@@ -226,16 +242,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     newQuantity: number
   ) => {
     try {
+      console.log(`📝 Actualizando cantidad: Producto ${productId}, nueva cantidad ${newQuantity}`);
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await newCartApi.updateQuantity({
+      
+      const response = await persistentCartApi.updateQuantity({
         productId,
         variantId,
         tallaId,
         cantidad: newQuantity,
       });
+      
       dispatch({ type: 'SET_CART', payload: response });
+      console.log('✅ Cantidad actualizada exitosamente');
     } catch (error: any) {
-      handleError(error);
+      handleError(error, 'updateQuantity');
     }
   }, []);
 
@@ -246,52 +266,106 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     tallaId: number
   ) => {
     try {
+      console.log(`🗑️ Eliminando del carrito: Producto ${productId}, Variante ${variantId}, Talla ${tallaId}`);
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await newCartApi.removeFromCart({
+      
+      const response = await persistentCartApi.removeFromCart({
         productId,
         variantId,
         tallaId,
       });
+      
       dispatch({ type: 'SET_CART', payload: response });
+      console.log('✅ Producto eliminado exitosamente del carrito');
     } catch (error: any) {
-      handleError(error);
+      handleError(error, 'removeFromCart');
     }
   }, []);
 
   // Limpiar todo el carrito
   const clearCart = useCallback(async () => {
     try {
+      console.log('🗑️ Limpiando carrito completo...');
       dispatch({ type: 'SET_LOADING', payload: true });
-      await newCartApi.clearCart();
+      
+      await persistentCartApi.clearCart();
       dispatch({ type: 'CLEAR_CART' });
+      console.log('✅ Carrito limpiado exitosamente');
     } catch (error: any) {
-      handleError(error);
+      handleError(error, 'clearCart');
     }
   }, []);
 
   // Migrar carrito cuando el usuario se autentica
   const migrateCart = useCallback(async () => {
-    if (isAuthenticated && state.totalItems > 0) {
+    if (isAuthenticated && state.totalItems > 0 && !user) {
       try {
-        const response = await newCartApi.migrateCart();
+        console.log('🔄 Migrando carrito a usuario autenticado...');
+        const response = await persistentCartApi.migrateCart();
         dispatch({ type: 'SET_CART', payload: response });
+        console.log('✅ Carrito migrado exitosamente');
       } catch (error: any) {
-        console.warn('Error migrating cart:', error);
+        console.warn('⚠️ Error migrando carrito (no crítico):', error);
         // No es crítico si falla la migración
       }
     }
-  }, [isAuthenticated, state.totalItems]);
+  }, [isAuthenticated, state.totalItems, user]);
 
-  // Efectos
-  useEffect(() => {
-    // Cargar carrito al inicializar
-    refreshCart();
-  }, [refreshCart]);
+  // Función para obtener información de debugging
+  const getStorageInfo = useCallback(() => {
+    return persistentCartApi.getStorageInfo();
+  }, []);
 
+  // Efecto para cargar carrito al inicializar
   useEffect(() => {
-    // Migrar carrito cuando el usuario se autentica
-    migrateCart();
-  }, [migrateCart]);
+    let mounted = true;
+    
+    const initializeCart = async () => {
+      if (!state.isInitialized && mounted) {
+        console.log('🚀 Inicializando carrito...');
+        await refreshCart();
+      }
+    };
+
+    // Pequeño delay para asegurar que el componente esté montado
+    const timer = setTimeout(initializeCart, 100);
+    
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [refreshCart, state.isInitialized]);
+
+  // Efecto para migrar carrito cuando el usuario se autentica
+  useEffect(() => {
+    let mounted = true;
+    
+    const handleAuthChange = async () => {
+      if (mounted && state.isInitialized) {
+        await migrateCart();
+      }
+    };
+
+    handleAuthChange();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [migrateCart, state.isInitialized]);
+
+  // Log de debugging en desarrollo
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🛒 Estado del carrito:', {
+        totalItems: state.totalItems,
+        cartId: state.cartId,
+        isLoading: state.isLoading,
+        error: state.error,
+        isInitialized: state.isInitialized,
+        storageInfo: persistentCartApi.getStorageInfo()
+      });
+    }
+  }, [state]);
 
   // Valor del contexto
   const contextValue: CartContextType = {
@@ -305,6 +379,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     isLoading: state.isLoading,
     error: state.error,
     cartId: state.cartId,
+    isInitialized: state.isInitialized,
 
     // Acciones
     addToCart,
@@ -312,6 +387,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     removeFromCart,
     clearCart,
     refreshCart,
+    getStorageInfo,
   };
 
   return (
