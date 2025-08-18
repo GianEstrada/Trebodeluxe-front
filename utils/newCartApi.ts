@@ -1,5 +1,5 @@
 // utils/newCartApi.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
 
 interface AddToCartRequest {
   productId: number;

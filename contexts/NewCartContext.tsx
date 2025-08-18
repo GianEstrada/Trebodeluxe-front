@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import * as newCartApi from '../utils/newCartApi';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ui/Toast';
 
 // Interface para los items del carrito basado en la respuesta del backend
 export interface CartItem {
@@ -166,6 +167,7 @@ interface CartProviderProps {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialCartState);
   const { isAuthenticated } = useAuth();
+  const { showSuccess, showError, ToastContainer } = useToast();
 
   // Función para manejar errores
   const handleError = (error: any) => {
@@ -213,10 +215,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         cantidad: quantity,
       });
       dispatch({ type: 'SET_CART', payload: response });
+      
+      // Mostrar notificación de éxito
+      showSuccess(`¡Producto agregado al carrito! (${quantity} unidad${quantity > 1 ? 'es' : ''})`, 3000);
+      
     } catch (error: any) {
       handleError(error);
+      showError(error.message || 'Error al agregar producto al carrito', 4000);
     }
-  }, []);
+  }, [showSuccess, showError]);
 
   // Actualizar cantidad de un producto
   const updateQuantity = useCallback(async (
@@ -317,6 +324,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   return (
     <CartContext.Provider value={contextValue}>
       {children}
+      <ToastContainer />
     </CartContext.Provider>
   );
 };
