@@ -5,37 +5,33 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
-import { useCart } from "../contexts/CartContext";
+import { useCart } from "../contexts/NewCartContext";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { useCategories } from "../hooks/useCategories";
 
 // Componente para los botones de acción de cada card de producto
-const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addItem }: any) => {
+const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToCart }: any) => {
   const [quantity, setQuantity] = useState(1);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!hasStock || !defaultSize) {
       alert(t('Producto sin stock disponible'));
       return;
     }
 
-    const cartItem = {
-      id_variante: variant.id_variante,
-      id_producto: product.id_producto,
-      nombre_producto: product.nombre,
-      nombre_variante: variant.nombre_variante,
-      imagen_url: variant.imagen_url,
-      precio: variant.precio,
-      precio_original: variant.precio_original,
-      id_talla: defaultSize.id_talla,
-      nombre_talla: defaultSize.nombre_talla,
-      categoria: product.categoria,
-      marca: product.marca
-    };
-
-    addItem(cartItem, quantity);
-    alert(t('Producto agregado al carrito'));
+    try {
+      await addToCart(
+        product.id_producto,
+        variant.id_variante,
+        defaultSize.id_talla,
+        quantity
+      );
+      // El toast se mostrará automáticamente desde el contexto
+    } catch (error) {
+      console.error('Error al agregar al carrito:', error);
+      alert(t('Error al agregar producto al carrito'));
+    }
   };
 
   return (
@@ -66,7 +62,7 @@ const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addIte
 
 const CatalogoScreen: NextPage = () => {
   const router = useRouter();
-  const { addItem, items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
+  const { addToCart, items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading } = useCart();
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -1006,13 +1002,13 @@ const CatalogoScreen: NextPage = () => {
                           </div>
                         ) : (
                           cartItems.map((item) => (
-                            <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                            <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
                               <div className="flex items-start gap-3">
                                 <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0">
-                                  {item.imagen_url && (
+                                  {item.image && (
                                     <Image
-                                      src={item.imagen_url}
-                                      alt={item.nombre_producto}
+                                      src={item.image}
+                                      alt={item.name}
                                       width={64}
                                       height={64}
                                       className="w-full h-full object-cover rounded-lg"
@@ -1020,21 +1016,21 @@ const CatalogoScreen: NextPage = () => {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-medium truncate">{item.nombre_producto}</h4>
-                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.nombre_talla}, {item.nombre_variante}</p>
+                                  <h4 className="text-white font-medium truncate">{item.name}</h4>
+                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.precio)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, Math.max(0, item.cantidad - 1))}
+                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
-                                        disabled={isLoading}
+                                        disabled={isLoading || item.quantity <= 1}
                                       >
                                         -
                                       </button>
-                                      <span className="text-white text-sm w-8 text-center">{item.cantidad}</span>
+                                      <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                       <button 
-                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, item.quantity + 1)}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
@@ -1044,7 +1040,7 @@ const CatalogoScreen: NextPage = () => {
                                   </div>
                                 </div>
                                 <button 
-                                  onClick={() => removeItem(item.id_variante, item.id_talla)}
+                                  onClick={() => removeFromCart(0, item.variantId, item.tallaId)}
                                   className="text-red-400 hover:text-red-300 transition-colors"
                                   disabled={isLoading}
                                 >
@@ -1362,7 +1358,7 @@ const CatalogoScreen: NextPage = () => {
                       defaultSize={firstSize}
                       hasStock={hasStock}
                       t={t}
-                      addItem={addItem}
+                      addToCart={addToCart}
                     />
                   </div>
                 </div>
