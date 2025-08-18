@@ -181,9 +181,9 @@ const HomeScreen: NextPage = () => {
       
       try {
         console.log('🔄 Loading recent products...');
-        // TEMP: Usar getFeatured en lugar de getRecent para ver si tiene variantes
-        const recentResponse = await productsApi.getFeatured(12) as any;
-        console.log('📡 Featured products API response:', recentResponse);
+        // Cargar productos recientes para la sección principal
+        const recentResponse = await productsApi.getRecent(12) as any;
+        console.log('📡 Recent products API response:', recentResponse);
         
         if (recentResponse.success) {
           console.log('✅ Recent products raw:', recentResponse.products);
