@@ -180,10 +180,15 @@ const HomeScreen: NextPage = () => {
       setError(null);
       
       try {
-        // Cargar productos recientes para la sección principal
-        const recentResponse = await productsApi.getRecent(12) as any;
+        console.log('🔄 Loading recent products...');
+        // TEMP: Usar getFeatured en lugar de getRecent para ver si tiene variantes
+        const recentResponse = await productsApi.getFeatured(12) as any;
+        console.log('📡 Featured products API response:', recentResponse);
+        
         if (recentResponse.success) {
+          console.log('✅ Recent products raw:', recentResponse.products);
           const transformedProducts = recentResponse.products.map(productUtils.transformToLegacyFormat);
+          console.log('🔄 Products after transformation:', transformedProducts);
           setFeaturedProducts(transformedProducts);
         }
 
@@ -322,15 +327,41 @@ const HomeScreen: NextPage = () => {
   // Función para agregar al carrito - abre el selector
   const handleAddToCart = async (product: Product) => {
     try {
+      console.log('🛒 handleAddToCart called with product:', product);
+      console.log('📦 Product ID:', product.id);
+      
       // Buscar el producto completo con variantes desde la API
       const productDetail: any = await productsApi.getById(product.id);
-      if (productDetail && productDetail.variantes?.length > 0) {
-        handleOpenVariantSelector(productDetail);
+      console.log('📡 API Response:', productDetail);
+      
+      if (productDetail && productDetail.success && productDetail.product) {
+        const fullProduct = productDetail.product;
+        console.log('✅ Full product data:', fullProduct);
+        console.log('🎨 Product variants raw:', fullProduct.variantes);
+        
+        // Verificar si hay variantes válidas
+        const validVariantes = fullProduct.variantes?.filter((v: any) => v && v.id_variante) || [];
+        console.log('🔍 Valid variants after filter:', validVariantes);
+        
+        if (validVariantes.length > 0) {
+          console.log('✅ Found valid variants, opening selector');
+          // Asegurar que el producto tenga el array de variantes filtrado
+          fullProduct.variantes = validVariantes;
+          handleOpenVariantSelector(fullProduct);
+        } else {
+          console.log('❌ No valid variants found');
+          console.log('🔍 Raw variantes field:', typeof fullProduct.variantes, fullProduct.variantes);
+          alert(t('Este producto no tiene variantes disponibles'));
+        }
       } else {
+        console.log('❌ API response failed:', productDetail);
+        console.log('🔍 Response structure check:');
+        console.log('  - success:', productDetail?.success);
+        console.log('  - has product:', !!productDetail?.product);
         alert(t('Producto no disponible'));
       }
     } catch (error) {
-      console.error('Error al cargar detalles del producto:', error);
+      console.error('❌ Error al cargar detalles del producto:', error);
       alert(t('Error al cargar el producto'));
     }
   };
