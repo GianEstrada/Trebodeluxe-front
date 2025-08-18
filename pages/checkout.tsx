@@ -5,20 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { canAccessAdminPanel } from '../utils/roles';
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  size: string;
-  color: string;
-  quantity: number;
-  inStock: boolean;
-}
 
 interface ShippingMethod {
   id: string;
@@ -64,10 +53,8 @@ const CheckoutPage: NextPage = () => {
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
 
-  // Estados del checkout
-  const [cartItems] = useState<CartItem[]>([
-    // Carrito vacío por defecto - productos solo desde la base de datos
-  ]);
+  // Usar el carrito integrado con la base de datos
+  const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
 
   // Información personal
   const [personalInfo, setPersonalInfo] = useState({
@@ -165,9 +152,9 @@ const CheckoutPage: NextPage = () => {
     }
   };
 
-  // Cálculos del pedido
+  // Cálculos del pedido - usar totalPrice del carrito
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return totalPrice;
   };
 
   const calculateShipping = () => {
@@ -817,9 +804,11 @@ const CheckoutPage: NextPage = () => {
                     alt="Carrito de compras"
                     src="/icon3.svg"
                   />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    {cartItems.length}
-                  </span>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {totalItems}
+                    </span>
+                  )}
                 </button>
                 
                 {/* Cart Dropdown */}
@@ -830,69 +819,100 @@ const CheckoutPage: NextPage = () => {
                     <div className="p-6 flex-1 flex flex-col">
                       <div className="mb-6">
                         <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
-                        <p className="text-gray-300 text-sm">{cartItems.length} {t('productos en tu carrito')}</p>
+                        <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
                       </div>
                       
                       {/* Lista de productos */}
                       <div className="space-y-4 flex-1 overflow-y-auto">
-                        {cartItems.map((item) => (
-                          <div key={item.id} className="bg-white/10 rounded-lg p-4 border border-white/20">
-                            <div className="flex items-start gap-3">
-                              <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0"></div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-medium truncate">{item.name}</h4>
-                                <p className="text-gray-300 text-sm">{t('Talla')}: {item.size}, {t('Color')}: {item.color}</p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-white font-bold">{formatPrice(item.price)}</span>
-                                  <div className="flex items-center gap-2">
-                                    <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
-                                      -
-                                    </button>
-                                    <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
-                                    <button className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors">
-                                      +
-                                    </button>
+                        {cartItems.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                            <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                          </div>
+                        ) : (
+                          cartItems.map((item) => (
+                            <div key={`${item.id_variante}-${item.id_talla}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                              <div className="flex items-start gap-3">
+                                <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0">
+                                  {item.imagen_url && (
+                                    <Image
+                                      src={item.imagen_url}
+                                      alt={item.nombre_producto}
+                                      width={64}
+                                      height={64}
+                                      className="w-full h-full object-cover rounded-lg"
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-white font-medium truncate">{item.nombre_producto}</h4>
+                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.nombre_talla}, {item.nombre_variante}</p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <span className="text-white font-bold">{formatPrice(item.precio)}</span>
+                                    <div className="flex items-center gap-2">
+                                      <button 
+                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, Math.max(0, item.cantidad - 1))}
+                                        className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                        disabled={isLoading}
+                                      >
+                                        -
+                                      </button>
+                                      <span className="text-white text-sm w-8 text-center">{item.cantidad}</span>
+                                      <button 
+                                        onClick={() => updateQuantity(item.id_variante, item.id_talla, item.cantidad + 1)}
+                                        className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                        disabled={isLoading}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
+                                <button 
+                                  onClick={() => removeItem(item.id_variante, item.id_talla)}
+                                  className="text-red-400 hover:text-red-300 transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
-                              <button className="text-red-400 hover:text-red-300 transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                       
                       {/* Resumen del carrito */}
-                      <div className="mt-6 pt-4 border-t border-white/20">
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-gray-300">{t('Subtotal:')}</span>
-                          <span className="text-white font-bold">{formatPrice(calculateSubtotal())}</span>
+                      {cartItems.length > 0 && (
+                        <div className="mt-6 pt-4 border-t border-white/20">
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-gray-300">{t('Subtotal:')}</span>
+                            <span className="text-white font-bold">{formatPrice(calculateSubtotal())}</span>
+                          </div>
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-gray-300">{t('Envío:')}</span>
+                            <span className="text-green-400 font-medium">{t('Gratis')}</span>
+                          </div>
+                          <div className="flex justify-between items-center mb-6 text-lg">
+                            <span className="text-white font-bold">{t('Total:')}</span>
+                            <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <Link href="/checkout" className="block">
+                              <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
+                                {t('Finalizar Compra')}
+                              </button>
+                            </Link>
+                            <Link href="/carrito" className="block">
+                              <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
+                                {t('Ver Carrito Completo')}
+                              </button>
+                            </Link>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-gray-300">{t('Envío:')}</span>
-                          <span className="text-green-400 font-medium">{t('Gratis')}</span>
-                        </div>
-                        <div className="flex justify-between items-center mb-6 text-lg">
-                          <span className="text-white font-bold">{t('Total:')}</span>
-                          <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <Link href="/checkout" className="block">
-                            <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                              {t('Finalizar Compra')}
-                            </button>
-                          </Link>
-                          <Link href="/carrito" className="block">
-                            <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
-                              {t('Ver Carrito Completo')}
-                            </button>
-                          </Link>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1147,23 +1167,25 @@ const CheckoutPage: NextPage = () => {
               {/* Lista de productos */}
               <div className="space-y-4 mb-6">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
+                  <div key={`${item.id_variante}-${item.id_talla}`} className="flex items-center space-x-3">
                     <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
-                      />
+                      {item.imagen_url && (
+                        <Image
+                          src={item.imagen_url}
+                          alt={item.nombre_producto}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-white text-sm font-medium truncate">{t(item.name)}</h3>
+                      <h3 className="text-white text-sm font-medium truncate">{item.nombre_producto}</h3>
                       <p className="text-gray-400 text-xs">
-                        {item.size} | {t(item.color)} | {t('Cantidad')}: {item.quantity}
+                        {item.nombre_talla} | {item.nombre_variante} | {t('Cantidad')}: {item.cantidad}
                       </p>
                       <p className="text-green-400 text-sm font-bold">
-                        {formatPrice(item.price * item.quantity)}
+                        {formatPrice(item.precio * item.cantidad)}
                       </p>
                     </div>
                   </div>
