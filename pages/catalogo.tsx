@@ -172,9 +172,11 @@ const CatalogoScreen: NextPage = () => {
         apiFilters.busqueda = filters.busqueda;
       }
       
-      if (filters.categoria && filters.categoria !== 'todas') {
-        apiFilters.categoria = filters.categoria;
-      }
+      // TEMPORALMENTE DESHABILITADO: filtro por categoría hasta que el backend se corrija
+      // El error: "column p.categoria does not exist" indica que el backend usa id_categoria
+      // if (filters.categoria && filters.categoria !== 'todas') {
+      //   apiFilters.categoria = filters.categoria;
+      // }
       
       // Obtener más productos para el catálogo
       apiFilters.limit = 50;
@@ -225,8 +227,20 @@ const CatalogoScreen: NextPage = () => {
         // Aplicar ordenamiento
         const sortedProducts = sortProducts(transformedProducts, filters.orden || sortOrder);
         
-        console.log('✅ Products loaded and sorted:', sortedProducts.length, 'products');
-        setProducts(sortedProducts);
+        // Aplicar filtros del lado del cliente (mientras el backend se corrige)
+        let filteredProducts = sortedProducts;
+        
+        // Filtro por categoría del lado del cliente
+        if (filters.categoria && filters.categoria !== 'todas') {
+          filteredProducts = sortedProducts.filter((product: any) => {
+            const productCategory = (product.category || '').toLowerCase();
+            const filterCategory = filters.categoria?.toLowerCase();
+            return productCategory.includes(filterCategory || '');
+          });
+        }
+        
+        console.log('✅ Products loaded, transformed, sorted and filtered:', filteredProducts.length, 'products');
+        setProducts(filteredProducts);
       } else {
         console.log('No products found or API error');
         setProducts([]);
