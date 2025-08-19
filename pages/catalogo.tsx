@@ -185,7 +185,42 @@ const CatalogoScreen: NextPage = () => {
         let products = (response as any).products || [];
         
         // Transformar productos al formato legacy
-        const transformedProducts = products.map(productUtils.transformToLegacyFormat);
+        const transformedProducts = products.map((product: any) => {
+          const transformed = productUtils.transformToLegacyFormat(product);
+          
+          // Asegurar que todos los campos necesarios estén presentes
+          if (!transformed) {
+            return {
+              id: product.id || Date.now(),
+              name: 'Producto sin datos',
+              image: '/sin-titulo1-2@2x.png',
+              category: 'Sin categoría',
+              brand: 'Sin marca', 
+              color: 'Sin color',
+              size: 'Sin talla',
+              price: 0,
+              originalPrice: 0,
+              inStock: false
+            };
+          }
+          
+          return {
+            ...transformed,
+            // Campos obligatorios con valores predeterminados
+            image: transformed.image || '/sin-titulo1-2@2x.png',
+            name: transformed.name || 'Sin nombre',
+            category: transformed.category || 'Sin categoría',
+            brand: transformed.brand || 'Sin marca',
+            color: transformed.color || 'Sin color',
+            size: transformed.size || 'Sin talla',
+            price: transformed.price || 0,
+            originalPrice: transformed.originalPrice || transformed.price || 0,
+            inStock: transformed.inStock !== undefined ? transformed.inStock : true
+          };
+        });
+        
+        // Debug: Ver cómo quedan los productos transformados
+        console.log('🔍 Sample transformed product:', transformedProducts[0]);
         
         // Aplicar ordenamiento
         const sortedProducts = sortProducts(transformedProducts, filters.orden || sortOrder);
@@ -1278,9 +1313,9 @@ const CatalogoScreen: NextPage = () => {
                           
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-2">
-                              <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
+                              <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
                               {product.originalPrice && product.originalPrice > product.price && (
-                                <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                                <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                               )}
                             </div>
                           </div>
