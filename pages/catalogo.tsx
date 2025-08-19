@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/NewCartContext";
+import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
@@ -50,6 +51,13 @@ const CatalogoScreen: NextPage = () => {
   const { items: cartItems, totalItems, totalFinal, addToCart, updateQuantity, removeFromCart, isLoading } = useCart();
   const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   const { formatPrice } = useExchangeRates();
+  const { headerSettings, loading: settingsLoading } = useSiteSettings();
+  
+  // Usar textos promocionales desde la base de datos, con fallback específico para catálogo
+  const promoTexts = headerSettings?.promoTexts || [
+    "CATÁLOGO DE PRODUCTOS",
+    "DESCUBRE NUESTRA COLECCIÓN"
+  ];
   
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -78,12 +86,6 @@ const CatalogoScreen: NextPage = () => {
     }
   };
   
-  // Textos promocionales para el carrusel
-  const promoTexts = [
-    "CATÁLOGO DE PRODUCTOS",
-    "DESCUBRE NUESTRA COLECCIÓN"
-  ];
-  
   // Función para cambiar el texto del carrusel
   const handleDotClick = (index: number) => {
     if (index !== currentTextIndex) {
@@ -94,6 +96,21 @@ const CatalogoScreen: NextPage = () => {
       }, 150);
     }
   };
+  
+  // Efecto para el carrusel de texto automático
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      
+      setTimeout(() => {
+        setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
+        setIsAnimating(false);
+      }, 300); // Duración del fade-out
+      
+    }, 3000); // Cambia cada 3 segundos
+
+    return () => clearInterval(interval);
+  }, [promoTexts.length]);
   
   // Event listeners para cerrar dropdowns al hacer clic fuera
   useEffect(() => {
