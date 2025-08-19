@@ -638,7 +638,7 @@ const CatalogoScreen: NextPage = () => {
             <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <div 
                 className="w-[50px] h-[50px] cursor-pointer flex items-center justify-center my-2"
-                onClick={() => router.push('/')}
+                onClick={() => window.location.href = '/'}
               >
                 <Image
                   className="w-full h-full object-cover"
@@ -827,7 +827,7 @@ const CatalogoScreen: NextPage = () => {
                           <button 
                             onClick={() => {
                               setShowAdminDropdown(false);
-                              router.push('/admin');
+                              window.location.href = '/admin';
                             }}
                             className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
@@ -895,7 +895,7 @@ const CatalogoScreen: NextPage = () => {
                         
                         <div className="space-y-3 mb-6">
                           <button 
-                            onClick={() => router.push('/profile')}
+                            onClick={() => window.location.href = '/profile'}
                             className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -904,7 +904,7 @@ const CatalogoScreen: NextPage = () => {
                             {t('Mi perfil')}
                           </button>
                           <button 
-                            onClick={() => router.push('/orders')}
+                            onClick={() => window.location.href = '/orders'}
                             className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -938,13 +938,13 @@ const CatalogoScreen: NextPage = () => {
                         
                         <div className="space-y-4">
                           <button 
-                            onClick={() => router.push('/login')}
+                            onClick={() => window.location.href = '/login'}
                             className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 text-center cursor-pointer"
                           >
                             {t('Iniciar sesión')}
                           </button>
                           <button 
-                            onClick={() => router.push('/register')}
+                            onClick={() => window.location.href = '/register'}
                             className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 text-center cursor-pointer"
                           >
                             {t('Registrarse')}
@@ -1161,13 +1161,13 @@ const CatalogoScreen: NextPage = () => {
                           
                           <div className="space-y-3">
                             <button 
-                              onClick={() => router.push('/checkout')}
+                              onClick={() => window.location.href = '/checkout'}
                               className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
                             >
                               {t('Finalizar Compra')}
                             </button>
                             <button 
-                              onClick={() => router.push('/carrito')}
+                              onClick={() => window.location.href = '/carrito'}
                               className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 cursor-pointer"
                             >
                               {t('Ver Carrito Completo')}
