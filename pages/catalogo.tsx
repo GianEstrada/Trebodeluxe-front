@@ -450,12 +450,11 @@ const CatalogoScreen: NextPage = () => {
         </div>
       )}
       
-      <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
-        <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
+      <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
             <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-              <span className="text-white">{t('TREBOLUXE')}</span>
-            </div>
+            <span className="text-white">{t('TREBOLUXE')}</span>
+          </div>
             
             {/* Contenido central - texto del carrusel */}
             <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
@@ -488,8 +487,8 @@ const CatalogoScreen: NextPage = () => {
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
-            <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
+          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+            <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
                 className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
                 ref={dropdownRef}
@@ -508,113 +507,128 @@ const CatalogoScreen: NextPage = () => {
                       : '-translate-x-full opacity-0 pointer-events-none'
                   }`}
                 >
-                  <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
-                    <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
-                    <div className="space-y-1">
-                      <Link 
-                        href="/catalogo" 
-                        className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{t('Todas las categorías')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Camisas')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Pantalones')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Vestidos')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Abrigos y Chaquetas')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Faldas')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Jeans')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Ropa Interior')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Trajes de Baño')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Accesorios de Moda')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                      <Link href="/catalogo?categoria=calzado" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span>{t('Calzado')}</span>
-                          <span className="text-gray-400">→</span>
-                        </div>
-                      </Link>
-                    </div>
-                    
-                    <div className="mt-8 pt-6 border-t border-gray-700">
-                      <p className="text-gray-400 text-sm">
-                        {t('Descubre nuestra amplia colección de moda y encuentra el estilo perfecto para ti.')}
-                      </p>
+                  <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
+                    <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
+                      <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
+                      <div className="space-y-1">
+                        {/* Mostrar indicador de carga */}
+                        {categoriesLoading && (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="text-white text-sm">{t('Cargando categorías...')}</div>
+                          </div>
+                        )}
+
+                        {/* Mostrar error si ocurre */}
+                        {categoriesError && (
+                          <div className="text-red-300 text-sm px-4 py-2">
+                            {t('Error al cargar categorías')}
+                          </div>
+                        )}
+
+                        {/* Opción "Todas las categorías" siempre visible */}
+                        <Link 
+                          href="/catalogo" 
+                          className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{t('Todas las categorías')}</span>
+                            <span className="text-gray-400">→</span>
+                          </div>
+                        </Link>
+
+                        {/* Renderizar categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
+                          <Link 
+                            key={category.id} 
+                            href={`/catalogo?categoria=${category.slug}`} 
+                            className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{t(category.name)}</span>
+                              <span className="text-gray-400">→</span>
+                            </div>
+                          </Link>
+                        ))}
+
+                        {/* Fallback con categorías estáticas si no hay categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
+                          <>
+                            <Link 
+                              href="/catalogo" 
+                              className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">{t('Todas las categorías')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Camisas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Pantalones')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Vestidos')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Abrigos y Chaquetas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Faldas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Jeans')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                      
+                      <div className="mt-8 pt-6 border-t border-gray-700">
+                        <p className="text-gray-400 text-sm">
+                          {t('Descubre nuestra amplia colección de moda y encuentra el estilo perfecto para ti.')}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
               <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'populares' ? 'bg-green-600' : ''}`}>
+                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('POPULARES')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'nuevos' ? 'bg-green-600' : ''}`}>
+                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('NUEVOS')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'basicos' ? 'bg-green-600' : ''}`}>
+                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('BASICOS')}
-                  </div>
-                </div>
-              </Link>
-              <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className={`w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer ${activeFilter === 'promociones' ? 'bg-green-600' : ''}`}>
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
@@ -636,9 +650,9 @@ const CatalogoScreen: NextPage = () => {
               </Link>
             </div>
             
-            <div className="flex-1 flex flex-row items-center justify-end gap-[31px]">
+            <div className="flex flex-row items-center justify-end gap-[32px]">
               <div 
-                className="w-5 relative h-5 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+                className="w-8 relative h-8 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
                 ref={languageDropdownRef}
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
               >
@@ -661,119 +675,119 @@ const CatalogoScreen: NextPage = () => {
                 >
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
-                      <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
-                      
-                      {/* Language Section */}
-                      <div className="mb-8">
-                        <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
-                        <div className="space-y-1">
-                          <button 
-                            onClick={() => changeLanguage('es')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl">🇪🇸</span>
-                                <span>Español</span>
-                              </div>
-                              {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                    <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+                    
+                    {/* Language Section */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                      <div className="space-y-1">
+                        <button 
+                          onClick={() => changeLanguage('es')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">🇪🇸</span>
+                              <span>Español</span>
                             </div>
-                          </button>
-                          <button 
-                            onClick={() => changeLanguage('en')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl">🇺🇸</span>
-                                <span>English</span>
-                              </div>
-                              {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                            {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => changeLanguage('en')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">🇺🇸</span>
+                              <span>English</span>
                             </div>
-                          </button>
-                          <button 
-                            onClick={() => changeLanguage('fr')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl">🇫🇷</span>
-                                <span>Français</span>
-                              </div>
-                              {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                            {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => changeLanguage('fr')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">��</span>
+                              <span>Français</span>
                             </div>
-                          </button>
-                        </div>
+                            {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
                       </div>
-                      
-                      {/* Currency Section */}
-                      <div className="mb-8">
-                        <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
-                        <div className="space-y-1">
-                          <button 
-                            onClick={() => changeCurrency('MXN')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="font-bold text-white">$</span>
-                                <span>MXN - Peso Mexicano</span>
-                              </div>
-                              {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                    
+                    {/* Currency Section */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                      <div className="space-y-1">
+                        <button 
+                          onClick={() => changeCurrency('MXN')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-white">$</span>
+                              <span>MXN - Peso Mexicano</span>
                             </div>
-                          </button>
-                          <button 
-                            onClick={() => changeCurrency('USD')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="font-bold text-white">$</span>
-                                <span>USD - Dólar</span>
-                              </div>
-                              {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                            {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => changeCurrency('USD')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-white">$</span>
+                              <span>USD - Dólar</span>
                             </div>
-                          </button>
-                          <button 
-                            onClick={() => changeCurrency('EUR')}
-                            className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
-                              currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="font-bold text-white">€</span>
-                                <span>EUR - Euro</span>
-                              </div>
-                              {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                            {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => changeCurrency('EUR')}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                            currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-white">€</span>
+                              <span>EUR - Euro</span>
                             </div>
-                          </button>
-                        </div>
+                            {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                          </div>
+                        </button>
                       </div>
-                      
-                      <div className="mt-auto pt-6 border-t border-gray-600">
-                        <p className="text-gray-300 text-sm">
-                          {t('Selecciona tu idioma preferido y la moneda para ver los precios actualizados.')}
-                        </p>
-                      </div>
+                    </div>
+                    
+                    <div className="mt-auto pt-6 border-t border-gray-600">
+                      <p className="text-gray-300 text-sm">
+                        {t('Selecciona tu idioma preferido y la moneda para ver los precios actualizados.')}
+                      </p>
+                    </div>
                     </div>
                   </div>
                 </div>
               </div>
               
-              {/* Botón de Admin - Solo visible para usuarios con rol = 1 */}
-              {user && canAccessAdminPanel(user.rol) && (
-                <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
+              {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
+              {isAuthenticated && user && canAccessAdminPanel(user.rol) && (
+                <div className="w-8 relative h-8" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
                     className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -793,7 +807,7 @@ const CatalogoScreen: NextPage = () => {
                   
                   {/* Admin Dropdown */}
                   <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                   } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                     <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                       <div className="p-6 text-center">
@@ -843,7 +857,7 @@ const CatalogoScreen: NextPage = () => {
                 </div>
               )}
               
-              <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
+              <div className="w-8 relative h-8" ref={loginDropdownRef}>
                 <button 
                   onClick={() => setShowLoginDropdown(!showLoginDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -860,10 +874,10 @@ const CatalogoScreen: NextPage = () => {
                 
                 {/* Login Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    {user ? (
+                    {isAuthenticated && user ? (
                       // Usuario logueado
                       <div className="p-6">
                         <div className="text-center mb-6">
@@ -879,7 +893,7 @@ const CatalogoScreen: NextPage = () => {
                         <div className="space-y-3 mb-6">
                           <Link 
                             href="/profile"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -888,7 +902,7 @@ const CatalogoScreen: NextPage = () => {
                           </Link>
                           <Link 
                             href="/orders"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -922,13 +936,13 @@ const CatalogoScreen: NextPage = () => {
                         <div className="space-y-4">
                           <Link 
                             href="/login"
-                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center no-underline"
+                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           >
                             {t('Iniciar sesión')}
                           </Link>
                           <Link 
                             href="/register"
-                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center no-underline"
+                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           >
                             {t('Registrarse')}
                           </Link>
@@ -944,7 +958,7 @@ const CatalogoScreen: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-[15px] relative h-[15px]" ref={searchDropdownRef}>
+              <div className="w-8 relative h-8" ref={searchDropdownRef}>
                 <button 
                   onClick={() => setShowSearchDropdown(!showSearchDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -961,35 +975,79 @@ const CatalogoScreen: NextPage = () => {
                 
                 {/* Search Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6">
-                      <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
-                      <div className="flex gap-2 mb-4">
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          onKeyPress={handleSearchKeyPress}
-                          placeholder={t('¿Qué estás buscando?')}
-                          className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
-                        />
-                        <button 
-                          onClick={handleSearch}
-                          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                        >
-                          {t('Buscar')}
-                        </button>
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('BÚSQUEDA')}</h3>
+                        <p className="text-gray-300 text-sm">{t('Encuentra los productos que buscas')}</p>
                       </div>
-                      <p className="text-gray-300 text-sm">
-                        {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-center">
+                          <input
+                            type="text"
+                            placeholder={t('¿Qué estás buscando?')}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyPress={handleSearchKeyPress}
+                            className="w-4/5 bg-white/20 border border-white/30 rounded-lg py-3 px-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                          />
+                        </div>
+                        <div className="flex justify-center">
+                          <button 
+                            onClick={handleSearch}
+                            className="w-4/5 bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            {t('Buscar')}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-8 pt-6 border-t border-white/20">
+                        <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          <button 
+                            onClick={() => window.location.href = '/catalogo?busqueda=Camisas'}
+                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                          >
+                            {t('Camisas')}
+                          </button>
+                          <button 
+                            onClick={() => window.location.href = '/catalogo?busqueda=Pantalones'}
+                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                          >
+                            {t('Pantalones')}
+                          </button>
+                          <button 
+                            onClick={() => window.location.href = '/catalogo?busqueda=Vestidos'}
+                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                          >
+                            {t('Vestidos')}
+                          </button>
+                          <button 
+                            onClick={() => window.location.href = '/catalogo?busqueda=Zapatos'}
+                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                          >
+                            {t('Zapatos')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-auto p-6 border-t border-white/20">
+                      <p className="text-gray-300 text-xs text-center">
+                        {t('Utiliza filtros para encontrar exactamente lo que necesitas.')}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="w-[19.2px] relative h-[17.5px]" ref={cartDropdownRef}>
+              <div className="w-8 relative h-8" ref={cartDropdownRef}>
                 <button 
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
@@ -1012,7 +1070,7 @@ const CatalogoScreen: NextPage = () => {
                 
                 {/* Cart Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6 flex-1 flex flex-col">
@@ -1050,15 +1108,15 @@ const CatalogoScreen: NextPage = () => {
                                     <span className="text-white font-bold">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
-                                        disabled={isLoading || item.quantity <= 1}
+                                        disabled={isLoading}
                                       >
                                         -
                                       </button>
                                       <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                       <button 
-                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, item.quantity + 1)}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
@@ -1068,7 +1126,7 @@ const CatalogoScreen: NextPage = () => {
                                   </div>
                                 </div>
                                 <button 
-                                  onClick={() => removeFromCart(0, item.variantId, item.tallaId)}
+                                  onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
                                   className="text-red-400 hover:text-red-300 transition-colors"
                                   disabled={isLoading}
                                 >
@@ -1119,7 +1177,6 @@ const CatalogoScreen: NextPage = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Contenido principal del catálogo */}
       <div className="self-stretch flex-1 flex flex-col items-center justify-start px-4 py-8 min-h-screen">
