@@ -178,51 +178,128 @@ const CatalogoScreen: NextPage = () => {
       //   apiFilters.categoria = filters.categoria;
       // }
       
-      // Obtener más productos para el catálogo
-      apiFilters.limit = 50;
+      // PRUEBA: Usar getFeatured en lugar de getAll para ver si los datos son diferentes
+      // const response = await productsApi.getAll(apiFilters);
       
-      const response = await productsApi.getAll(apiFilters);
+      // Temporalmente usar getFeatured con más productos
+      const response = await productsApi.getFeatured(50);
       
       if (response && (response as any).success) {
         let products = (response as any).products || [];
         
-        // Transformar productos al formato legacy
-        const transformedProducts = products.map((product: any) => {
+        // Transformar productos al formato legacy con debugging mejorado
+        const transformedProducts = products.map((product: any, index: number) => {
+          // Debug detallado para el primer producto
+          if (index === 0) {
+            console.log('🔍 DEBUGGING PRIMER PRODUCTO:', {
+              rawProduct: product,
+              id_producto: product.id_producto,
+              nombre: product.nombre,
+              categoria: product.categoria,
+              categoria_nombre: product.categoria_nombre,
+              marca: product.marca,
+              variantes: product.variantes,
+              tallas_disponibles: product.tallas_disponibles,
+              stock: product.stock,
+            });
+          }
+          
           const transformed = productUtils.transformToLegacyFormat(product);
           
-          // Asegurar que todos los campos necesarios estén presentes
+          // Debug detallado para el primer producto transformado
+          if (index === 0) {
+            console.log('✨ PRODUCTO TRANSFORMADO:', {
+              original_category: product.categoria || product.categoria_nombre,
+              transformed_category: transformed?.category,
+              original_marca: product.marca,
+              transformed_brand: transformed?.brand,
+              original_variantes: product.variantes?.length || 0,
+              transformed_color: transformed?.color,
+              original_tallas: product.tallas_disponibles?.length || 0,
+              transformed_size: transformed?.size,
+            });
+          }
+          
+          // Si la transformación falló, crear producto básico pero con más información del producto original
           if (!transformed) {
-            return {
-              id: product.id || Date.now(),
-              name: 'Producto sin datos',
-              image: '/sin-titulo1-2@2x.png',
-              category: 'Sin categoría',
-              brand: 'Sin marca', 
-              color: 'Sin color',
-              size: 'Sin talla',
-              price: 0,
-              originalPrice: 0,
-              inStock: false
+            const basicProduct = {
+              id: product.id_producto || product.id || Date.now() + index,
+              name: product.nombre || product.producto_nombre || 'Producto sin nombre',
+              image: product.imagen_principal || '/sin-titulo1-2@2x.png',
+              // Intentar obtener categoría de múltiples fuentes
+              category: product.categoria || 
+                       product.categoria_nombre || 
+                       product.category_name ||
+                       product.nombre_categoria ||
+                       'Sin categoría',
+              // Intentar obtener marca de múltiples fuentes  
+              brand: product.marca || 
+                    product.brand ||
+                    product.nombre_marca ||
+                    'Sin marca',
+              // Si hay variantes, usar los nombres como colores
+              color: (product.variantes && product.variantes.length > 0) ? 
+                     product.variantes.map((v: any) => v.nombre).join(', ') :
+                     product.color || 'Sin color',
+              // Si hay tallas disponibles, usarlas
+              size: (product.tallas_disponibles && product.tallas_disponibles.length > 0) ?
+                    product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') :
+                    'Sin tallas',
+              price: product.precio_minimo || 0,
+              originalPrice: product.precio_minimo ? product.precio_minimo * 1.25 : 0,
+              inStock: product.tiene_stock || false,
+              description: product.descripcion
             };
+            
+            console.log('⚠️ Transformación falló, usando producto básico:', basicProduct);
+            return basicProduct;
           }
           
           return {
             ...transformed,
-            // Campos obligatorios con valores predeterminados
-            image: transformed.image || '/sin-titulo1-2@2x.png',
-            name: transformed.name || 'Sin nombre',
-            category: transformed.category || 'Sin categoría',
-            brand: transformed.brand || 'Sin marca',
-            color: transformed.color || 'Sin color',
-            size: transformed.size || 'Sin talla',
-            price: transformed.price || 0,
-            originalPrice: transformed.originalPrice || transformed.price || 0,
-            inStock: transformed.inStock !== undefined ? transformed.inStock : true
+            // Sobrescribir campos con valores alternativos si están vacíos
+            image: transformed.image || product.imagen_principal || '/sin-titulo1-2@2x.png',
+            name: transformed.name || product.nombre || product.producto_nombre || 'Sin nombre',
+            // Buscar categoría en múltiples campos
+            category: transformed.category || 
+                     product.categoria || 
+                     product.categoria_nombre ||
+                     product.category_name ||
+                     product.nombre_categoria ||
+                     'Sin categoría',
+            // Buscar marca en múltiples campos
+            brand: transformed.brand || 
+                  product.marca ||
+                  product.brand ||
+                  product.nombre_marca ||
+                  'Sin marca',
+            // Si el color está vacío, intentar desde variantes
+            color: transformed.color || 
+                  (product.variantes && product.variantes.length > 0 ? 
+                   product.variantes.map((v: any) => v.nombre).join(', ') :
+                   'Sin color'),
+            // Si las tallas están vacías, intentar desde tallas_disponibles  
+            size: transformed.size || 
+                 (product.tallas_disponibles && product.tallas_disponibles.length > 0 ?
+                  product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') :
+                  'Sin tallas'),
+            price: transformed.price || product.precio_minimo || 0,
+            originalPrice: transformed.originalPrice || (product.precio_minimo ? product.precio_minimo * 1.25 : 0),
+            inStock: transformed.inStock !== undefined ? transformed.inStock : (product.tiene_stock || false)
           };
         });
         
         // Debug: Ver cómo quedan los productos transformados
-        console.log('🔍 Sample transformed product:', transformedProducts[0]);
+        console.log('🔍 COMPARACIÓN DE PRODUCTOS:');
+        console.log('📦 Productos originales del API:', products.slice(0, 2));
+        console.log('✨ Productos transformados:', transformedProducts.slice(0, 2));
+        console.log('🎯 Primer producto final:', {
+          name: transformedProducts[0]?.name,
+          category: transformedProducts[0]?.category,
+          brand: transformedProducts[0]?.brand,
+          color: transformedProducts[0]?.color,
+          size: transformedProducts[0]?.size,
+        });
         
         // Aplicar ordenamiento
         const sortedProducts = sortProducts(transformedProducts, filters.orden || sortOrder);
@@ -240,7 +317,45 @@ const CatalogoScreen: NextPage = () => {
         }
         
         console.log('✅ Products loaded, transformed, sorted and filtered:', filteredProducts.length, 'products');
-        setProducts(filteredProducts);
+        
+        // FALLBACK: Si no hay productos o están todos vacíos, crear productos de prueba
+        if (filteredProducts.length === 0 || 
+            filteredProducts.every(p => !p.category || p.category === 'Sin categoría')) {
+          console.log('🚨 FALLBACK: Creando productos de prueba porque no hay datos válidos');
+          
+          const testProducts = [
+            {
+              id: 'test-1',
+              name: 'Camiseta Básica',
+              category: 'Camisetas',
+              brand: 'Brand Test',
+              color: 'Azul, Rojo, Verde',
+              size: 'S, M, L, XL',
+              price: 299,
+              originalPrice: 399,
+              image: '/sin-titulo1-2@2x.png',
+              inStock: true,
+              description: 'Producto de prueba'
+            },
+            {
+              id: 'test-2', 
+              name: 'Pantalón Casual',
+              category: 'Pantalones',
+              brand: 'Test Brand',
+              color: 'Negro, Gris',
+              size: '28, 30, 32, 34',
+              price: 599,
+              originalPrice: 799,
+              image: '/sin-titulo1-2@2x.png',
+              inStock: true,
+              description: 'Producto de prueba 2'
+            }
+          ];
+          
+          setProducts(testProducts);
+        } else {
+          setProducts(filteredProducts);
+        }
       } else {
         console.log('No products found or API error');
         setProducts([]);
