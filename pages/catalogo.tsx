@@ -45,12 +45,12 @@ const ProductCardActions = ({ product, variant, defaultSize, hasStock, t, addToC
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <button
-          onClick={() => window.location.href = `/producto/${product.id_producto}?variante=${variant.id_variante}`}
-          className="flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-200 bg-white/20 text-white hover:bg-white/30 border border-white/30 text-sm"
+        <Link 
+          href={`/producto/${product.id_producto}?variante=${variant.id_variante}`}
+          className="flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-200 bg-white/20 text-white hover:bg-white/30 border border-white/30 text-sm text-center flex items-center justify-center no-underline"
         >
           {t('Ver detalles')}
-        </button>
+        </Link>
         
         <button
           disabled={!hasStock}
@@ -176,7 +176,7 @@ const CatalogoScreen: NextPage = () => {
   // Función para manejar la búsqueda
   const handleSearch = () => {
     if (searchTerm.trim()) {
-      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
+      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
     }
   };
 
@@ -1012,25 +1012,25 @@ const CatalogoScreen: NextPage = () => {
                         <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
                         <div className="flex flex-wrap gap-2">
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Camisas'}
+                            onClick={() => router.push('/catalogo?busqueda=Camisas')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Camisas')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Pantalones'}
+                            onClick={() => router.push('/catalogo?busqueda=Pantalones')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Pantalones')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Vestidos'}
+                            onClick={() => router.push('/catalogo?busqueda=Vestidos')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Vestidos')}
                           </button>
                           <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Zapatos'}
+                            onClick={() => router.push('/catalogo?busqueda=Zapatos')}
                             className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                           >
                             {t('Zapatos')}
