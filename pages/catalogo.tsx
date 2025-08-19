@@ -34,7 +34,7 @@ const CatalogoScreen: NextPage = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Estados para filtros de búsqueda
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("todas");
   const [sortOrder, setSortOrder] = useState<string>("nombre-asc");
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showSortFilter, setShowSortFilter] = useState(false);
@@ -66,6 +66,31 @@ const CatalogoScreen: NextPage = () => {
     "CATÁLOGO DE PRODUCTOS",
     "DESCUBRE NUESTRA COLECCIÓN"
   ];
+  
+  // Cargar productos cuando cambien los parámetros de URL
+  useEffect(() => {
+    const { busqueda, categoria, orden } = router.query;
+    
+    // Actualizar estados con parámetros de URL
+    if (typeof busqueda === 'string') {
+      setSearchTerm(busqueda);
+    }
+    
+    if (typeof categoria === 'string') {
+      setSelectedCategory(categoria);
+    }
+    
+    if (typeof orden === 'string') {
+      setSortOrder(orden);
+    }
+    
+    // Cargar productos con filtros
+    loadProducts({
+      busqueda: typeof busqueda === 'string' ? busqueda : undefined,
+      categoria: typeof categoria === 'string' ? categoria : undefined,
+      orden: typeof orden === 'string' ? orden : undefined,
+    });
+  }, [router.query]);
   
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -126,6 +151,79 @@ const CatalogoScreen: NextPage = () => {
     setSelectedCategory("");
     setSortOrder("nombre-asc");
     router.push('/catalogo');
+  };
+  
+  // Función para cargar productos con filtros
+  const loadProducts = async (filters: {
+    busqueda?: string;
+    categoria?: string;
+    orden?: string;
+  } = {}) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Loading products with filters:', filters);
+      
+      // Construir filtros para la API
+      const apiFilters: any = {};
+      
+      if (filters.busqueda) {
+        apiFilters.busqueda = filters.busqueda;
+      }
+      
+      if (filters.categoria && filters.categoria !== 'todas') {
+        apiFilters.categoria = filters.categoria;
+      }
+      
+      // Obtener más productos para el catálogo
+      apiFilters.limit = 50;
+      
+      const response = await productsApi.getAll(apiFilters);
+      
+      if (response && (response as any).success) {
+        let products = (response as any).products || [];
+        
+        // Transformar productos al formato legacy
+        const transformedProducts = products.map(productUtils.transformToLegacyFormat);
+        
+        // Aplicar ordenamiento
+        const sortedProducts = sortProducts(transformedProducts, filters.orden || sortOrder);
+        
+        console.log('✅ Products loaded and sorted:', sortedProducts.length, 'products');
+        setProducts(sortedProducts);
+      } else {
+        console.log('No products found or API error');
+        setProducts([]);
+      }
+    } catch (err: any) {
+      console.error('Error loading products:', err);
+      setError('Error al cargar los productos');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Función para ordenar productos
+  const sortProducts = (products: any[], order: string) => {
+    const sorted = [...products];
+    
+    switch (order) {
+      case 'nombre-desc':
+        return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      case 'precio-asc':
+        return sorted.sort((a, b) => a.price - b.price);
+      case 'precio-desc':
+        return sorted.sort((a, b) => b.price - a.price);
+      case 'nuevo':
+        return sorted.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      case 'popular':
+        return sorted.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+      case 'nombre-asc':
+      default:
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    }
   };
   
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
@@ -1114,24 +1212,192 @@ const CatalogoScreen: NextPage = () => {
             </div>
           </div>
           
-          {/* Filtros y productos aquí */}
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="text-white text-xl">{t('Cargando productos...')}</div>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <div className="text-red-400 text-xl">{error}</div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-white text-xl">{t('Aquí se mostrarán los productos')}</div>
-              <div className="text-gray-400 text-sm mt-4">
-                {t('Total de productos:')} {products.length}
+          {/* Filtros y productos */}
+          <div className="container mx-auto px-4 pb-20">
+            {/* Estado de carga */}
+            {loading && (
+              <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                <span className="ml-4 text-white text-lg">{t('Cargando productos...')}</span>
               </div>
-            </div>
-          )}
-          
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="text-center py-20">
+                <div className="bg-red-500/20 border border-red-400/30 text-red-300 px-6 py-4 rounded-lg inline-block">
+                  {error}
+                </div>
+              </div>
+            )}
+
+            {/* Productos */}
+            {!loading && !error && (
+              <>
+                {/* Contador de resultados */}
+                <div className="mb-8 text-center">
+                  <p className="text-white/80">
+                    {products.length === 0 
+                      ? t('No se encontraron productos')
+                      : t(`Mostrando ${products.length} producto${products.length !== 1 ? 's' : ''}`)
+                    }
+                  </p>
+                </div>
+
+                {/* Grid de productos */}
+                {products.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                    {products.map((product: any, index: number) => (
+                      <div
+                        key={product.id || index}
+                        className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 hover:border-white/30 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+                      >
+                        {/* Imagen del producto */}
+                        <div className="relative aspect-square overflow-hidden rounded-t-2xl">
+                          {product.primaryImage ? (
+                            <Image
+                              src={product.primaryImage}
+                              alt={product.name}
+                              fill
+                              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                              className="object-cover group-hover:scale-110 transition-transform duration-500"
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.src = '/placeholder-product.jpg';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
+                              <Image
+                                src="/placeholder-product.jpg"
+                                alt="Producto sin imagen"
+                                width={150}
+                                height={150}
+                                className="opacity-50"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Badge de promoción */}
+                          {product.promotion && product.promotion.isActive && (
+                            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-semibold z-10">
+                              -{product.promotion.discountPercentage}%
+                            </div>
+                          )}
+                          
+                          {/* Badge de stock bajo */}
+                          {product.totalStock > 0 && product.totalStock <= 5 && (
+                            <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded-lg text-xs font-semibold">
+                              ¡Solo {product.totalStock}!
+                            </div>
+                          )}
+                          
+                          {/* Badge de sin stock */}
+                          {product.totalStock === 0 && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-2xl">
+                              <span className="text-white font-semibold bg-red-500 px-3 py-1 rounded-lg">
+                                {t('Sin stock')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Información del producto */}
+                        <div className="p-4 space-y-3">
+                          {/* Nombre del producto */}
+                          <h3 className="text-white font-medium text-sm leading-tight group-hover:text-green-300 transition-colors line-clamp-2 min-h-[2.5rem]">
+                            {product.name}
+                          </h3>
+
+                          {/* Categoría */}
+                          {product.category && (
+                            <p className="text-gray-400 text-xs uppercase tracking-wide">
+                              {product.category}
+                            </p>
+                          )}
+
+                          {/* Precio */}
+                          <div className="space-y-1">
+                            {product.promotion && product.promotion.isActive ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-red-400">
+                                    {formatPrice(product.promotion.discountedPrice)}
+                                  </span>
+                                  <span className="text-sm text-gray-400 line-through">
+                                    {formatPrice(product.basePrice)}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-green-400">
+                                  ¡Ahorra {formatPrice(product.basePrice - product.promotion.discountedPrice)}!
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-lg font-bold text-white">
+                                {formatPrice(product.basePrice)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Botones de acción */}
+                          <div className="pt-2 space-y-2">
+                            {product.hasVariants ? (
+                              <Link href={`/producto/${product.slug || product.id}`}>
+                                <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
+                                  {t('Ver opciones')}
+                                </button>
+                              </Link>
+                            ) : (
+                              <div className="space-y-2">
+                                {product.totalStock > 0 ? (
+                                  <button
+                                    onClick={() => {
+                                      // Para productos sin variantes, usar la primera variante disponible
+                                      if (product.variants && product.variants[0]) {
+                                        const variant = product.variants[0];
+                                        const talla = variant.tallas?.[0];
+                                        if (talla) {
+                                          addToCart(product.id, variant.id, talla.id, 1);
+                                        }
+                                      }
+                                    }}
+                                    disabled={isLoading}
+                                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm flex items-center justify-center gap-2"
+                                  >
+                                    {isLoading ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    ) : (
+                                      <>
+                                        <Image src="/carrito.svg" alt="" width={16} height={16} />
+                                        {t('Agregar al carrito')}
+                                      </>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    className="w-full bg-gray-500 cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium text-sm"
+                                  >
+                                    {t('Sin stock')}
+                                  </button>
+                                )}
+                                
+                                <Link href={`/producto/${product.slug || product.id}`}>
+                                  <button className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
+                                    {t('Ver detalles')}
+                                  </button>
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
       

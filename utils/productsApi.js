@@ -28,6 +28,7 @@ export const productsApi = {
     if (filters.categoria) queryParams.append('categoria', filters.categoria);
     if (filters.busqueda) queryParams.append('busqueda', filters.busqueda);
     if (filters.marca) queryParams.append('marca', filters.marca);
+    if (filters.orden) queryParams.append('orden', filters.orden);
     if (filters.limit) queryParams.append('limit', filters.limit);
 
     const queryString = queryParams.toString();
