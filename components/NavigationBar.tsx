@@ -159,6 +159,17 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                     </div>
                   )}
 
+                  {/* Opción "Todas las categorías" siempre visible */}
+                  <Link 
+                    href="/catalogo" 
+                    className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{t('Todas las categorías')}</span>
+                      <span className="text-gray-400">→</span>
+                    </div>
+                  </Link>
+
                   {/* Renderizar categorías dinámicas */}
                   {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
                     <Link 
@@ -176,6 +187,15 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                   {/* Fallback con categorías estáticas si no hay categorías dinámicas */}
                   {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
                     <>
+                      <Link 
+                        href="/catalogo" 
+                        className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{t('Todas las categorías')}</span>
+                          <span className="text-gray-400">→</span>
+                        </div>
+                      </Link>
                       <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
                         <div className="flex items-center justify-between">
                           <span>{t('Camisas')}</span>

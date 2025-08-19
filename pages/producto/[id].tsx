@@ -474,6 +474,15 @@ const ProductPage: NextPage = () => {
                     <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
                       <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
                       <div className="space-y-1">
+                        <Link 
+                          href="/catalogo" 
+                          className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{t('Todas las categorías')}</span>
+                            <span className="text-gray-400">→</span>
+                          </div>
+                        </Link>
                         <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
                           <div className="flex items-center justify-between">
                             <span>{t('Camisas')}</span>
