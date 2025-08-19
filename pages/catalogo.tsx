@@ -33,6 +33,12 @@ const CatalogoScreen: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Estados para filtros de búsqueda
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<string>("nombre-asc");
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [showSortFilter, setShowSortFilter] = useState(false);
+  
   // Estados para carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -44,6 +50,8 @@ const CatalogoScreen: NextPage = () => {
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const cartDropdownRef = useRef<HTMLDivElement>(null);
   const adminDropdownRef = useRef<HTMLDivElement>(null);
+  const categoryFilterRef = useRef<HTMLDivElement>(null);
+  const sortFilterRef = useRef<HTMLDivElement>(null);
   
   // Hooks
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
@@ -78,6 +86,46 @@ const CatalogoScreen: NextPage = () => {
     if (searchTerm.trim()) {
       router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
     }
+  };
+  
+  // Opciones de ordenamiento
+  const sortOptions = [
+    { value: "nombre-asc", label: "Nombre A-Z" },
+    { value: "nombre-desc", label: "Nombre Z-A" },
+    { value: "precio-asc", label: "Precio: Menor a Mayor" },
+    { value: "precio-desc", label: "Precio: Mayor a Menor" },
+    { value: "nuevo", label: "Más Recientes" },
+    { value: "popular", label: "Más Populares" }
+  ];
+  
+  // Función para aplicar filtros
+  const applyFilters = () => {
+    const params = new URLSearchParams();
+    
+    if (searchTerm.trim()) {
+      params.set('busqueda', searchTerm.trim());
+    }
+    
+    if (selectedCategory) {
+      params.set('categoria', selectedCategory);
+    }
+    
+    if (sortOrder !== 'nombre-asc') {
+      params.set('orden', sortOrder);
+    }
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `/catalogo?${queryString}` : '/catalogo';
+    
+    router.push(newUrl);
+  };
+  
+  // Función para limpiar filtros
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSortOrder("nombre-asc");
+    router.push('/catalogo');
   };
   
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
@@ -132,6 +180,12 @@ const CatalogoScreen: NextPage = () => {
       }
       if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target as Node)) {
         setShowAdminDropdown(false);
+      }
+      if (categoryFilterRef.current && !categoryFilterRef.current.contains(event.target as Node)) {
+        setShowCategoryFilter(false);
+      }
+      if (sortFilterRef.current && !sortFilterRef.current.contains(event.target as Node)) {
+        setShowSortFilter(false);
       }
     };
 
@@ -913,6 +967,151 @@ const CatalogoScreen: NextPage = () => {
             <p className="text-xl text-gray-300 tracking-wide">
               {t('Descubre nuestra colección completa')}
             </p>
+          </div>
+          
+          {/* Barra de búsqueda y filtros */}
+          <div className="mb-8">
+            <div className="bg-black/20 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              
+              {/* Fila principal de búsqueda */}
+              <div className="flex flex-col lg:flex-row gap-4 mb-4">
+                
+                {/* Campo de búsqueda */}
+                <div className="flex-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && applyFilters()}
+                      placeholder={t('Buscar productos...')}
+                      className="w-full px-4 py-3 pl-12 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-400 focus:bg-white/20 transition-all"
+                    />
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                      <Image
+                        src="/lupa.svg"
+                        alt="Buscar"
+                        width={18}
+                        height={18}
+                        className="opacity-60"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Filtro de categoría */}
+                <div className="relative" ref={categoryFilterRef}>
+                  <button
+                    onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                    className="w-full lg:w-48 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-left flex items-center justify-between hover:bg-white/20 transition-all"
+                  >
+                    <span>{selectedCategory ? 
+                      activeCategories.find(cat => cat.slug === selectedCategory)?.name || selectedCategory 
+                      : t('Todas las categorías')}</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {showCategoryFilter && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 z-50 max-h-60 overflow-y-auto">
+                      <button
+                        onClick={() => {
+                          setSelectedCategory("");
+                          setShowCategoryFilter(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors border-b border-white/10"
+                      >
+                        {t('Todas las categorías')}
+                      </button>
+                      {activeCategories.map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            setSelectedCategory(category.slug);
+                            setShowCategoryFilter(false);
+                          }}
+                          className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors"
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Filtro de ordenamiento */}
+                <div className="relative" ref={sortFilterRef}>
+                  <button
+                    onClick={() => setShowSortFilter(!showSortFilter)}
+                    className="w-full lg:w-56 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-left flex items-center justify-between hover:bg-white/20 transition-all"
+                  >
+                    <span>{t(sortOptions.find(opt => opt.value === sortOrder)?.label || 'Nombre A-Z')}</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {showSortFilter && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 z-50">
+                      {sortOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setSortOrder(option.value);
+                            setShowSortFilter(false);
+                          }}
+                          className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors"
+                        >
+                          {t(option.label)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Botones de acción */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={applyFilters}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <Image src="/lupa.svg" alt="" width={16} height={16} />
+                  {t('Buscar')}
+                </button>
+                <button
+                  onClick={clearFilters}
+                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg font-medium transition-colors"
+                >
+                  {t('Limpiar filtros')}
+                </button>
+              </div>
+              
+              {/* Indicador de filtros activos */}
+              {(searchTerm || selectedCategory || sortOrder !== 'nombre-asc') && (
+                <div className="mt-4 pt-4 border-t border-white/20">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-gray-300 text-sm">{t('Filtros activos:')}</span>
+                    {searchTerm && (
+                      <span className="px-3 py-1 bg-green-600/20 border border-green-400/30 text-green-300 rounded-full text-sm">
+                        "{searchTerm}"
+                      </span>
+                    )}
+                    {selectedCategory && (
+                      <span className="px-3 py-1 bg-blue-600/20 border border-blue-400/30 text-blue-300 rounded-full text-sm">
+                        {activeCategories.find(cat => cat.slug === selectedCategory)?.name}
+                      </span>
+                    )}
+                    {sortOrder !== 'nombre-asc' && (
+                      <span className="px-3 py-1 bg-purple-600/20 border border-purple-400/30 text-purple-300 rounded-full text-sm">
+                        {t(sortOptions.find(opt => opt.value === sortOrder)?.label || 'Ordenar')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Filtros y productos aquí */}
