@@ -7,6 +7,7 @@ import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
 
 const CarritoPage: NextPage = () => {
@@ -45,6 +46,9 @@ const CarritoPage: NextPage = () => {
   
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  
+  // Usar tasas de cambio dinámicas desde Open Exchange Rates
+  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
 
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
@@ -57,17 +61,6 @@ const CarritoPage: NextPage = () => {
     setCurrentCurrency(newCurrency);
     localStorage.setItem('preferred-currency', newCurrency);
     setShowLanguageDropdown(false);
-  };
-
-  // Función para formatear precios
-  const formatPrice = (price: number): string => {
-    const rates = { MXN: 1, USD: 0.056, EUR: 0.051 };
-    const symbols = { MXN: '$', USD: '$', EUR: '€' };
-    
-    const convertedPrice = (price * rates[currentCurrency as keyof typeof rates]).toFixed(2);
-    const symbol = symbols[currentCurrency as keyof typeof symbols];
-    
-    return `${symbol}${convertedPrice}`;
   };
 
   // Función para manejar la búsqueda
@@ -821,7 +814,7 @@ const CarritoPage: NextPage = () => {
                         </div>
                         <div className="flex justify-between items-center mb-6 text-lg">
                           <span className="text-white font-bold">{t('Total:')}</span>
-                          <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
+                          <span className="text-white font-bold">{formatPrice(calculateTotal(), currentCurrency, 'MXN')}</span>
                         </div>
                         
                         <div className="space-y-3">
@@ -974,26 +967,26 @@ const CarritoPage: NextPage = () => {
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-300">{t('Subtotal')} ({totalItems} {t('productos')})</span>
-                      <span className="text-white font-medium">{formatPrice(totalPrice)}</span>
+                      <span className="text-white font-medium">{formatPrice(totalPrice, currentCurrency, 'MXN')}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
                       <span className="text-gray-300">{t('Envío')}</span>
                       <span className={`font-medium ${calculateShipping() === 0 ? 'text-green-400' : 'text-white'}`}>
-                        {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping())}
+                        {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping(), currentCurrency, 'MXN')}
                       </span>
                     </div>
                     
                     {calculateShipping() > 0 && (
                       <div className="text-xs text-gray-400 bg-green-400/10 border border-green-400/20 rounded p-2">
-                        {t('Agrega')} {formatPrice(500 - totalPrice)} {t('más para envío gratis')}
+                        {t('Agrega')} {formatPrice(500 - totalPrice, currentCurrency, 'MXN')} {t('más para envío gratis')}
                       </div>
                     )}
                     
                     <div className="border-t border-white/20 pt-4">
                       <div className="flex justify-between items-center text-lg">
                         <span className="text-white font-bold">{t('Total')}</span>
-                        <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
+                        <span className="text-white font-bold">{formatPrice(calculateTotal(), currentCurrency, 'MXN')}</span>
                       </div>
                     </div>
                   </div>

@@ -7,6 +7,7 @@ import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
 
 interface ShippingMethod {
@@ -52,6 +53,9 @@ const CheckoutPage: NextPage = () => {
   
   // Sistema de traducción universal
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  
+  // Usar tasas de cambio dinámicas desde Open Exchange Rates
+  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
 
   // Usar el carrito integrado con la base de datos
   const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading } = useCart();
@@ -113,17 +117,6 @@ const CheckoutPage: NextPage = () => {
     setCurrentCurrency(newCurrency);
     localStorage.setItem('preferred-currency', newCurrency);
     setShowLanguageDropdown(false);
-  };
-
-  // Función para formatear precios
-  const formatPrice = (price: number): string => {
-    const rates = { MXN: 1, USD: 0.056, EUR: 0.051 };
-    const symbols = { MXN: '$', USD: '$', EUR: '€' };
-    
-    const convertedPrice = (price * rates[currentCurrency as keyof typeof rates]).toFixed(2);
-    const symbol = symbols[currentCurrency as keyof typeof symbols];
-    
-    return `${symbol}${convertedPrice}`;
   };
 
   // Función para manejar la búsqueda
@@ -848,7 +841,7 @@ const CheckoutPage: NextPage = () => {
                                   <h4 className="text-white font-medium truncate">{item.name}</h4>
                                   <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
                                         onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
@@ -888,7 +881,7 @@ const CheckoutPage: NextPage = () => {
                         <div className="mt-6 pt-4 border-t border-white/20">
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Subtotal:')}</span>
-                            <span className="text-white font-bold">{formatPrice(calculateSubtotal())}</span>
+                            <span className="text-white font-bold">{formatPrice(calculateSubtotal(), currentCurrency, 'MXN')}</span>
                           </div>
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Envío:')}</span>
@@ -896,7 +889,7 @@ const CheckoutPage: NextPage = () => {
                           </div>
                           <div className="flex justify-between items-center mb-6 text-lg">
                             <span className="text-white font-bold">{t('Total:')}</span>
-                            <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
+                            <span className="text-white font-bold">{formatPrice(calculateTotal(), currentCurrency, 'MXN')}</span>
                           </div>
                           
                           <div className="space-y-3">
@@ -1106,7 +1099,7 @@ const CheckoutPage: NextPage = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-white font-bold">
-                          {method.price === 0 ? t('Gratis') : formatPrice(method.price)}
+                          {method.price === 0 ? t('Gratis') : formatPrice(method.price, currentCurrency, 'MXN')}
                         </div>
                         <div className="text-gray-400 text-sm">{method.deliveryTime}</div>
                       </div>
@@ -1185,7 +1178,7 @@ const CheckoutPage: NextPage = () => {
                         {item.tallaName} | {item.variantName} | {t('Cantidad')}: {item.quantity}
                       </p>
                       <p className="text-green-400 text-sm font-bold">
-                        {formatPrice(item.price * item.quantity)}
+                        {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
                       </p>
                     </div>
                   </div>
@@ -1195,25 +1188,25 @@ const CheckoutPage: NextPage = () => {
               <div className="space-y-3 mb-6 border-t border-white/20 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-300">{t('Subtotal')}</span>
-                  <span className="text-white font-medium">{formatPrice(calculateSubtotal())}</span>
+                  <span className="text-white font-medium">{formatPrice(calculateSubtotal(), currentCurrency, 'MXN')}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-300">{t('Envío')}</span>
                   <span className={`font-medium ${calculateShipping() === 0 ? 'text-green-400' : 'text-white'}`}>
-                    {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping())}
+                    {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping(), currentCurrency, 'MXN')}
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-300">{t('IVA (16%)')}</span>
-                  <span className="text-white font-medium">{formatPrice(calculateTax())}</span>
+                  <span className="text-white font-medium">{formatPrice(calculateTax(), currentCurrency, 'MXN')}</span>
                 </div>
                 
                 <div className="border-t border-white/20 pt-3">
                   <div className="flex justify-between items-center text-lg">
                     <span className="text-white font-bold">{t('Total')}</span>
-                    <span className="text-white font-bold">{formatPrice(calculateTotal())}</span>
+                    <span className="text-white font-bold">{formatPrice(calculateTotal(), currentCurrency, 'MXN')}</span>
                   </div>
                 </div>
               </div>
@@ -1229,7 +1222,7 @@ const CheckoutPage: NextPage = () => {
                     <span>{t('Procesando...')}</span>
                   </div>
                 ) : (
-                  `${t('Pagar')} ${formatPrice(calculateTotal())}`
+                  `${t('Pagar')} ${formatPrice(calculateTotal(), currentCurrency, 'MXN')}`
                 )}
               </button>
 

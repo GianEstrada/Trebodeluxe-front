@@ -7,6 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/NewCartContext";
 import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useIndexImages } from "../hooks/useIndexImages";
+import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { categoriesApi } from "../utils/categoriesApi";
@@ -75,6 +76,9 @@ const HomeScreen: NextPage = () => {
   // Usar categorías dinámicas desde la API
   const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
+  // Usar tasas de cambio dinámicas desde Open Exchange Rates
+  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
+  
   // Carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -100,27 +104,6 @@ const HomeScreen: NextPage = () => {
   const changeCurrency = (currency: string) => {
     setCurrentCurrency(currency);
     localStorage.setItem('preferred-currency', currency);
-  };
-
-  // Función para formatear precio con la moneda seleccionada
-  // Los precios en la BD ya están en pesos mexicanos (MXN)
-  const formatPrice = (price: number) => {
-    const exchangeRates = {
-      'MXN': 1,        // Moneda base - sin conversión
-      'USD': 0.053,    // 1 peso = ~0.053 USD
-      'EUR': 0.049     // 1 peso = ~0.049 EUR
-    };
-    
-    const symbols = {
-      'MXN': '$',
-      'USD': '$',
-      'EUR': '€'
-    };
-    
-    const convertedPrice = (price * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
-    const symbol = symbols[currentCurrency as keyof typeof symbols];
-    
-    return `${symbol}${convertedPrice}`;
   };
 
   // Función para filtrar productos por categoría
@@ -1029,7 +1012,7 @@ const HomeScreen: NextPage = () => {
                                   <h4 className="text-white font-medium truncate">{item.name}</h4>
                                   <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
                                         onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
@@ -1069,7 +1052,7 @@ const HomeScreen: NextPage = () => {
                         <div className="mt-6 pt-4 border-t border-white/20">
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Subtotal:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalFinal)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
                           </div>
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Envío:')}</span>
@@ -1077,7 +1060,7 @@ const HomeScreen: NextPage = () => {
                           </div>
                           <div className="flex justify-between items-center mb-6 text-lg">
                             <span className="text-white font-bold">{t('Total:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalFinal)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
                           </div>
                           
                           <div className="space-y-3">
@@ -1227,8 +1210,8 @@ const HomeScreen: NextPage = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                      <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                     </div>
                   </div>
                   
@@ -1334,8 +1317,8 @@ const HomeScreen: NextPage = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                      <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                     </div>
                   </div>
                   

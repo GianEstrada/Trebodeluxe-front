@@ -7,6 +7,7 @@ import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/NewCartContext';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
+import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../../utils/roles';
 import { productsApi } from '../../utils/productsApi';
 

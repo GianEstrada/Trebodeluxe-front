@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/NewCartContext";
+import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { useCategories } from "../hooks/useCategories";
@@ -94,6 +95,9 @@ const CatalogoScreen: NextPage = () => {
   // Usar categorías dinámicas desde la API
   const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
+  // Usar tasas de cambio dinámicas desde Open Exchange Rates
+  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
+  
   // Estados específicos del catálogo
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todas");
@@ -152,27 +156,6 @@ const CatalogoScreen: NextPage = () => {
   const changeCurrency = (currency: string) => {
     setCurrentCurrency(currency);
     localStorage.setItem('preferred-currency', currency);
-  };
-
-  // Función para formatear precio con la moneda seleccionada
-  const formatPrice = (price: number | string | null | undefined) => {
-    const exchangeRates = {
-      'EUR': 1,
-      'USD': 1.1,
-      'MXN': 20.5
-    };
-    
-    const symbols = {
-      'EUR': '€',
-      'USD': '$',
-      'MXN': '$'
-    };
-    
-    const numPrice = typeof price === 'string' ? parseFloat(price) : (price || 0);
-    const convertedPrice = (numPrice * exchangeRates[currentCurrency as keyof typeof exchangeRates]).toFixed(2);
-    const symbol = symbols[currentCurrency as keyof typeof symbols];
-    
-    return `${symbol}${convertedPrice}`;
   };
 
   // Funciones para el selector de variantes y tallas
@@ -1045,7 +1028,7 @@ const CatalogoScreen: NextPage = () => {
                                   <h4 className="text-white font-medium truncate">{item.name}</h4>
                                   <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.price)}</span>
+                                    <span className="text-white font-bold">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
                                     <div className="flex items-center gap-2">
                                       <button 
                                         onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
@@ -1085,7 +1068,7 @@ const CatalogoScreen: NextPage = () => {
                         <div className="mt-6 pt-4 border-t border-white/20">
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Subtotal:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalPrice)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalPrice, currentCurrency, 'MXN')}</span>
                           </div>
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Envío:')}</span>
@@ -1093,7 +1076,7 @@ const CatalogoScreen: NextPage = () => {
                           </div>
                           <div className="flex justify-between items-center mb-6 text-lg">
                             <span className="text-white font-bold">{t('Total:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalPrice)}</span>
+                            <span className="text-white font-bold">{formatPrice(totalPrice, currentCurrency, 'MXN')}</span>
                           </div>
                           
                           <div className="space-y-3">
@@ -1362,9 +1345,9 @@ const CatalogoScreen: NextPage = () => {
                         
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <span className="text-white font-bold text-lg">{formatPrice(precio)}</span>
+                            <span className="text-white font-bold text-lg">{formatPrice(precio, currentCurrency, 'MXN')}</span>
                             {discount > 0 && precioOriginal && (
-                              <span className="text-gray-400 line-through text-sm">{formatPrice(precioOriginal)}</span>
+                              <span className="text-gray-400 line-through text-sm">{formatPrice(precioOriginal, currentCurrency, 'MXN')}</span>
                             )}
                           </div>
                         </div>
