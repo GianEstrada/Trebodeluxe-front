@@ -1248,150 +1248,68 @@ const CatalogoScreen: NextPage = () => {
                 {products.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                     {products.map((product: any, index: number) => (
-                      <div
-                        key={product.id || index}
-                        className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 hover:border-white/30 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
-                      >
-                        {/* Imagen del producto */}
-                        <div className="relative aspect-square overflow-hidden rounded-t-2xl">
-                          {product.primaryImage ? (
+                      <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
+                        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                          <div className="relative mb-4">
                             <Image
-                              src={product.primaryImage}
+                              className="w-full h-64 object-cover rounded-lg"
+                              width={300}
+                              height={256}
+                              src={product.image}
                               alt={product.name}
-                              fill
-                              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                              className="object-cover group-hover:scale-110 transition-transform duration-500"
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.src = '/placeholder-product.jpg';
-                              }}
                             />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
-                              <Image
-                                src="/placeholder-product.jpg"
-                                alt="Producto sin imagen"
-                                width={150}
-                                height={150}
-                                className="opacity-50"
-                              />
-                            </div>
-                          )}
-                          
-                          {/* Badge de promoción */}
-                          {product.promotion && product.promotion.isActive && (
-                            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-semibold z-10">
-                              -{product.promotion.discountPercentage}%
-                            </div>
-                          )}
-                          
-                          {/* Badge de stock bajo */}
-                          {product.totalStock > 0 && product.totalStock <= 5 && (
-                            <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded-lg text-xs font-semibold">
-                              ¡Solo {product.totalStock}!
-                            </div>
-                          )}
-                          
-                          {/* Badge de sin stock */}
-                          {product.totalStock === 0 && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-2xl">
-                              <span className="text-white font-semibold bg-red-500 px-3 py-1 rounded-lg">
-                                {t('Sin stock')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Información del producto */}
-                        <div className="p-4 space-y-3">
-                          {/* Nombre del producto */}
-                          <h3 className="text-white font-medium text-sm leading-tight group-hover:text-green-300 transition-colors line-clamp-2 min-h-[2.5rem]">
-                            {product.name}
-                          </h3>
-
-                          {/* Categoría */}
-                          {product.category && (
-                            <p className="text-gray-400 text-xs uppercase tracking-wide">
-                              {product.category}
-                            </p>
-                          )}
-
-                          {/* Precio */}
-                          <div className="space-y-1">
-                            {product.promotion && product.promotion.isActive ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg font-bold text-red-400">
-                                    {formatPrice(product.promotion.discountedPrice)}
-                                  </span>
-                                  <span className="text-sm text-gray-400 line-through">
-                                    {formatPrice(product.basePrice)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-green-400">
-                                  ¡Ahorra {formatPrice(product.basePrice - product.promotion.discountedPrice)}!
-                                </p>
+                            {!product.inStock && (
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                                <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                               </div>
-                            ) : (
-                              <span className="text-lg font-bold text-white">
-                                {formatPrice(product.basePrice)}
-                              </span>
                             )}
-                          </div>
-
-                          {/* Botones de acción */}
-                          <div className="pt-2 space-y-2">
-                            {product.hasVariants ? (
-                              <Link href={`/producto/${product.slug || product.id}`}>
-                                <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
-                                  {t('Ver opciones')}
-                                </button>
-                              </Link>
-                            ) : (
-                              <div className="space-y-2">
-                                {product.totalStock > 0 ? (
-                                  <button
-                                    onClick={() => {
-                                      // Para productos sin variantes, usar la primera variante disponible
-                                      if (product.variants && product.variants[0]) {
-                                        const variant = product.variants[0];
-                                        const talla = variant.tallas?.[0];
-                                        if (talla) {
-                                          addToCart(product.id, variant.id, talla.id, 1);
-                                        }
-                                      }
-                                    }}
-                                    disabled={isLoading}
-                                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm flex items-center justify-center gap-2"
-                                  >
-                                    {isLoading ? (
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    ) : (
-                                      <>
-                                        <Image src="/carrito.svg" alt="" width={16} height={16} />
-                                        {t('Agregar al carrito')}
-                                      </>
-                                    )}
-                                  </button>
-                                ) : (
-                                  <button
-                                    disabled
-                                    className="w-full bg-gray-500 cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium text-sm"
-                                  >
-                                    {t('Sin stock')}
-                                  </button>
-                                )}
-                                
-                                <Link href={`/producto/${product.slug || product.id}`}>
-                                  <button className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
-                                    {t('Ver detalles')}
-                                  </button>
-                                </Link>
+                            {product.originalPrice && product.originalPrice > product.price && (
+                              <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+                                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
                               </div>
                             )}
                           </div>
+                          
+                          <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
+                          <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
+                          <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
+                          <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
+                          <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                          
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-white font-bold text-lg">{formatPrice(product.price)}</span>
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice)}</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <button
+                            disabled={!product.inStock}
+                            className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
+                              product.inStock 
+                                ? 'bg-white text-black hover:bg-gray-100' 
+                                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            }`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (product.inStock) {
+                                // Para productos sin variantes, usar la primera variante disponible
+                                if (product.variants && product.variants[0]) {
+                                  const variant = product.variants[0];
+                                  const talla = variant.tallas?.[0];
+                                  if (talla) {
+                                    addToCart(product.id, variant.id, talla.id, 1);
+                                  }
+                                }
+                              }
+                            }}
+                          >
+                            {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                          </button>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
