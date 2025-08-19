@@ -176,7 +176,7 @@ const CatalogoScreen: NextPage = () => {
   // Función para manejar la búsqueda
   const handleSearch = () => {
     if (searchTerm.trim()) {
-      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
+      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
     }
   };
 
