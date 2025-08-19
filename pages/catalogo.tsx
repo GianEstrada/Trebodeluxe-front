@@ -636,18 +636,19 @@ const CatalogoScreen: NextPage = () => {
             
             {/* Logo centrado con posicionamiento absoluto */}
             <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <Link href="/" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[50px] h-[50px] cursor-pointer flex items-center justify-center my-2">
-                  <Image
-                    className="w-full h-full object-cover"
-                    width={50}
-                    height={50}
-                    sizes="100vw"
-                    alt="Logo Treboluxe - Ir a página principal"
-                    src="/sin-ttulo1-2@2x.png"
-                  />
-                </div>
-              </Link>
+              <div 
+                className="w-[50px] h-[50px] cursor-pointer flex items-center justify-center my-2"
+                onClick={() => router.push('/')}
+              >
+                <Image
+                  className="w-full h-full object-cover"
+                  width={50}
+                  height={50}
+                  sizes="100vw"
+                  alt="Logo Treboluxe - Ir a página principal"
+                  src="/sin-ttulo1-2@2x.png"
+                />
+              </div>
             </div>
             
             <div className="flex flex-row items-center justify-end gap-[32px]">
