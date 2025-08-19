@@ -824,16 +824,18 @@ const CatalogoScreen: NextPage = () => {
                         </div>
                         
                         <div className="space-y-4">
-                          <Link 
-                            href="/admin"
-                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
-                            onClick={() => setShowAdminDropdown(false)}
+                          <button 
+                            onClick={() => {
+                              setShowAdminDropdown(false);
+                              router.push('/admin');
+                            }}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                             </svg>
                             {t('Acceder al Panel')}
-                          </Link>
+                          </button>
                           <div className="text-xs text-gray-400 bg-white/5 p-3 rounded-lg">
                             <p className="font-medium mb-1">{t('Características:')}</p>
                             <ul className="text-left space-y-1">
@@ -892,24 +894,24 @@ const CatalogoScreen: NextPage = () => {
                         </div>
                         
                         <div className="space-y-3 mb-6">
-                          <Link 
-                            href="/profile"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
+                          <button 
+                            onClick={() => router.push('/profile')}
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                             {t('Mi perfil')}
-                          </Link>
-                          <Link 
-                            href="/orders"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
+                          </button>
+                          <button 
+                            onClick={() => router.push('/orders')}
+                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                             </svg>
                             {t('Mis pedidos')}
-                          </Link>
+                          </button>
                         </div>
                         
                         <button 
@@ -935,18 +937,18 @@ const CatalogoScreen: NextPage = () => {
                         </div>
                         
                         <div className="space-y-4">
-                          <Link 
-                            href="/login"
-                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
+                          <button 
+                            onClick={() => router.push('/login')}
+                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 text-center cursor-pointer"
                           >
                             {t('Iniciar sesión')}
-                          </Link>
-                          <Link 
-                            href="/register"
-                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
+                          </button>
+                          <button 
+                            onClick={() => router.push('/register')}
+                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 text-center cursor-pointer"
                           >
                             {t('Registrarse')}
-                          </Link>
+                          </button>
                         </div>
                         
                         <div className="mt-8 pt-6 border-t border-white/20">
@@ -1158,16 +1160,18 @@ const CatalogoScreen: NextPage = () => {
                           </div>
                           
                           <div className="space-y-3">
-                            <Link href="/checkout" className="block">
-                              <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                                {t('Finalizar Compra')}
-                              </button>
-                            </Link>
-                            <Link href="/carrito" className="block">
-                              <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
-                                {t('Ver Carrito Completo')}
-                              </button>
-                            </Link>
+                            <button 
+                              onClick={() => router.push('/checkout')}
+                              className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+                            >
+                              {t('Finalizar Compra')}
+                            </button>
+                            <button 
+                              onClick={() => router.push('/carrito')}
+                              className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 cursor-pointer"
+                            >
+                              {t('Ver Carrito Completo')}
+                            </button>
                           </div>
                         </div>
                       )}
