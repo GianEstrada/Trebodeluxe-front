@@ -105,29 +105,41 @@ const CatalogoScreen: NextPage = () => {
     { value: "popular", label: "Más Populares" }
   ];
   
-  // Función para cargar promociones aplicables a los productos
-  const loadProductPromotions = async (products: any[]) => {
+  // Función para cargar promociones activas públicas
+  const loadActivePromotions = async () => {
     try {
-      const promotionsMap: {[key: string]: any[]} = {};
-      
-      // Cargar promociones para cada producto
-      for (const product of products.slice(0, 10)) { // Limitar a 10 productos para no sobrecargar
-        if (product.id && product.category) {
-          try {
-            const response = await promotionsApi.getApplicablePromotions(product.id, product.category);
-            if (response && (response as any).success && (response as any).promotions) {
-              promotionsMap[product.id] = (response as any).promotions;
+      const response = await promotionsApi.getActivePromotions();
+      if (response && (response as any).success && (response as any).promotions) {
+        const activePromotions = (response as any).promotions;
+        console.log('🎯 Promociones activas cargadas:', activePromotions);
+        
+        // Mapear promociones por producto y categoría
+        const promotionsMap: {[key: string]: any[]} = {};
+        allProducts.forEach(product => {
+          const applicablePromotions = activePromotions.filter((promo: any) => {
+            // Verificar si la promoción aplica a este producto
+            if (promo.aplicable_a === 'producto_especifico' && promo.producto_id && promo.producto_id === product.id) {
+              return true;
             }
-          } catch (err) {
-            console.log(`No se pudieron cargar promociones para producto ${product.id}`);
+            if (promo.aplicable_a === 'categoria' && promo.categoria && product.category && 
+                product.category.toLowerCase().includes(promo.categoria.toLowerCase())) {
+              return true;
+            }
+            if (promo.aplicable_a === 'todos') {
+              return true;
+            }
+            return false;
+          });
+          
+          if (applicablePromotions.length > 0) {
+            promotionsMap[product.id] = applicablePromotions;
           }
-        }
+        });
+        
+        setProductPromotions(promotionsMap);
       }
-      
-      setProductPromotions(promotionsMap);
-      console.log('🎯 Promociones cargadas:', promotionsMap);
     } catch (error) {
-      console.error('Error loading promotions:', error);
+      console.log('No se pudieron cargar promociones activas:', error);
     }
   };
 
@@ -136,14 +148,7 @@ const CatalogoScreen: NextPage = () => {
     const promotions = productPromotions[product.id];
     
     if (!promotions || promotions.length === 0) {
-      // Fallback al método anterior si no hay promociones de BD
-      if (product.originalPrice && product.originalPrice > product.price) {
-        return (
-          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-            {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-          </div>
-        );
-      }
+      // No hay promociones activas de BD
       return null;
     }
 
@@ -244,6 +249,13 @@ const CatalogoScreen: NextPage = () => {
       applyFiltersRealTime();
     }
   }, [searchTerm, selectedCategory, sortOrder, allProducts]);
+
+  // useEffect para cargar promociones cuando se cargan todos los productos
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      loadActivePromotions();
+    }
+  }, [allProducts]);
 
   // Funciones para cambiar filtros (ya no usan router.push)
   const handleCategoryChange = (category: string) => {
@@ -422,11 +434,6 @@ const CatalogoScreen: NextPage = () => {
         
         // Guardar todos los productos (sin filtrar aún)
         setAllProducts(transformedProducts);
-        
-        // Cargar promociones para los productos
-        if (transformedProducts.length > 0) {
-          await loadProductPromotions(transformedProducts);
-        }
         
         // FALLBACK: Si no hay productos o están todos vacíos, crear productos de prueba
         if (transformedProducts.length === 0 || 
