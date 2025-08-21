@@ -149,44 +149,80 @@ const CatalogoScreen: NextPage = () => {
   // Función para cargar promociones activas públicas
   const loadActivePromotions = async () => {
     try {
-      const response = await promotionsApi.getActivePromotions();
-      if (response && (response as any).success && (response as any).promotions) {
-        const activePromotions = (response as any).promotions;
-        console.log('🎯 Promociones activas cargadas:', activePromotions);
-        
-        // Mapear promociones por producto y categoría
-        const promotionsMap: {[key: string]: any[]} = {};
-        allProducts.forEach(product => {
-          const applicablePromotions = activePromotions.filter((promo: any) => {
-            // Verificar si la promoción aplica a este producto
-            if (promo.aplicable_a === 'producto_especifico' && promo.producto_id && promo.producto_id === product.id) {
-              console.log(`🎯 Promoción ${promo.nombre} aplica por producto específico ID ${product.id}`);
-              return true;
+      console.log('🎯 Cargando promociones por producto individual...');
+      
+      // En lugar de cargar todas las promociones y filtrar, 
+      // vamos a cargar promociones específicas para cada producto
+      const promotionsMap: {[key: string]: any[]} = {};
+      
+      // Procesar productos en lotes para no sobrecargar la API
+      for (const product of allProducts) {
+        try {
+          console.log(`🔍 Consultando promociones para producto ${product.id} (${product.name}) - categoría: ${product.category}`);
+          
+          const response = await promotionsApi.getPromotionsForProduct(product.id, product.category);
+          
+          if (response && (response as any).success && (response as any).data) {
+            const productPromotions = (response as any).data;
+            
+            if (productPromotions.length > 0) {
+              promotionsMap[product.id] = productPromotions;
+              console.log(`✅ Producto ${product.id} tiene ${productPromotions.length} promociones:`, 
+                         productPromotions.map((p: any) => `${p.nombre} (${p.valor_descuento}%)`));
+            } else {
+              console.log(`ℹ️ Producto ${product.id} no tiene promociones aplicables`);
             }
-            if (promo.aplicable_a === 'categoria' && promo.categoria && product.category) {
-              // Comparación exacta de categorías (no includes)
-              const promoCategory = promo.categoria.toLowerCase().trim();
-              const productCategory = product.category.toLowerCase().trim();
-              const matches = promoCategory === productCategory;
-              console.log(`🎯 Comparando categorías: "${productCategory}" === "${promoCategory}" = ${matches}`);
-              return matches;
+          }
+          
+          // Pequeña pausa para no saturar la API
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+        } catch (error) {
+          console.error(`❌ Error cargando promociones para producto ${product.id}:`, error);
+        }
+      }
+      
+      setProductPromotions(promotionsMap);
+      console.log('� Carga de promociones por producto completada:', Object.keys(promotionsMap).length, 'productos con promociones');
+      
+    } catch (error) {
+      console.error('❌ Error en loadActivePromotions:', error);
+      
+      // Fallback al método anterior si hay problemas
+      console.log('🔄 Intentando método fallback con promociones globales...');
+      try {
+        const response = await promotionsApi.getActivePromotions();
+        if (response && (response as any).success && (response as any).promotions) {
+          const activePromotions = (response as any).promotions;
+          console.log('🎯 Promociones globales cargadas como fallback:', activePromotions.length);
+          
+          const promotionsMap: {[key: string]: any[]} = {};
+          allProducts.forEach(product => {
+            const applicablePromotions = activePromotions.filter((promo: any) => {
+              if (promo.aplicable_a === 'producto_especifico' && promo.producto_id && promo.producto_id === product.id) {
+                return true;
+              }
+              if (promo.aplicable_a === 'categoria' && promo.categoria && product.category) {
+                const promoCategory = promo.categoria.toLowerCase().trim();
+                const productCategory = product.category.toLowerCase().trim();
+                return promoCategory === productCategory;
+              }
+              if (promo.aplicable_a === 'todos') {
+                return true;
+              }
+              return false;
+            });
+            
+            if (applicablePromotions.length > 0) {
+              promotionsMap[product.id] = applicablePromotions;
             }
-            if (promo.aplicable_a === 'todos') {
-              console.log(`🎯 Promoción ${promo.nombre} aplica a todos los productos`);
-              return true;
-            }
-            return false;
           });
           
-          if (applicablePromotions.length > 0) {
-            promotionsMap[product.id] = applicablePromotions;
-          }
-        });
-        
-        setProductPromotions(promotionsMap);
+          setProductPromotions(promotionsMap);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Error en fallback:', fallbackError);
       }
-    } catch (error) {
-      console.log('No se pudieron cargar promociones activas:', error);
     }
   };
 

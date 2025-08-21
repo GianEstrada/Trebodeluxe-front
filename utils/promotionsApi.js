@@ -11,6 +11,12 @@ export const promotionsApi = {
     return apiRequest('/api/promotions/active');
   },
 
+  // Obtener promociones específicas para un producto
+  async getPromotionsForProduct(productId, categoria = null) {
+    const params = categoria ? `?categoria=${encodeURIComponent(categoria)}` : '';
+    return apiRequest(`/api/promotions/product/${productId}${params}`);
+  },
+
   // Obtener todas las promociones para administradores
   async getAllForAdmin(token) {
     return apiRequest('/api/promotions/admin', {
