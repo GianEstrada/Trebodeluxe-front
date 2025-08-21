@@ -160,13 +160,19 @@ const CatalogoScreen: NextPage = () => {
           const applicablePromotions = activePromotions.filter((promo: any) => {
             // Verificar si la promoción aplica a este producto
             if (promo.aplicable_a === 'producto_especifico' && promo.producto_id && promo.producto_id === product.id) {
+              console.log(`🎯 Promoción ${promo.nombre} aplica por producto específico ID ${product.id}`);
               return true;
             }
-            if (promo.aplicable_a === 'categoria' && promo.categoria && product.category && 
-                product.category.toLowerCase().includes(promo.categoria.toLowerCase())) {
-              return true;
+            if (promo.aplicable_a === 'categoria' && promo.categoria && product.category) {
+              // Comparación exacta de categorías (no includes)
+              const promoCategory = promo.categoria.toLowerCase().trim();
+              const productCategory = product.category.toLowerCase().trim();
+              const matches = promoCategory === productCategory;
+              console.log(`🎯 Comparando categorías: "${productCategory}" === "${promoCategory}" = ${matches}`);
+              return matches;
             }
             if (promo.aplicable_a === 'todos') {
+              console.log(`🎯 Promoción ${promo.nombre} aplica a todos los productos`);
               return true;
             }
             return false;
