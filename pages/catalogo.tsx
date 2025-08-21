@@ -10,6 +10,7 @@ import { useSiteSettings } from "../contexts/SiteSettingsContext";
 import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
+import { promotionsApi } from "../utils/promotionsApi";
 import { useCategories } from "../hooks/useCategories";
 import VariantSizeSelector from "../components/VariantSizeSelector";
 
@@ -31,6 +32,7 @@ const CatalogoScreen: NextPage = () => {
   // Estados para productos
   const [products, setProducts] = useState<any[]>([]); // Productos mostrados (filtrados)
   const [allProducts, setAllProducts] = useState<any[]>([]); // Todos los productos cargados
+  const [productPromotions, setProductPromotions] = useState<{[key: string]: any[]}>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -103,6 +105,74 @@ const CatalogoScreen: NextPage = () => {
     { value: "popular", label: "Más Populares" }
   ];
   
+  // Función para cargar promociones aplicables a los productos
+  const loadProductPromotions = async (products: any[]) => {
+    try {
+      const promotionsMap: {[key: string]: any[]} = {};
+      
+      // Cargar promociones para cada producto
+      for (const product of products.slice(0, 10)) { // Limitar a 10 productos para no sobrecargar
+        if (product.id && product.category) {
+          try {
+            const response = await promotionsApi.getApplicablePromotions(product.id, product.category);
+            if (response && (response as any).success && (response as any).promotions) {
+              promotionsMap[product.id] = (response as any).promotions;
+            }
+          } catch (err) {
+            console.log(`No se pudieron cargar promociones para producto ${product.id}`);
+          }
+        }
+      }
+      
+      setProductPromotions(promotionsMap);
+      console.log('🎯 Promociones cargadas:', promotionsMap);
+    } catch (error) {
+      console.error('Error loading promotions:', error);
+    }
+  };
+
+  // Función para renderizar las promociones de un producto
+  const renderProductPromotion = (product: any) => {
+    const promotions = productPromotions[product.id];
+    
+    if (!promotions || promotions.length === 0) {
+      // Fallback al método anterior si no hay promociones de BD
+      if (product.originalPrice && product.originalPrice > product.price) {
+        return (
+          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+            {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+          </div>
+        );
+      }
+      return null;
+    }
+
+    // Mostrar la primera promoción activa
+    const promotion = promotions[0];
+    
+    if (promotion.tipo_promocion === 'porcentaje') {
+      return (
+        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+          {promotion.valor_descuento}% OFF
+        </div>
+      );
+    } else if (promotion.tipo_promocion === 'x_por_y') {
+      return (
+        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-sm font-bold">
+          {promotion.cantidad_requerida}x{promotion.cantidad_gratuita || promotion.cantidad_descuento}
+        </div>
+      );
+    } else if (promotion.tipo_promocion === 'monto_fijo') {
+      return (
+        <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-sm font-bold">
+          -${promotion.valor_descuento}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   // Función de búsqueda avanzada en múltiples campos
   const searchInProduct = (product: any, searchTerm: string): boolean => {
     if (!searchTerm || !searchTerm.trim()) return true;
@@ -352,6 +422,11 @@ const CatalogoScreen: NextPage = () => {
         
         // Guardar todos los productos (sin filtrar aún)
         setAllProducts(transformedProducts);
+        
+        // Cargar promociones para los productos
+        if (transformedProducts.length > 0) {
+          await loadProductPromotions(transformedProducts);
+        }
         
         // FALLBACK: Si no hay productos o están todos vacíos, crear productos de prueba
         if (transformedProducts.length === 0 || 
@@ -1468,11 +1543,7 @@ const CatalogoScreen: NextPage = () => {
                                 <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                               </div>
                             )}
-                            {product.originalPrice && product.originalPrice > product.price && (
-                              <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                              </div>
-                            )}
+                            {renderProductPromotion(product)}
                           </div>
                           
                           <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
@@ -1518,222 +1589,223 @@ const CatalogoScreen: NextPage = () => {
                     ))}
                   </div>
                 )}
-
-                <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
-                        <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
-                          {/* Logo y redes sociales */}
-                          <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
-                            <Image
-                              className="w-[50px] h-[50px]"
-                              width={50}
-                              height={50}
-                              sizes="100vw"
-                              alt="Logo Treboluxe"
-                              src="/sin-ttulo1-2@2x.png"
-                            />
-                            <div className="flex flex-col items-start justify-start gap-4">
-                              <p className="text-white text-sm leading-relaxed">
-                                {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
-                              </p>
-                              <div className="flex flex-row items-center justify-start gap-4">
-                                <a 
-                                  href="https://www.facebook.com/profile.php?id=61576338298512"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:opacity-80 transition-opacity"
-                                >
-                                  <Image
-                                    className="w-6 relative h-6"
-                                    width={24}
-                                    height={24}
-                                    sizes="100vw"
-                                    alt="Facebook"
-                                    src="/facebook-icon.svg"
-                                  />
-                                </a>
-                                <a 
-                                  href="https://www.instagram.com/treboluxe"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:opacity-80 transition-opacity"
-                                >
-                                  <Image
-                                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                                    width={24}
-                                    height={24}
-                                    sizes="100vw"
-                                    alt="Instagram"
-                                    src="/logo-instagram.svg"
-                                  />
-                                </a>
-                                <a 
-                                  href="https://www.tiktok.com/@treboluxe5"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:opacity-80 transition-opacity"
-                                >
-                                  <Image
-                                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                                    width={24}
-                                    height={24}
-                                    sizes="100vw"
-                                    alt="TikTok"
-                                    src="/tiktok-icon.svg"
-                                  />
-                                </a>
-                                <a 
-                                  href="https://twitter.com/treboluxe?s=21"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:opacity-80 transition-opacity"
-                                >
-                                  <Image
-                                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                                    width={24}
-                                    height={24}
-                                    sizes="100vw"
-                                    alt="Twitter/X"
-                                    src="/x-logo.svg"
-                                  />
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Columna Compras */}
-                          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-                            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                                {t('Compras')}
-                              </h3>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Cómo comprar')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Métodos de pago')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Tabla de tallas')}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Columna Categorías */}
-                          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-                            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                                {t('Categorías')}
-                              </h3>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Mujer')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Hombre')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Niños')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Accesorios')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Calzado')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Nueva colección')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Ofertas especiales')}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Columna Atención al cliente */}
-                          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-                            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                                {t('Atención al cliente')}
-                              </h3>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Contacto')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Preguntas frecuentes')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Reportar un problema')}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Columna Legal */}
-                          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-                            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                                {t('Legal')}
-                              </h3>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Términos y condiciones')}
-                              </div>
-                            </div>
-                            <div className="w-full">
-                              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                                {t('Sobre nosotros')}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Copyright section */}
-                        <div className="w-full pt-8 border-t border-white/20">
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="text-gray-400 text-sm">
-                              {t('© 2024 Treboluxe. Todos los derechos reservados.')}
-                            </div>
-                            <div className="flex items-center gap-6 text-gray-400 text-sm">
-                              <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
-                              <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
-                              <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 text-gray-400 text-xs">
-                            {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
-                          </div>
-                        </div>
-                      </footer>
               </>
             )}
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
+        <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
+          {/* Logo y redes sociales */}
+          <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
+            <Image
+              className="w-[50px] h-[50px]"
+              width={50}
+              height={50}
+              sizes="100vw"
+              alt="Logo Treboluxe"
+              src="/sin-ttulo1-2@2x.png"
+            />
+            <div className="flex flex-col items-start justify-start gap-4">
+              <p className="text-white text-sm leading-relaxed">
+                {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
+              </p>
+              <div className="flex flex-row items-center justify-start gap-4">
+                <a 
+                  href="https://www.facebook.com/profile.php?id=61576338298512"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Facebook"
+                    src="/facebook-icon.svg"
+                  />
+                </a>
+                <a 
+                  href="https://www.instagram.com/treboluxe"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Instagram"
+                    src="/logo-instagram.svg"
+                  />
+                </a>
+                <a 
+                  href="https://www.tiktok.com/@treboluxe5"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="TikTok"
+                    src="/tiktok-icon.svg"
+                  />
+                </a>
+                <a 
+                  href="https://twitter.com/treboluxe?s=21"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <Image
+                    className="w-6 relative h-6 overflow-hidden shrink-0"
+                    width={24}
+                    height={24}
+                    sizes="100vw"
+                    alt="Twitter/X"
+                    src="/x-logo.svg"
+                  />
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          {/* Columna Compras */}
+          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
+            <div className="self-stretch flex flex-col items-start justify-start pb-4">
+              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
+                {t('Compras')}
+              </h3>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Cómo comprar')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Métodos de pago')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Tabla de tallas')}
+              </div>
+            </div>
+          </div>
+          
+          {/* Columna Categorías */}
+          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
+            <div className="self-stretch flex flex-col items-start justify-start pb-4">
+              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
+                {t('Categorías')}
+              </h3>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Mujer')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Hombre')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Niños')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Accesorios')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Calzado')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Nueva colección')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Ofertas especiales')}
+              </div>
+            </div>
+          </div>
+          
+          {/* Columna Atención al cliente */}
+          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
+            <div className="self-stretch flex flex-col items-start justify-start pb-4">
+              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
+                {t('Atención al cliente')}
+              </h3>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Contacto')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Preguntas frecuentes')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Reportar un problema')}
+              </div>
+            </div>
+          </div>
+          
+          {/* Columna Legal */}
+          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
+            <div className="self-stretch flex flex-col items-start justify-start pb-4">
+              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
+                {t('Legal')}
+              </h3>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Términos y condiciones')}
+              </div>
+            </div>
+            <div className="w-full">
+              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
+                {t('Sobre nosotros')}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Copyright section */}
+        <div className="w-full pt-8 border-t border-white/20">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-gray-400 text-sm">
+              {t('© 2024 Treboluxe. Todos los derechos reservados.')}
+            </div>
+            <div className="flex items-center gap-6 text-gray-400 text-sm">
+              <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
+              <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
+              <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
+            </div>
+          </div>
+          <div className="mt-4 text-gray-400 text-xs">
+            {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
+          </div>
+        </div>
+      </footer>
       
     </div>
   );
