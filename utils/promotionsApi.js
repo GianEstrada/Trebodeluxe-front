@@ -20,14 +20,9 @@ export const promotionsApi = {
     });
   },
 
-  // Obtener promociones aplicables a un producto
-  async getApplicablePromotions(productId, categoria) {
-    const params = new URLSearchParams();
-    if (categoria) params.append('categoria', categoria);
-    
-    const endpoint = `/api/promotions/applicable/${productId}${params.toString() ? '?' + params.toString() : ''}`;
-    return apiRequest(endpoint);
-  },
+  // FUNCIÓN ELIMINADA: getApplicablePromotions
+  // Ahora usamos getActivePromotions() para obtener todas las promociones públicas
+  // y filtramos del lado cliente
 
   // Validar código de promoción
   async validatePromotionCode(codigo) {
