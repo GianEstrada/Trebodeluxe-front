@@ -29,7 +29,8 @@ const CatalogoScreen: NextPage = () => {
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
   
   // Estados para productos
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]); // Productos mostrados (filtrados)
+  const [allProducts, setAllProducts] = useState<any[]>([]); // Todos los productos cargados
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -67,30 +68,10 @@ const CatalogoScreen: NextPage = () => {
     "DESCUBRE NUESTRA COLECCIÓN"
   ];
   
-  // Cargar productos cuando cambien los parámetros de URL
+  // Cargar productos una sola vez al inicio
   useEffect(() => {
-    const { busqueda, categoria, orden } = router.query;
-    
-    // Actualizar estados con parámetros de URL
-    if (typeof busqueda === 'string') {
-      setSearchTerm(busqueda);
-    }
-    
-    if (typeof categoria === 'string') {
-      setSelectedCategory(categoria);
-    }
-    
-    if (typeof orden === 'string') {
-      setSortOrder(orden);
-    }
-    
-    // Cargar productos con filtros
-    loadProducts({
-      busqueda: typeof busqueda === 'string' ? busqueda : undefined,
-      categoria: typeof categoria === 'string' ? categoria : undefined,
-      orden: typeof orden === 'string' ? orden : undefined,
-    });
-  }, [router.query]);
+    loadAllProducts();
+  }, []); // Solo se ejecuta una vez al montar el componente
   
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -106,11 +87,10 @@ const CatalogoScreen: NextPage = () => {
     setShowLanguageDropdown(false);
   };
   
-  // Función para manejar la búsqueda
+  // Función para manejar la búsqueda (ya no necesita hacer router.push)
   const handleSearch = () => {
-    if (searchTerm.trim()) {
-      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
-    }
+    // La búsqueda ya se aplica automáticamente por el useEffect
+    console.log('🔍 Búsqueda activada:', searchTerm);
   };
   
   // Opciones de ordenamiento
@@ -123,6 +103,93 @@ const CatalogoScreen: NextPage = () => {
     { value: "popular", label: "Más Populares" }
   ];
   
+  // Función de búsqueda avanzada en múltiples campos
+  const searchInProduct = (product: any, searchTerm: string): boolean => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    
+    const term = searchTerm.toLowerCase().trim();
+    
+    // Buscar en nombre
+    const name = (product.name || '').toLowerCase();
+    if (name.includes(term)) return true;
+    
+    // Buscar en categoría
+    const category = (product.category || '').toLowerCase();
+    if (category.includes(term)) return true;
+    
+    // Buscar en marca
+    const brand = (product.brand || '').toLowerCase();
+    if (brand.includes(term)) return true;
+    
+    // Buscar en color
+    const color = (product.color || '').toLowerCase();
+    if (color.includes(term)) return true;
+    
+    // Buscar en talla
+    const size = (product.size || '').toLowerCase();
+    if (size.includes(term)) return true;
+    
+    // Buscar en descripción
+    const description = (product.description || '').toLowerCase();
+    if (description.includes(term)) return true;
+    
+    return false;
+  };
+
+  // Función para aplicar todos los filtros en tiempo real
+  const applyFiltersRealTime = () => {
+    let filtered = [...allProducts];
+    
+    // Filtro por término de búsqueda
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(product => searchInProduct(product, searchTerm));
+    }
+    
+    // Filtro por categoría
+    if (selectedCategory && selectedCategory !== 'todas') {
+      filtered = filtered.filter(product => {
+        const productCategory = (product.category || '').toLowerCase();
+        const filterCategory = selectedCategory.toLowerCase();
+        return productCategory.includes(filterCategory);
+      });
+    }
+    
+    // Aplicar ordenamiento
+    filtered = sortProducts(filtered, sortOrder);
+    
+    setProducts(filtered);
+    
+    console.log('🔍 Filtros aplicados en tiempo real:', {
+      searchTerm,
+      selectedCategory,
+      sortOrder,
+      totalProducts: allProducts.length,
+      filteredProducts: filtered.length
+    });
+  };
+
+  // useEffect para aplicar filtros cuando cambien los estados
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      applyFiltersRealTime();
+    }
+  }, [searchTerm, selectedCategory, sortOrder, allProducts]);
+
+  // Funciones para cambiar filtros (ya no usan router.push)
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setShowCategoryFilter(false);
+  };
+
+  const handleSortChange = (sort: string) => {
+    setSortOrder(sort);
+    setShowSortFilter(false);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
   // Función para aplicar filtros
   const applyFilters = () => {
     const params = new URLSearchParams();
@@ -148,42 +215,21 @@ const CatalogoScreen: NextPage = () => {
   // Función para limpiar filtros
   const clearFilters = () => {
     setSearchTerm("");
-    setSelectedCategory("");
+    setSelectedCategory("todas");
     setSortOrder("nombre-asc");
-    router.push('/catalogo');
   };
   
-  // Función para cargar productos con filtros
-  const loadProducts = async (filters: {
-    busqueda?: string;
-    categoria?: string;
-    orden?: string;
-  } = {}) => {
+  // Función para cargar todos los productos (solo una vez al inicio)
+  const loadAllProducts = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Loading products with filters:', filters);
+      console.log('🔄 Loading all products from API...');
       
-      // Construir filtros para la API
-      const apiFilters: any = {};
-      
-      if (filters.busqueda) {
-        apiFilters.busqueda = filters.busqueda;
-      }
-      
-      // TEMPORALMENTE DESHABILITADO: filtro por categoría hasta que el backend se corrija
-      // El error: "column p.categoria does not exist" indica que el backend usa id_categoria
-      // if (filters.categoria && filters.categoria !== 'todas') {
-      //   apiFilters.categoria = filters.categoria;
-      // }
-      
-      // PRUEBA: Usar getFeatured en lugar de getAll para ver si los datos son diferentes
-      // const response = await productsApi.getAll(apiFilters);
-      
-      // Temporalmente usar getFeatured con más productos
-      const response = await productsApi.getFeatured(50);
-      
+      // Usar getFeatured con más productos (misma API que funciona en index)
+      const response = await productsApi.getFeatured(100); // Cargar más productos
+
       if (response && (response as any).success) {
         let products = (response as any).products || [];
         
@@ -248,7 +294,7 @@ const CatalogoScreen: NextPage = () => {
               price: product.precio_minimo || 0,
               originalPrice: product.precio_minimo ? product.precio_minimo * 1.25 : 0,
               inStock: product.tiene_stock || false,
-              description: product.descripcion
+              description: product.descripcion || ''
             };
             
             console.log('⚠️ Transformación falló, usando producto básico:', basicProduct);
@@ -285,10 +331,11 @@ const CatalogoScreen: NextPage = () => {
                   'Sin tallas'),
             price: transformed.price || product.precio_minimo || 0,
             originalPrice: transformed.originalPrice || (product.precio_minimo ? product.precio_minimo * 1.25 : 0),
-            inStock: transformed.inStock !== undefined ? transformed.inStock : (product.tiene_stock || false)
+            inStock: transformed.inStock !== undefined ? transformed.inStock : (product.tiene_stock || false),
+            description: transformed.description || product.descripcion || ''
           };
         });
-        
+
         // Debug: Ver cómo quedan los productos transformados
         console.log('🔍 COMPARACIÓN DE PRODUCTOS:');
         console.log('📦 Productos originales del API:', products.slice(0, 2));
@@ -300,27 +347,15 @@ const CatalogoScreen: NextPage = () => {
           color: transformedProducts[0]?.color,
           size: transformedProducts[0]?.size,
         });
+
+        console.log('✅ All products loaded and transformed:', transformedProducts.length, 'products');
         
-        // Aplicar ordenamiento
-        const sortedProducts = sortProducts(transformedProducts, filters.orden || sortOrder);
-        
-        // Aplicar filtros del lado del cliente (mientras el backend se corrige)
-        let filteredProducts = sortedProducts;
-        
-        // Filtro por categoría del lado del cliente
-        if (filters.categoria && filters.categoria !== 'todas') {
-          filteredProducts = sortedProducts.filter((product: any) => {
-            const productCategory = (product.category || '').toLowerCase();
-            const filterCategory = filters.categoria?.toLowerCase();
-            return productCategory.includes(filterCategory || '');
-          });
-        }
-        
-        console.log('✅ Products loaded, transformed, sorted and filtered:', filteredProducts.length, 'products');
+        // Guardar todos los productos (sin filtrar aún)
+        setAllProducts(transformedProducts);
         
         // FALLBACK: Si no hay productos o están todos vacíos, crear productos de prueba
-        if (filteredProducts.length === 0 || 
-            filteredProducts.every(p => !p.category || p.category === 'Sin categoría')) {
+        if (transformedProducts.length === 0 || 
+            transformedProducts.every((p: any) => !p.category || p.category === 'Sin categoría')) {
           console.log('🚨 FALLBACK: Creando productos de prueba porque no hay datos válidos');
           
           const testProducts = [
@@ -335,7 +370,7 @@ const CatalogoScreen: NextPage = () => {
               originalPrice: 399,
               image: '/sin-titulo1-2@2x.png',
               inStock: true,
-              description: 'Producto de prueba'
+              description: 'Camiseta básica de alta calidad con tejido suave y cómodo'
             },
             {
               id: 'test-2', 
@@ -348,28 +383,37 @@ const CatalogoScreen: NextPage = () => {
               originalPrice: 799,
               image: '/sin-titulo1-2@2x.png',
               inStock: true,
-              description: 'Producto de prueba 2'
+              description: 'Pantalón casual perfecto para uso diario con diseño moderno'
+            },
+            {
+              id: 'test-3',
+              name: 'Zapatos Deportivos',
+              category: 'Calzado',
+              brand: 'Sport Test',
+              color: 'Blanco, Negro, Azul',
+              size: '7, 8, 9, 10, 11',
+              price: 899,
+              originalPrice: 1199,
+              image: '/sin-titulo1-2@2x.png',
+              inStock: true,
+              description: 'Zapatos deportivos cómodos para actividades físicas y casual'
             }
           ];
           
-          setProducts(testProducts);
-        } else {
-          setProducts(filteredProducts);
+          setAllProducts(testProducts);
         }
       } else {
         console.log('No products found or API error');
-        setProducts([]);
+        setAllProducts([]);
       }
     } catch (err: any) {
       console.error('Error loading products:', err);
       setError('Error al cargar los productos');
-      setProducts([]);
+      setAllProducts([]);
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Función para ordenar productos
+  };  // Función para ordenar productos
   const sortProducts = (products: any[], order: string) => {
     const sorted = [...products];
     
@@ -1029,7 +1073,7 @@ const CatalogoScreen: NextPage = () => {
                             type="text"
                             placeholder={t('¿Qué estás buscando?')}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={handleSearchChange}
                             onKeyPress={handleSearchKeyPress}
                             className="w-4/5 bg-white/20 border border-white/30 rounded-lg py-3 px-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                           />
@@ -1244,7 +1288,7 @@ const CatalogoScreen: NextPage = () => {
                     <input
                       type="text"
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={handleSearchChange}
                       onKeyPress={(e) => e.key === 'Enter' && applyFilters()}
                       placeholder={t('Buscar productos...')}
                       className="w-full px-4 py-3 pl-12 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-400 focus:bg-white/20 transition-all"
@@ -1279,8 +1323,7 @@ const CatalogoScreen: NextPage = () => {
                     <div className="absolute top-full left-0 right-0 mt-1 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 z-50 max-h-60 overflow-y-auto">
                       <button
                         onClick={() => {
-                          setSelectedCategory("");
-                          setShowCategoryFilter(false);
+                          handleCategoryChange("todas");
                         }}
                         className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors border-b border-white/10"
                       >
@@ -1290,8 +1333,7 @@ const CatalogoScreen: NextPage = () => {
                         <button
                           key={category.id}
                           onClick={() => {
-                            setSelectedCategory(category.slug);
-                            setShowCategoryFilter(false);
+                            handleCategoryChange(category.slug);
                           }}
                           className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors"
                         >
@@ -1320,8 +1362,7 @@ const CatalogoScreen: NextPage = () => {
                         <button
                           key={option.value}
                           onClick={() => {
-                            setSortOrder(option.value);
-                            setShowSortFilter(false);
+                            handleSortChange(option.value);
                           }}
                           className="w-full px-4 py-3 text-left text-white hover:bg-white/20 transition-colors"
                         >
