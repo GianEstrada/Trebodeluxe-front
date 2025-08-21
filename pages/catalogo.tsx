@@ -41,6 +41,7 @@ const CatalogoScreen: NextPage = () => {
   const [sortOrder, setSortOrder] = useState<string>("nombre-asc");
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showSortFilter, setShowSortFilter] = useState(false);
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
   
   // Estados para carrusel de texto
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -74,6 +75,46 @@ const CatalogoScreen: NextPage = () => {
   useEffect(() => {
     loadAllProducts();
   }, []); // Solo se ejecuta una vez al montar el componente
+
+  // useEffect para inicializar filtros desde URL cuando el router está listo
+  useEffect(() => {
+    if (router.isReady) {
+      const { busqueda, categoria, orden } = router.query;
+      
+      console.log('🚀 Router listo, inicializando filtros desde URL:', router.query);
+      
+      // Inicializar filtros desde parámetros de URL
+      if (typeof busqueda === 'string' && busqueda.trim()) {
+        setSearchTerm(busqueda.trim());
+        console.log(`🔍 Término de búsqueda desde URL: '${busqueda}'`);
+      }
+      
+      // Si no hay parámetro categoria o es "todas", mantener "todas"
+      if (typeof categoria === 'string' && categoria.trim() && categoria.trim() !== 'todas') {
+        setSelectedCategory(categoria.trim());
+        console.log(`🏷️ Categoría desde URL: '${categoria}'`);
+      } else {
+        // Asegurar que esté en "todas" si no hay categoria específica
+        setSelectedCategory('todas');
+        console.log(`🏷️ Categoría por defecto: 'todas'`);
+      }
+      
+      if (typeof orden === 'string' && orden.trim()) {
+        setSortOrder(orden.trim());
+        console.log(`📊 Orden desde URL: '${orden}'`);
+      }
+      
+      // Marcar filtros como inicializados
+      setFiltersInitialized(true);
+      
+      console.log('✅ Filtros inicializados desde URL:', {
+        busqueda: busqueda || 'ninguna',
+        categoria: categoria || 'todas (por defecto)',
+        orden: orden || 'nombre-asc',
+        filtersInitialized: true
+      });
+    }
+  }, [router.isReady, router.query]);
   
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -215,18 +256,31 @@ const CatalogoScreen: NextPage = () => {
   const applyFiltersRealTime = () => {
     let filtered = [...allProducts];
     
+    console.log('🔍 INICIO filtrado:', {
+      productos_originales: allProducts.length,
+      searchTerm_actual: searchTerm,
+      selectedCategory_actual: selectedCategory,
+      sortOrder_actual: sortOrder
+    });
+    
     // Filtro por término de búsqueda
     if (searchTerm.trim()) {
+      const beforeSearch = filtered.length;
       filtered = filtered.filter(product => searchInProduct(product, searchTerm));
+      console.log(`🔍 Filtro búsqueda: ${beforeSearch} → ${filtered.length} productos`);
     }
     
     // Filtro por categoría
     if (selectedCategory && selectedCategory !== 'todas') {
+      const beforeCategory = filtered.length;
       filtered = filtered.filter(product => {
         const productCategory = (product.category || '').toLowerCase();
         const filterCategory = selectedCategory.toLowerCase();
         return productCategory.includes(filterCategory);
       });
+      console.log(`🏷️ Filtro categoría '${selectedCategory}': ${beforeCategory} → ${filtered.length} productos`);
+    } else {
+      console.log(`🏷️ Mostrando TODAS las categorías (${filtered.length} productos)`);
     }
     
     // Aplicar ordenamiento
@@ -234,21 +288,34 @@ const CatalogoScreen: NextPage = () => {
     
     setProducts(filtered);
     
-    console.log('🔍 Filtros aplicados en tiempo real:', {
+    console.log('✅ RESULTADO final filtrado:', {
       searchTerm,
       selectedCategory,
       sortOrder,
       totalProducts: allProducts.length,
-      filteredProducts: filtered.length
+      filteredProducts: filtered.length,
+      primeros_3_productos: filtered.slice(0, 3).map(p => ({ id: p.id, name: p.name }))
     });
   };
 
   // useEffect para aplicar filtros cuando cambien los estados
   useEffect(() => {
-    if (allProducts.length > 0) {
+    if (allProducts.length > 0 && filtersInitialized) {
+      console.log('🔄 Aplicando filtros - Productos cargados y filtros inicializados:', {
+        searchTerm: searchTerm || 'vacío',
+        selectedCategory,
+        sortOrder,
+        totalProducts: allProducts.length,
+        filtersInitialized
+      });
       applyFiltersRealTime();
+    } else {
+      console.log('⏳ Esperando productos o inicialización de filtros:', {
+        productos_cargados: allProducts.length,
+        filtros_inicializados: filtersInitialized
+      });
     }
-  }, [searchTerm, selectedCategory, sortOrder, allProducts]);
+  }, [searchTerm, selectedCategory, sortOrder, allProducts, filtersInitialized]);
 
   // useEffect para cargar promociones cuando se cargan todos los productos
   useEffect(() => {

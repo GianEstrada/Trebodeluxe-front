@@ -454,7 +454,7 @@ const HomeScreen: NextPage = () => {
 
                         {/* Opción "Todas las categorías" siempre visible */}
                         <Link 
-                          href="/catalogo" 
+                          href="/catalogo?categoria=todas" 
                           className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
                         >
                           <div className="flex items-center justify-between">
@@ -481,7 +481,7 @@ const HomeScreen: NextPage = () => {
                         {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
                           <>
                             <Link 
-                              href="/catalogo" 
+                              href="/catalogo?categoria=todas" 
                               className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
                             >
                               <div className="flex items-center justify-between">
