@@ -246,8 +246,8 @@ export const productUtils = {
     return {
       id: product.id_producto,
       name: product.nombre || product.producto_nombre,
-      price: correctPrice,
-      originalPrice: correctPrice * 1.25, // Precio original simulado (25% más)
+      price: correctPrice, // Precio actual de BD - se actualizará con descuentos
+      originalPrice: correctPrice, // Precio original de BD - se mantiene fijo
       image: firstImage ? firstImage.url : (product.imagen_principal || '/sin-ttulo1-2@2x.png'),
       category: product.categoria || product.categoria_nombre || 'Sin categoría',
       brand: product.marca || 'Sin marca',
@@ -299,6 +299,39 @@ export const productUtils = {
   calculateDiscount(originalPrice, currentPrice) {
     if (!originalPrice || originalPrice <= currentPrice) return 0;
     return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+  },
+
+  // Aplicar descuentos de promociones a productos
+  applyPromotionDiscounts(products, promotions) {
+    return products.map(product => {
+      const productPromotions = promotions[product.id];
+      
+      if (!productPromotions || productPromotions.length === 0) {
+        // Sin promociones - mantener precio original
+        return {
+          ...product,
+          price: product.originalPrice, // Precio sin descuento
+          hasDiscount: false
+        };
+      }
+
+      // Tomar la primera promoción (más prioritaria)
+      const promotion = productPromotions[0];
+      let discountedPrice = product.originalPrice;
+      
+      if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento > 0) {
+        const discount = promotion.porcentaje_descuento / 100;
+        discountedPrice = product.originalPrice * (1 - discount);
+      }
+      // Nota: promociones x_por_y requieren lógica diferente en carrito
+
+      return {
+        ...product,
+        price: discountedPrice, // Precio con descuento aplicado
+        hasDiscount: discountedPrice < product.originalPrice,
+        appliedPromotion: promotion
+      };
+    });
   }
 };
 

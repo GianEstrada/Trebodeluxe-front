@@ -261,6 +261,51 @@ const HomeScreen: NextPage = () => {
     });
   }, [recentByCategory]);
 
+  // Aplicar descuentos de promociones cuando cambien las promociones
+  useEffect(() => {
+    if (Object.keys(promotions).length > 0) {
+      console.log('🎯 Aplicando descuentos de promociones a productos...');
+      
+      // Actualizar productos destacados con descuentos
+      if (featuredProducts.length > 0) {
+        const updatedFeatured = productUtils.applyPromotionDiscounts(featuredProducts, promotions);
+        // Solo actualizar si realmente hay cambios
+        const hasChanges = updatedFeatured.some((product: any, index: number) => 
+          product.price !== featuredProducts[index]?.price
+        );
+        if (hasChanges) {
+          console.log('💰 Actualizando precios en productos destacados');
+          setFeaturedProducts(updatedFeatured);
+        }
+      }
+
+      // Actualizar productos por categoría con descuentos  
+      if (Object.keys(recentByCategory).length > 0) {
+        const updatedByCategory: { [key: string]: any[] } = {};
+        let hasGlobalChanges = false;
+        
+        Object.entries(recentByCategory).forEach(([category, products]) => {
+          const productsArray = products as any[];
+          const updatedProducts = productUtils.applyPromotionDiscounts(productsArray, promotions);
+          updatedByCategory[category] = updatedProducts;
+          
+          // Verificar si hay cambios en esta categoría
+          const hasChanges = updatedProducts.some((product: any, index: number) => 
+            product.price !== productsArray[index]?.price
+          );
+          if (hasChanges) {
+            hasGlobalChanges = true;
+          }
+        });
+        
+        if (hasGlobalChanges) {
+          console.log('💰 Actualizando precios en productos por categoría');
+          setRecentByCategory(updatedByCategory);
+        }
+      }
+    }
+  }, [promotions]); // Solo dependiendo de promotions
+
   // Función helper para renderizar las promociones
   const renderPromotions = (productId: number) => {
     const productPromotions = promotions[productId];
