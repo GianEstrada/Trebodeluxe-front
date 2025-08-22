@@ -3,9 +3,14 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:3001';
 
 class PromotionsApi {
-  async getPromotionsForProduct(productId) {
+  async getPromotionsForProduct(productId, categoria = null) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/promociones/producto/${productId}`, {
+      const url = new URL(`${API_BASE_URL}/api/promotions/product/${productId}`);
+      if (categoria) {
+        url.searchParams.append('categoria', categoria);
+      }
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -27,7 +32,7 @@ class PromotionsApi {
 
   async getActivePromotions() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/promociones/activas`, {
+      const response = await fetch(`${API_BASE_URL}/api/promotions/active`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

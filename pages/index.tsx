@@ -225,12 +225,12 @@ const HomeScreen: NextPage = () => {
   }, []);
 
   // Función para cargar promociones de un producto específico
-  const loadPromotionsForProduct = async (productId: number) => {
+  const loadPromotionsForProduct = async (productId: number, categoria?: string | null) => {
     if (promotions[productId] || loadingPromotions) return;
     
     try {
       setLoadingPromotions(true);
-      const promotionData = await promotionsApi.getPromotionsForProduct(productId) as any;
+      const promotionData = await (promotionsApi as any).getPromotionsForProduct(productId, categoria || null);
       
       if (promotionData.success && promotionData.promotions) {
         setPromotions(prev => ({
@@ -249,7 +249,7 @@ const HomeScreen: NextPage = () => {
   useEffect(() => {
     if (featuredProducts.length > 0) {
       featuredProducts.forEach(product => {
-        loadPromotionsForProduct(product.id);
+        loadPromotionsForProduct(product.id, product.category);
       });
     }
   }, [featuredProducts]);
@@ -257,7 +257,7 @@ const HomeScreen: NextPage = () => {
   // Cargar promociones para productos por categoría
   useEffect(() => {
     Object.values(recentByCategory).flat().forEach((product: any) => {
-      loadPromotionsForProduct(product.id);
+      loadPromotionsForProduct(product.id, product.category);
     });
   }, [recentByCategory]);
 
