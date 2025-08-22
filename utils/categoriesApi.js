@@ -12,10 +12,10 @@ export const categoriesApi = {
    */
   async getAll() {
     try {
-      const response = await apiRequest('/api/categorias');
+      const response = await apiRequest('/api/products/categories');
       return {
         success: true,
-        categories: response.categorias || []
+        categories: response.categories || []
       };
     } catch (error) {
       console.error('Error getting categories:', error);
@@ -127,12 +127,12 @@ export const categoryUtils = {
    */
   transformToFrontendFormat(apiCategory) {
     return {
-      id: apiCategory.id_categoria,
-      name: apiCategory.nombre,
-      slug: this.generateSlug(apiCategory.nombre),
-      description: apiCategory.descripcion || '',
-      isActive: apiCategory.activo,
-      order: apiCategory.orden || 0
+      id: apiCategory.id || apiCategory.id_categoria,
+      name: apiCategory.name || apiCategory.nombre,
+      slug: apiCategory.slug || this.generateSlug(apiCategory.name || apiCategory.nombre),
+      description: apiCategory.description || apiCategory.descripcion || '',
+      isActive: apiCategory.activo !== undefined ? apiCategory.activo : true,
+      order: apiCategory.orden || apiCategory.order || 0
     };
   },
 
