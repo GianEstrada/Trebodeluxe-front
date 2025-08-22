@@ -1310,12 +1310,6 @@ const HomeScreen: NextPage = () => {
                     )}
                     {/* Mostrar promociones en lugar del descuento calculado */}
                     {renderPromotions(product.id)}
-                    {/* Fallback: mostrar descuento calculado si no hay promociones */}
-                    {(!promotions[product.id] || promotions[product.id].length === 0) && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                        {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                      </div>
-                    )}
                   </div>
                   
                   <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
@@ -1422,12 +1416,6 @@ const HomeScreen: NextPage = () => {
                     )}
                     {/* Mostrar promociones en lugar del descuento calculado */}
                     {renderPromotions(product.id)}
-                    {/* Fallback: mostrar descuento calculado si no hay promociones */}
-                    {(!promotions[product.id] || promotions[product.id].length === 0) && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                        {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                      </div>
-                    )}
                   </div>
                   
                   <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
