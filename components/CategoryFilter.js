@@ -60,7 +60,11 @@ const CategoryFilter = ({
 
   const getSelectedCategoryName = () => {
     const category = categories.find(cat => cat.slug === selectedCategory || cat.id === selectedCategory);
-    return category ? t(category.name) : t('Todas las categorías');
+    if (category) {
+      const categoryName = category.name || category.nombre || 'Categoría sin nombre';
+      return t(categoryName);
+    }
+    return t('Todas las categorías');
   };
 
   const handleKeyDown = (e, categorySlug) => {
@@ -157,7 +161,7 @@ const CategoryFilter = ({
                     aria-selected={selectedCategory === (category.slug || category.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <span>{t(category.name)}</span>
+                      <span>{t(category.name || category.nombre || 'Categoría sin nombre')}</span>
                       {(selectedCategory === category.slug || selectedCategory === category.id) && (
                         <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -165,9 +169,9 @@ const CategoryFilter = ({
                       )}
                     </div>
                     {/* Mostrar descripción si está disponible */}
-                    {category.description && (
+                    {(category.description || category.descripcion) && (
                       <div className="text-xs text-gray-500 mt-1">
-                        {category.description}
+                        {category.description || category.descripcion}
                       </div>
                     )}
                   </button>
