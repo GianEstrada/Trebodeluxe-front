@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { productsApi } from '../utils/productsApi';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
 const useProductSearch = (initialQuery = '', delay = 300) => {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState([]);
@@ -35,7 +37,7 @@ const useProductSearch = (initialQuery = '', delay = 300) => {
       abortController.current = new AbortController();
 
       // Llamar a la API usando el endpoint de búsqueda
-      const response = await fetch(`/api/products/search?q=${encodeURIComponent(searchTerm)}&limit=10`, {
+      const response = await fetch(`${API_BASE_URL}/api/products/search?q=${encodeURIComponent(searchTerm)}&limit=10`, {
         signal: abortController.current.signal
       });
 

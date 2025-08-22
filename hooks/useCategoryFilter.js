@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-const useCategoryFilter = () => {
+import { useState, useRef, useCallback } from 'react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
+/**
+ * Hook personalizado para filtrado de productos por categoría
+ * Proporciona funcionalidad para cargar categorías y filtrar productos
+ */
+const useCategoryFilter = (initialCategory = 'todas') => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('todas');
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -26,7 +34,7 @@ const useCategoryFilter = () => {
       // Crear un nuevo AbortController
       abortController.current = new AbortController();
 
-      const response = await fetch('/api/products/categories', {
+      const response = await fetch(`${API_BASE_URL}/api/products/categories`, {
         signal: abortController.current.signal
       });
 
@@ -74,7 +82,7 @@ const useCategoryFilter = () => {
       // Crear un nuevo AbortController
       abortController.current = new AbortController();
 
-      let endpoint = '/api/products/catalog-items?limit=20';
+      let endpoint = `${API_BASE_URL}/api/products/catalog-items?limit=20`;
       
       if (categorySlug !== 'todas') {
         endpoint += `&categoria=${encodeURIComponent(categorySlug)}`;

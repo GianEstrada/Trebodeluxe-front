@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
 export interface IndexImage {
   id_imagen: number;
   nombre: string;
@@ -20,7 +22,7 @@ export const useIndexImages = () => {
   const loadImages = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/public/index-images');
+      const response = await fetch(`${API_BASE_URL}/api/public/index-images`);
       const data = await response.json();
       
       if (data.success) {
