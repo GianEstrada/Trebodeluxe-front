@@ -849,6 +849,9 @@ const Catalogo: NextPage = () => {
               <ProductSearchBar
                 placeholder="Buscar productos en tiempo real..."
                 className="mb-4"
+                t={t}
+                formatPrice={formatPrice}
+                currentCurrency={currentCurrency}
                 onProductSelect={(product: any) => {
                   // Redirigir al producto seleccionado
                   window.location.href = `/product/${product.id_producto}`;

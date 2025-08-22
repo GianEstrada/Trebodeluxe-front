@@ -4,19 +4,16 @@ import React, { useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import useProductSearch from '../hooks/useProductSearch';
-import { useTranslation } from '../contexts/LanguageContext';
-import { useExchangeRates } from '../contexts/ExchangeRateContext';
-import { useCurrency } from '../contexts/CurrencyContext';
 
 const ProductSearchBar = ({ 
   placeholder = 'Buscar productos...', 
   className = '', 
   onProductSelect,
-  showDropdown = true 
+  showDropdown = true,
+  t, // Función de traducción pasada como prop
+  formatPrice, // Función de formato de precio pasada como prop
+  currentCurrency = 'MXN' // Moneda actual pasada como prop
 }) => {
-  const { t } = useTranslation();
-  const { formatPrice } = useExchangeRates();
-  const { currentCurrency } = useCurrency();
   
   const {
     query,
