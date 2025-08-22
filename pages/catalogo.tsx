@@ -47,6 +47,10 @@ const CatalogoScreen: NextPage = () => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
+  // Estados para selector de variantes (estilo index.tsx)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [showVariantSelector, setShowVariantSelector] = useState(false);
+  
   // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -264,6 +268,92 @@ const CatalogoScreen: NextPage = () => {
     }
 
     return null;
+  };
+
+  // Función para renderizar promociones (estilo index.tsx)
+  const renderPromotions = (productId: number) => {
+    const promotions = productPromotions[productId];
+    if (!promotions || promotions.length === 0) return null;
+
+    return (
+      <div className="absolute top-2 left-2 flex flex-col gap-1">
+        {promotions.map((promotion: any) => {
+          if (promotion.tipo_promocion === 'porcentaje' && promotion.valor_descuento) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {Math.round(promotion.valor_descuento)}% OFF
+              </div>
+            );
+          } else if (promotion.tipo_promocion === 'x_por_y' && promotion.cantidad_requerida && promotion.cantidad_gratuita) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {promotion.cantidad_requerida}x{promotion.cantidad_gratuita}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
+  // Función para manejar agregar al carrito (estilo index.tsx)
+  const handleAddToCart = async (product: any) => {
+    try {
+      console.log('🛒 handleAddToCart called with product:', product);
+      console.log('📦 Product ID:', product.id);
+      
+      // Buscar el producto completo con variantes desde la API
+      const productDetail: any = await productsApi.getById(product.id);
+      console.log('📡 API Response:', productDetail);
+      
+      if (productDetail && productDetail.success && productDetail.product) {
+        const fullProduct = productDetail.product;
+        console.log('✅ Full product data:', fullProduct);
+        
+        // Verificar si hay variantes válidas
+        const validVariantes = fullProduct.variantes?.filter((v: any) => v && v.id_variante) || [];
+        console.log('🔍 Valid variants after filter:', validVariantes);
+        
+        if (validVariantes.length > 0) {
+          console.log('✅ Found valid variants, opening selector');
+          // Asegurar que el producto tenga el array de variantes filtrado
+          fullProduct.variantes = validVariantes;
+          handleOpenVariantSelector(fullProduct);
+        } else {
+          console.log('❌ No valid variants found');
+          alert(t('Este producto no tiene variantes disponibles'));
+        }
+      } else {
+        console.log('❌ API response failed:', productDetail);
+        alert(t('Producto no disponible'));
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar detalles del producto:', error);
+      alert(t('Error al cargar el producto'));
+    }
+  };
+
+  // Funciones para el selector de variantes y tallas
+  const handleOpenVariantSelector = (product: any) => {
+    setSelectedProduct(product);
+    setShowVariantSelector(true);
+  };
+
+  const handleCloseVariantSelector = () => {
+    setShowVariantSelector(false);
+    setSelectedProduct(null);
+  };
+
+  const handleAddToCartFromSelector = async (productId: number, variantId: number, tallaId: number, quantity: number) => {
+    await addToCart(productId, variantId, tallaId, quantity);
+    handleCloseVariantSelector();
   };
 
   // Función de búsqueda avanzada en múltiples campos
@@ -1664,7 +1754,7 @@ const CatalogoScreen: NextPage = () => {
                                 <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                               </div>
                             )}
-                            {renderProductPromotion(product)}
+                            {renderPromotions(product.id)}
                           </div>
                           
                           <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
@@ -1692,14 +1782,7 @@ const CatalogoScreen: NextPage = () => {
                             onClick={(e) => {
                               e.preventDefault();
                               if (product.inStock) {
-                                // Para productos sin variantes, usar la primera variante disponible
-                                if (product.variants && product.variants[0]) {
-                                  const variant = product.variants[0];
-                                  const talla = variant.tallas?.[0];
-                                  if (talla) {
-                                    addToCart(product.id, variant.id, talla.id, 1);
-                                  }
-                                }
+                                handleAddToCart(product);
                               }
                             }}
                           >
@@ -1927,6 +2010,17 @@ const CatalogoScreen: NextPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Selector de Variantes y Tallas */}
+      {selectedProduct && (
+        <VariantSizeSelector
+          isOpen={showVariantSelector}
+          onClose={handleCloseVariantSelector}
+          product={selectedProduct}
+          onAddToCart={handleAddToCartFromSelector}
+          currentLanguage={currentLanguage}
+        />
+      )}
       
     </div>
   );
