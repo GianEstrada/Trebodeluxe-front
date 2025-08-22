@@ -275,7 +275,7 @@ const HomeScreen: NextPage = () => {
                 key={promotion.id_promocion}
                 className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
               >
-                {promotion.porcentaje_descuento}% OFF
+                {Math.round(promotion.porcentaje_descuento)}% OFF
               </div>
             );
           } else if (promotion.tipo === 'x_por_y' && promotion.cantidad_comprada && promotion.cantidad_pagada) {

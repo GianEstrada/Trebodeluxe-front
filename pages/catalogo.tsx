@@ -241,7 +241,7 @@ const CatalogoScreen: NextPage = () => {
     if (promotion.tipo_promocion === 'porcentaje') {
       return (
         <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-          {promotion.valor_descuento}% OFF
+          {Math.round(promotion.valor_descuento)}% OFF
         </div>
       );
     } else if (promotion.tipo_promocion === 'x_por_y') {

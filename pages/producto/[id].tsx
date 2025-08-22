@@ -1081,7 +1081,7 @@ const ProductPage: NextPage = () => {
                   {/* Indicadores de descuento */}
                   {selectedVariant.descuento_porcentaje && (
                     <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-lg font-bold">
-                      {selectedVariant.descuento_porcentaje}% OFF
+                      {Math.round(selectedVariant.descuento_porcentaje)}% OFF
                     </div>
                   )}
                   
