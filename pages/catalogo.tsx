@@ -11,6 +11,7 @@ import { useIndexImages } from "../hooks/useIndexImages";
 import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { useCategories } from "../hooks/useCategories";
+import ProductSearchBar from "../components/ProductSearchBar";
 
 const Catalogo: NextPage = () => {
   const router = useRouter();
@@ -840,6 +841,23 @@ const Catalogo: NextPage = () => {
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-white mb-4">Catálogo</h1>
             <div className="h-1 w-32 bg-gradient-to-r from-green-500 to-green-300 rounded"></div>
+          </div>
+          
+          {/* Barra de búsqueda en tiempo real */}
+          <div className="mb-8">
+            <div className="max-w-2xl mx-auto">
+              <ProductSearchBar
+                placeholder="Buscar productos en tiempo real..."
+                className="mb-4"
+                onProductSelect={(product: any) => {
+                  // Redirigir al producto seleccionado
+                  window.location.href = `/product/${product.id_producto}`;
+                }}
+              />
+              <p className="text-center text-gray-300 text-sm">
+                {t('Busca por nombre, categoría o descripción del producto')}
+              </p>
+            </div>
           </div>
           
           {/* Aquí puedes agregar el contenido que necesites */}
