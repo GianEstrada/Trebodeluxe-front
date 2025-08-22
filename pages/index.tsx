@@ -1366,7 +1366,9 @@ const HomeScreen: NextPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                      {product.originalPrice > product.price && (
+                        <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                      )}
                     </div>
                   </div>
                   
@@ -1472,7 +1474,9 @@ const HomeScreen: NextPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
-                      <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                      {product.originalPrice > product.price && (
+                        <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                      )}
                     </div>
                   </div>
                   
