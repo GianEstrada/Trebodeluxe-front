@@ -11,6 +11,7 @@ import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { productsApi, productUtils } from "../utils/productsApi";
 import { categoriesApi } from "../utils/categoriesApi";
+import { promotionsApi } from "../utils/promotionsApi";
 import { useCategories } from "../hooks/useCategories";
 import VariantSizeSelector from "../components/VariantSizeSelector";
 
@@ -26,6 +27,22 @@ interface Product {
   color: string;
   size: string;
   inStock: boolean;
+  promotions?: Promotion[];
+}
+
+// Definir el tipo para las promociones
+interface Promotion {
+  id_promocion: number;
+  nombre: string;
+  tipo: 'porcentaje' | 'x_por_y' | 'codigo';
+  activo: boolean;
+  fecha_inicio: string;
+  fecha_fin: string;
+  porcentaje_descuento?: number;
+  cantidad_comprada?: number;
+  cantidad_pagada?: number;
+  aplica_a: 'todos' | 'categoria' | 'producto';
+  prioridad: number;
 }
 
 const HomeScreen: NextPage = () => {
@@ -45,6 +62,10 @@ const HomeScreen: NextPage = () => {
   const [recentByCategory, setRecentByCategory] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para promociones
+  const [promotions, setPromotions] = useState<Record<number, Promotion[]>>({});
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
   
   // Estado para las categorías activas con contenido
   const [activeCategoriesWithContent, setActiveCategoriesWithContent] = useState<any[]>([]);
@@ -202,6 +223,76 @@ const HomeScreen: NextPage = () => {
 
     loadProducts();
   }, []);
+
+  // Función para cargar promociones de un producto específico
+  const loadPromotionsForProduct = async (productId: number) => {
+    if (promotions[productId] || loadingPromotions) return;
+    
+    try {
+      setLoadingPromotions(true);
+      const promotionData = await promotionsApi.getPromotionsForProduct(productId) as any;
+      
+      if (promotionData.success && promotionData.promotions) {
+        setPromotions(prev => ({
+          ...prev,
+          [productId]: promotionData.promotions
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando promociones para producto:', productId, error);
+    } finally {
+      setLoadingPromotions(false);
+    }
+  };
+
+  // Cargar promociones para todos los productos featured al cargar
+  useEffect(() => {
+    if (featuredProducts.length > 0) {
+      featuredProducts.forEach(product => {
+        loadPromotionsForProduct(product.id);
+      });
+    }
+  }, [featuredProducts]);
+
+  // Cargar promociones para productos por categoría
+  useEffect(() => {
+    Object.values(recentByCategory).flat().forEach((product: any) => {
+      loadPromotionsForProduct(product.id);
+    });
+  }, [recentByCategory]);
+
+  // Función helper para renderizar las promociones
+  const renderPromotions = (productId: number) => {
+    const productPromotions = promotions[productId];
+    if (!productPromotions || productPromotions.length === 0) return null;
+
+    return (
+      <div className="absolute top-2 left-2 flex flex-col gap-1">
+        {productPromotions.map((promotion) => {
+          if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {promotion.porcentaje_descuento}% OFF
+              </div>
+            );
+          } else if (promotion.tipo === 'x_por_y' && promotion.cantidad_comprada && promotion.cantidad_pagada) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {promotion.cantidad_comprada}x{promotion.cantidad_pagada}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
 
   // useEffect para debuggear categorías
   useEffect(() => {
@@ -1217,9 +1308,14 @@ const HomeScreen: NextPage = () => {
                         <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                    </div>
+                    {/* Mostrar promociones en lugar del descuento calculado */}
+                    {renderPromotions(product.id)}
+                    {/* Fallback: mostrar descuento calculado si no hay promociones */}
+                    {(!promotions[product.id] || promotions[product.id].length === 0) && (
+                      <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+                        {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                      </div>
+                    )}
                   </div>
                   
                   <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
@@ -1324,9 +1420,14 @@ const HomeScreen: NextPage = () => {
                         <span className="text-white font-bold text-lg">{t('Agotado')}</span>
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
-                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                    </div>
+                    {/* Mostrar promociones en lugar del descuento calculado */}
+                    {renderPromotions(product.id)}
+                    {/* Fallback: mostrar descuento calculado si no hay promociones */}
+                    {(!promotions[product.id] || promotions[product.id].length === 0) && (
+                      <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
+                        {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                      </div>
+                    )}
                   </div>
                   
                   <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
