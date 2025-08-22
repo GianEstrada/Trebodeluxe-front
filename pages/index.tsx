@@ -145,8 +145,10 @@ const HomeScreen: NextPage = () => {
         setActiveCategoriesWithContent(response.categories);
         
         // Si hay categorías activas, establecer la primera como seleccionada
-        setSelectedCategory(response.categories[0].nombre);
-        console.log('🎯 Categoría seleccionada:', response.categories[0].nombre);
+        const firstCategory = response.categories[0];
+        const categoryName = firstCategory?.nombre || firstCategory?.name || 'Camisetas';
+        setSelectedCategory(categoryName);
+        console.log('🎯 Categoría seleccionada:', categoryName);
       } else {
         console.log('⚠️ No hay categorías de la API, usando fallback');
         // Fallback a categorías por defecto si no hay respuesta de la API
@@ -1398,21 +1400,24 @@ const HomeScreen: NextPage = () => {
 
       <div className="self-stretch flex flex-col items-start justify-start !pt-1.5 !pb-1.5 !pl-1 !pr-1 gap-[101px] text-center text-black">
         <div className="self-stretch flex flex-row items-center justify-start">
-          {activeCategoriesWithContent.map((category, index) => (
+          {activeCategoriesWithContent.map((category, index) => {
+            const categoryName = category.nombre || category.name || 'Categoría';
+            return (
             <div 
               key={category.id_categoria}
               className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-                selectedCategory === category.nombre ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
+                selectedCategory === categoryName ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
               }`}
-              onClick={() => setSelectedCategory(category.nombre)}
+              onClick={() => setSelectedCategory(categoryName)}
             >
               <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-                selectedCategory === category.nombre ? 'text-white' : 'hover:text-white'
+                selectedCategory === categoryName ? 'text-white' : 'hover:text-white'
               }`}>
-                {t(category.nombre)}
+                {t(categoryName)}
               </div>
             </div>
-          ))}
+            );
+          })}
           {activeCategoriesWithContent.length === 0 && (
             <div className="flex-1 relative h-[90px] bg-gray-100 flex items-center justify-center">
               <div className="text-gray-500">Cargando categorías...</div>
@@ -1426,8 +1431,8 @@ const HomeScreen: NextPage = () => {
       <div className="self-stretch bg-transparent flex flex-col items-center justify-start !py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
         <div className="w-full">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t(selectedCategory.toUpperCase())}</h2>
-            <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t(selectedCategory.toLowerCase())}</p>
+            <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t((selectedCategory || 'Camisetas').toUpperCase())}</h2>
+            <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t((selectedCategory || 'camisetas').toLowerCase())}</p>
           </div>
           
           {/* Manejo de estados de carga y error */}
