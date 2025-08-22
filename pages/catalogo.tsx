@@ -230,27 +230,32 @@ const CatalogoScreen: NextPage = () => {
   const renderProductPromotion = (product: any) => {
     const promotions = productPromotions[product.id];
     
-    if (!promotions || promotions.length === 0) {
-      // No hay promociones activas de BD
+    // Validación estricta: solo mostrar si hay promociones reales de BD
+    if (!promotions || promotions.length === 0 || !Array.isArray(promotions)) {
       return null;
     }
 
-    // Mostrar la primera promoción activa
+    // Mostrar la primera promoción activa válida
     const promotion = promotions[0];
     
-    if (promotion.tipo_promocion === 'porcentaje') {
+    // Validación adicional de la promoción
+    if (!promotion || !promotion.tipo_promocion) {
+      return null;
+    }
+    
+    if (promotion.tipo_promocion === 'porcentaje' && promotion.valor_descuento > 0) {
       return (
         <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">
           {Math.round(promotion.valor_descuento)}% OFF
         </div>
       );
-    } else if (promotion.tipo_promocion === 'x_por_y') {
+    } else if (promotion.tipo_promocion === 'x_por_y' && promotion.cantidad_requerida && promotion.cantidad_gratuita) {
       return (
         <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-sm font-bold">
           {promotion.cantidad_requerida}x{promotion.cantidad_gratuita || promotion.cantidad_descuento}
         </div>
       );
-    } else if (promotion.tipo_promocion === 'monto_fijo') {
+    } else if (promotion.tipo_promocion === 'monto_fijo' && promotion.valor_descuento > 0) {
       return (
         <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-sm font-bold">
           -${promotion.valor_descuento}
@@ -483,7 +488,7 @@ const CatalogoScreen: NextPage = () => {
                     product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') :
                     'Sin tallas',
               price: product.precio_minimo || 0,
-              originalPrice: product.precio_minimo ? product.precio_minimo * 1.25 : 0,
+              originalPrice: 0, // No crear precios artificiales - usar solo datos reales de BD
               inStock: product.tiene_stock || false,
               description: product.descripcion || ''
             };
@@ -521,7 +526,7 @@ const CatalogoScreen: NextPage = () => {
                   product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') :
                   'Sin tallas'),
             price: transformed.price || product.precio_minimo || 0,
-            originalPrice: transformed.originalPrice || (product.precio_minimo ? product.precio_minimo * 1.25 : 0),
+            originalPrice: 0, // No crear precios artificiales - usar solo datos reales de BD
             inStock: transformed.inStock !== undefined ? transformed.inStock : (product.tiene_stock || false),
             description: transformed.description || product.descripcion || ''
           };
@@ -558,7 +563,7 @@ const CatalogoScreen: NextPage = () => {
               color: 'Azul, Rojo, Verde',
               size: 'S, M, L, XL',
               price: 299,
-              originalPrice: 399,
+              originalPrice: 0, // No crear descuentos artificiales
               image: '/sin-titulo1-2@2x.png',
               inStock: true,
               description: 'Camiseta básica de alta calidad con tejido suave y cómodo'
@@ -571,7 +576,7 @@ const CatalogoScreen: NextPage = () => {
               color: 'Negro, Gris',
               size: '28, 30, 32, 34',
               price: 599,
-              originalPrice: 799,
+              originalPrice: 0, // No crear descuentos artificiales
               image: '/sin-titulo1-2@2x.png',
               inStock: true,
               description: 'Pantalón casual perfecto para uso diario con diseño moderno'
@@ -584,7 +589,7 @@ const CatalogoScreen: NextPage = () => {
               color: 'Blanco, Negro, Azul',
               size: '7, 8, 9, 10, 11',
               price: 899,
-              originalPrice: 1199,
+              originalPrice: 0, // No crear descuentos artificiales
               image: '/sin-titulo1-2@2x.png',
               inStock: true,
               description: 'Zapatos deportivos cómodos para actividades físicas y casual'
