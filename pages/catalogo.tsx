@@ -13,6 +13,41 @@ import { canAccessAdminPanel } from "../utils/roles";
 import { useCategories } from "../hooks/useCategories";
 import ProductSearchBar from "../components/ProductSearchBar";
 import CategoryFilter from "../components/CategoryFilter";
+import VariantSizeSelector from "../components/VariantSizeSelector";
+
+// Imports para el sistema de productos y promociones
+import { productsApi, productUtils } from "../utils/productsApi";
+import { promotionsApi } from "../utils/promotionsApi";
+import { categoriesApi } from "../utils/categoriesApi";
+
+// Interfaces para productos y promociones
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  originalPrice: number;
+  image: string;
+  category: string;
+  brand: string;
+  color: string;
+  size: string;
+  inStock: boolean;
+  promotions?: Promotion[];
+}
+
+interface Promotion {
+  id_promocion: number;
+  nombre: string;
+  tipo: 'porcentaje' | 'x_por_y' | 'codigo';
+  activo: boolean;
+  fecha_inicio: string;
+  fecha_fin: string;
+  porcentaje_descuento?: number;
+  cantidad_comprada?: number;
+  cantidad_pagada?: number;
+  aplica_a: 'todos' | 'categoria' | 'producto';
+  prioridad: number;
+}
 
 const Catalogo: NextPage = () => {
   const router = useRouter();
@@ -30,10 +65,23 @@ const Catalogo: NextPage = () => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Estados para filtros y productos
+  // Estados para filtros y productos (existentes)
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
+
+  // Estados del sistema de productos del index
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [recentByCategory, setRecentByCategory] = useState<{[key: string]: any[]}>({});
+  const [activeCategoriesWithContent, setActiveCategoriesWithContent] = useState<any[]>([]);
+  const [promotions, setPromotions] = useState<{[productId: number]: any[]}>({});
+  const [loading, setLoading] = useState(false);
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Estados para el selector de variantes
+  const [showVariantSelector, setShowVariantSelector] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -112,6 +160,293 @@ const Catalogo: NextPage = () => {
     // Redirigir al producto seleccionado
     window.location.href = `/product/${product.id_producto}`;
   };
+
+  // ===== SISTEMA DE CARGA DE PRODUCTOS DEL INDEX =====
+  
+  // Función para obtener productos filtrados por categoría seleccionada
+  const getFilteredProductsByCategory = () => {
+    return featuredProducts.filter(product => product.category === selectedCategory);
+  };
+
+  // Función para cargar categorías activas con contenido
+  const loadActiveCategoriesWithContent = async () => {
+    try {
+      console.log('🔄 Cargando categorías dinámicas...');
+      const response = await categoriesApi.getAll() as any;
+      console.log('📊 Respuesta de categorías:', response);
+      
+      if (response.success && response.categories && response.categories.length > 0) {
+        console.log('✅ Categorías cargadas exitosamente:', response.categories);
+        setActiveCategoriesWithContent(response.categories);
+        
+        // Si hay categorías activas, establecer la primera como seleccionada
+        const firstCategory = response.categories[0];
+        const categoryName = firstCategory?.nombre || firstCategory?.name || 'Camisetas';
+        setSelectedCategory(categoryName);
+        console.log('🎯 Categoría seleccionada:', categoryName);
+      } else {
+        console.log('⚠️ No hay categorías de la API, usando fallback');
+        // Fallback a categorías por defecto si no hay respuesta de la API
+        const fallbackCategories = [
+          { id_categoria: 1, nombre: 'Camisetas' },
+          { id_categoria: 2, nombre: 'Polos' },
+          { id_categoria: 3, nombre: 'Zapatos' },
+          { id_categoria: 4, nombre: 'Gorras' },
+          { id_categoria: 5, nombre: 'Accesorios' },
+          { id_categoria: 6, nombre: 'Pantalones' }
+        ];
+        setActiveCategoriesWithContent(fallbackCategories);
+        setSelectedCategory('Camisetas');
+      }
+    } catch (error) {
+      console.error('❌ Error cargando categorías activas:', error);
+      // Fallback en caso de error
+      const fallbackCategories = [
+        { id_categoria: 1, nombre: 'Camisetas' },
+        { id_categoria: 2, nombre: 'Polos' },
+        { id_categoria: 3, nombre: 'Zapatos' },
+        { id_categoria: 4, nombre: 'Gorras' },
+        { id_categoria: 5, nombre: 'Accesorios' },
+        { id_categoria: 6, nombre: 'Pantalones' }
+      ];
+      setActiveCategoriesWithContent(fallbackCategories);
+      setSelectedCategory('Camisetas');
+    }
+  };
+
+  // Función principal de carga de productos
+  const loadProducts = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Loading featured products...');
+      // Usar getFeatured para obtener productos destacados
+      const recentResponse = await productsApi.getFeatured(12) as any;
+      console.log('📡 Featured products API response:', recentResponse);
+      
+      if (recentResponse.success) {
+        console.log('✅ Recent products raw:', recentResponse.products);
+        const transformedProducts = recentResponse.products.map(productUtils.transformToLegacyFormat);
+        console.log('🔄 Products after transformation:', transformedProducts);
+        setFeaturedProducts(transformedProducts);
+      }
+
+      // Cargar productos recientes por categoría para la segunda sección
+      const categoryResponse = await productsApi.getRecentByCategory(4) as any;
+      if (categoryResponse.success) {
+        const transformedByCategory: any = {};
+        Object.keys(categoryResponse.productsByCategory).forEach(category => {
+          transformedByCategory[category] = categoryResponse.productsByCategory[category]
+            .map(productUtils.transformToLegacyFormat);
+        });
+        setRecentByCategory(transformedByCategory);
+      }
+
+      // Cargar categorías activas con contenido
+      await loadActiveCategoriesWithContent();
+
+    } catch (err: any) {
+      console.error('Error cargando productos:', err);
+      setError(err.message);
+      
+      // No mostrar productos fallback, solo productos de la base de datos
+      setFeaturedProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para cargar promociones de un producto específico
+  const loadPromotionsForProduct = async (productId: number, categoria?: string | null) => {
+    if (promotions[productId] || loadingPromotions) return;
+    
+    try {
+      setLoadingPromotions(true);
+      const promotionData = await (promotionsApi as any).getPromotionsForProduct(productId, categoria || null);
+      
+      if (promotionData.success && promotionData.promotions) {
+        setPromotions(prev => ({
+          ...prev,
+          [productId]: promotionData.promotions
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando promociones para producto:', productId, error);
+    } finally {
+      setLoadingPromotions(false);
+    }
+  };
+
+  // Función para renderizar promociones en las cards
+  const renderPromotions = (productId: number) => {
+    const productPromotions = promotions[productId];
+    if (!productPromotions || productPromotions.length === 0) return null;
+
+    return (
+      <div className="absolute top-2 left-2 flex flex-col gap-1">
+        {productPromotions.map((promotion) => {
+          if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {Math.round(promotion.porcentaje_descuento)}% OFF
+              </div>
+            );
+          } else if (promotion.tipo === 'x_por_y' && promotion.cantidad_comprada && promotion.cantidad_pagada) {
+            return (
+              <div
+                key={promotion.id_promocion}
+                className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold"
+              >
+                {promotion.cantidad_comprada}x{promotion.cantidad_pagada}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
+  // Función para manejar agregar al carrito
+  const handleAddToCart = async (product: Product) => {
+    try {
+      console.log('🛒 handleAddToCart called with product:', product);
+      console.log('📦 Product ID:', product.id);
+      
+      // Buscar el producto completo con variantes desde la API
+      const productDetail: any = await productsApi.getById(product.id);
+      console.log('📡 API Response:', productDetail);
+      
+      if (productDetail && productDetail.success && productDetail.product) {
+        const fullProduct = productDetail.product;
+        console.log('✅ Full product data:', fullProduct);
+        console.log('🎨 Product variants raw:', fullProduct.variantes);
+        
+        // Verificar si hay variantes válidas
+        const validVariantes = fullProduct.variantes?.filter((v: any) => v && v.id_variante) || [];
+        console.log('🔍 Valid variants after filter:', validVariantes);
+        
+        if (validVariantes.length > 0) {
+          console.log('✅ Found valid variants, opening selector');
+          // Asegurar que el producto tenga el array de variantes filtrado
+          fullProduct.variantes = validVariantes;
+          handleOpenVariantSelector(fullProduct);
+        } else {
+          console.log('❌ No valid variants found');
+          console.log('🔍 Raw variantes field:', typeof fullProduct.variantes, fullProduct.variantes);
+          alert(t('Este producto no tiene variantes disponibles'));
+        }
+      } else {
+        console.log('❌ API response failed:', productDetail);
+        console.log('🔍 Response structure check:');
+        console.log('  - success:', productDetail?.success);
+        console.log('  - has product:', !!productDetail?.product);
+        alert(t('Producto no disponible'));
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar detalles del producto:', error);
+      alert(t('Error al cargar el producto'));
+    }
+  };
+
+  // Funciones para el selector de variantes y tallas
+  const handleOpenVariantSelector = (product: any) => {
+    setSelectedProduct(product);
+    setShowVariantSelector(true);
+  };
+
+  const handleCloseVariantSelector = () => {
+    setShowVariantSelector(false);
+    setSelectedProduct(null);
+  };
+
+  const handleAddToCartFromSelector = async (productId: number, variantId: number, tallaId: number, quantity: number) => {
+    await addToCart(productId, variantId, tallaId, quantity);
+  };
+
+  // ===== USEEFFECTS PARA EL SISTEMA DE PRODUCTOS =====
+
+  // Cargar productos al montar el componente
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  // Cargar promociones para todos los productos featured al cargar
+  useEffect(() => {
+    if (featuredProducts.length > 0) {
+      featuredProducts.forEach(product => {
+        loadPromotionsForProduct(product.id, product.category);
+      });
+    }
+  }, [featuredProducts]);
+
+  // Cargar promociones para productos por categoría
+  useEffect(() => {
+    Object.values(recentByCategory).flat().forEach((product: any) => {
+      loadPromotionsForProduct(product.id, product.category);
+    });
+  }, [recentByCategory]);
+
+  // Aplicar descuentos de promociones cuando cambien las promociones
+  useEffect(() => {
+    if (Object.keys(promotions).length > 0) {
+      console.log('🎯 Aplicando descuentos de promociones a productos...');
+      
+      // Actualizar productos destacados con descuentos
+      if (featuredProducts.length > 0) {
+        const updatedFeatured = productUtils.applyPromotionDiscounts(featuredProducts, promotions);
+        // Solo actualizar si realmente hay cambios
+        const hasChanges = updatedFeatured.some((product: any, index: number) => 
+          product.price !== featuredProducts[index]?.price
+        );
+        if (hasChanges) {
+          console.log('💰 Actualizando precios en productos destacados');
+          setFeaturedProducts(updatedFeatured);
+        }
+      }
+
+      // Actualizar productos por categoría con descuentos
+      if (Object.keys(recentByCategory).length > 0) {
+        const updatedByCategory: any = {};
+        Object.keys(recentByCategory).forEach(category => {
+          updatedByCategory[category] = productUtils.applyPromotionDiscounts(recentByCategory[category], promotions);
+        });
+        
+        // Solo actualizar si hay cambios
+        const hasChanges = Object.keys(updatedByCategory).some(category =>
+          updatedByCategory[category].some((product: any, index: number) => 
+            product.price !== recentByCategory[category][index]?.price
+          )
+        );
+        
+        if (hasChanges) {
+          console.log('💰 Actualizando precios en productos por categoría');
+          setRecentByCategory(updatedByCategory);
+        }
+      }
+    }
+  }, [promotions]);
+
+  // Cargar preferencias guardadas
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('preferred-language');
+    const savedCurrency = localStorage.getItem('preferred-currency');
+    if (savedLanguage) setCurrentLanguage(savedLanguage);
+    if (savedCurrency) setCurrentCurrency(savedCurrency);
+  }, []);
+
+  // Efecto para el carrusel de texto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTextIndex((prevIndex) => (prevIndex + 1) % promoTexts.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
@@ -908,6 +1243,188 @@ const Catalogo: NextPage = () => {
             </div>
           </div>
           
+          {/* ===== SECCIÓN DE PRODUCTOS DESTACADOS ===== */}
+          {featuredProducts.length > 0 && (
+            <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
+              <div className="w-full">
+                <div className="mb-8 text-center">
+                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('PRODUCTOS DESTACADOS')}</h2>
+                  <p className="text-gray-300 text-lg">{t('Descubre nuestra selección especial')}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                  {featuredProducts.slice(0, 12).map((product: Product) => (
+                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
+                      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                        <div className="relative mb-4">
+                          <Image
+                            className="w-full h-64 object-cover rounded-lg"
+                            width={300}
+                            height={256}
+                            src={product.image}
+                            alt={product.name}
+                          />
+                          {!product.inStock && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                            </div>
+                          )}
+                          {/* Mostrar promociones */}
+                          {renderPromotions(product.id)}
+                        </div>
+                        
+                        <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
+                        <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
+                        <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
+                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
+                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                        
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                            {product.originalPrice > product.price && (
+                              <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <button
+                          disabled={!product.inStock}
+                          className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
+                            product.inStock 
+                              ? 'bg-white text-black hover:bg-gray-100' 
+                              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (product.inStock) {
+                              handleAddToCart(product);
+                            }
+                          }}
+                        >
+                          {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                        </button>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manejo de estados de carga y error para productos destacados */}
+          {loading && (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-white text-lg">Cargando productos...</div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6 mx-4">
+              <p className="text-red-200 text-center">Error: {error}</p>
+            </div>
+          )}
+
+          {/* ===== SECCIÓN DE PRODUCTOS POR CATEGORÍA ===== */}
+          {activeCategoriesWithContent.length > 0 && (
+            <div className="self-stretch flex flex-col items-start justify-start text-center text-black">
+              <div className="self-stretch flex flex-row items-center justify-start">
+                {activeCategoriesWithContent.map((category, index) => {
+                  const categoryName = category.nombre || category.name || 'Categoría';
+                  return (
+                  <div 
+                    key={category.id_categoria}
+                    className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
+                      selectedCategory === categoryName ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
+                    }`}
+                    onClick={() => setSelectedCategory(categoryName)}
+                  >
+                    <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
+                      selectedCategory === categoryName ? 'text-white' : 'hover:text-white'
+                    }`}>
+                      {t(categoryName)}
+                    </div>
+                  </div>
+                  );
+                })}
+                {activeCategoriesWithContent.length === 0 && (
+                  <div className="flex-1 relative h-[90px] bg-gray-100 flex items-center justify-center">
+                    <div className="text-gray-500">Cargando categorías...</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Sección de productos por categoría */}
+          {getFilteredProductsByCategory().length > 0 && (
+            <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
+              <div className="w-full">
+                <div className="mb-8 text-center">
+                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t((selectedCategory || 'Camisetas').toUpperCase())}</h2>
+                  <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t((selectedCategory || 'camisetas').toLowerCase())}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                  {getFilteredProductsByCategory().slice(0, 6).map((product: Product) => (
+                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
+                      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                        <div className="relative mb-4">
+                          <Image
+                            className="w-full h-64 object-cover rounded-lg"
+                            width={300}
+                            height={256}
+                            src={product.image}
+                            alt={product.name}
+                          />
+                          {!product.inStock && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                            </div>
+                          )}
+                          {/* Mostrar promociones */}
+                          {renderPromotions(product.id)}
+                        </div>
+                        
+                        <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
+                        <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
+                        <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
+                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
+                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                        
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                            {product.originalPrice > product.price && (
+                              <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <button
+                          disabled={!product.inStock}
+                          className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
+                            product.inStock 
+                              ? 'bg-white text-black hover:bg-gray-100' 
+                              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (product.inStock) {
+                              handleAddToCart(product);
+                            }
+                          }}
+                        >
+                          {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                        </button>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Productos filtrados */}
           {filteredProducts.length > 0 && (
             <div className="mb-8">
@@ -1216,6 +1733,18 @@ const Catalogo: NextPage = () => {
             </div>
           </div>
         </footer>
+
+      {/* Selector de Variantes y Tallas */}
+      {selectedProduct && (
+        <VariantSizeSelector
+          isOpen={showVariantSelector}
+          onClose={handleCloseVariantSelector}
+          product={selectedProduct}
+          onAddToCart={handleAddToCartFromSelector}
+          currentLanguage={currentLanguage}
+        />
+      )}
+      
       </div>
     </div>
   );
