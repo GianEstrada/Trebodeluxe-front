@@ -23,7 +23,7 @@ const ProductosCategoriaView: React.FC<ProductosCategoriaViewProps> = ({ current
   };
 
   const formatPrice = (price: number | null | undefined) => {
-    if (price === null || price === undefined) return 'Sin precio';
+    if (price === null || price === undefined || isNaN(price) || !isFinite(price)) return 'Sin precio';
     return `$${price.toFixed(2)}`;
   };
 

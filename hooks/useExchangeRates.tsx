@@ -85,22 +85,36 @@ export const useExchangeRates = () => {
   };
 
   // Función para formatear precio con conversión
-  const formatPrice = (price: number, targetCurrency: string = 'MXN', baseCurrency: string = 'MXN') => {
-    if (!price || price <= 0) return `${CURRENCY_SYMBOLS[targetCurrency] || '$'}0.00`;
+  const formatPrice = (price: number | string | null | undefined, targetCurrency: string = 'MXN', baseCurrency: string = 'MXN') => {
+    // Convertir el precio a número de manera segura
+    let numericPrice: number;
+    
+    if (typeof price === 'string') {
+      numericPrice = parseFloat(price);
+    } else if (typeof price === 'number') {
+      numericPrice = price;
+    } else {
+      numericPrice = 0;
+    }
+    
+    // Validar que sea un número válido y mayor que 0
+    if (!numericPrice || isNaN(numericPrice) || numericPrice <= 0) {
+      return `${CURRENCY_SYMBOLS[targetCurrency] || '$'}0.00`;
+    }
     
     let convertedPrice: number;
     
     if (baseCurrency === targetCurrency) {
       // Sin conversión necesaria
-      convertedPrice = price;
+      convertedPrice = numericPrice;
     } else {
       // Convertir desde la moneda base a USD (base de Open Exchange Rates)
       let priceInUSD: number;
       if (baseCurrency === 'USD') {
-        priceInUSD = price;
+        priceInUSD = numericPrice;
       } else {
         const baseRate = exchangeRates[baseCurrency] || 1;
-        priceInUSD = price / baseRate;
+        priceInUSD = numericPrice / baseRate;
       }
       
       // Convertir de USD a la moneda objetivo
@@ -110,6 +124,11 @@ export const useExchangeRates = () => {
         const targetRate = exchangeRates[targetCurrency] || 1;
         convertedPrice = priceInUSD * targetRate;
       }
+    }
+    
+    // Validar que convertedPrice sea un número válido antes de usar toFixed
+    if (isNaN(convertedPrice) || !isFinite(convertedPrice)) {
+      return `${CURRENCY_SYMBOLS[targetCurrency] || '$'}0.00`;
     }
     
     const formattedPrice = convertedPrice.toFixed(2);

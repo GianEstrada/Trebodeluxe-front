@@ -286,7 +286,21 @@ const ProductPage: NextPage = () => {
   };
 
   const formatPrice = (price: number | string | null | undefined) => {
-    const numPrice = typeof price === 'string' ? parseFloat(price) : (price || 0);
+    let numPrice: number;
+    
+    if (typeof price === 'string') {
+      numPrice = parseFloat(price);
+    } else if (typeof price === 'number') {
+      numPrice = price;
+    } else {
+      numPrice = 0;
+    }
+    
+    // Validar que sea un número válido
+    if (isNaN(numPrice) || !isFinite(numPrice)) {
+      numPrice = 0;
+    }
+    
     return `$${numPrice.toFixed(2)}`;
   };
 

@@ -107,7 +107,7 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
   };
 
   const formatPrice = (price: number | null | undefined) => {
-    if (price === null || price === undefined) return '-';
+    if (price === null || price === undefined || isNaN(price) || !isFinite(price)) return '-';
     return `$${price.toFixed(2)}`;
   };
 
