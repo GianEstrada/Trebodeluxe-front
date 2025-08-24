@@ -28,8 +28,25 @@ const CategoryFilter = ({
     categories_data: categories,
     isLoading,
     error,
-    selectedCategory
+    selectedCategory,
+    filteredProducts_length: filteredProducts.length
   });
+
+  // Notificar al padre cuando cambien los productos filtrados
+  useEffect(() => {
+    if (onFilterChange && filteredProducts.length >= 0) {
+      console.log('📤 CategoryFilter useEffect - Enviando actualización al padre:', {
+        category: selectedCategory,
+        products: filteredProducts,
+        products_length: filteredProducts.length
+      });
+      
+      onFilterChange({
+        category: selectedCategory,
+        products: filteredProducts
+      });
+    }
+  }, [filteredProducts, selectedCategory, onFilterChange]);
 
   // Manejar clics fuera del componente para cerrar el dropdown
   useEffect(() => {
@@ -51,16 +68,9 @@ const CategoryFilter = ({
   }, []);
 
   const handleCategorySelect = (categorySlug) => {
+    console.log('🎯 CategoryFilter handleCategorySelect:', categorySlug);
     selectCategory(categorySlug);
     setIsDropdownOpen(false);
-    
-    // Notificar al componente padre sobre el cambio
-    if (onFilterChange) {
-      onFilterChange({
-        category: categorySlug,
-        products: filteredProducts
-      });
-    }
   };
 
   const toggleDropdown = () => {

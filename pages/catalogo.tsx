@@ -169,8 +169,9 @@ const Catalogo: NextPage = () => {
   };
 
   const handleProductSelect = (product: any) => {
-    // Redirigir al producto seleccionado
-    window.location.href = `/product/${product.id_producto}`;
+    // Redirigir al producto seleccionado usando la estructura de BD correcta
+    const productId = product.id_producto || product.id;
+    window.location.href = `/producto/${productId}`;
   };
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
@@ -178,20 +179,65 @@ const Catalogo: NextPage = () => {
     // Si hay productos filtrados, mostrar esos con el formato de cards mejoradas
     if (filteredProducts.length > 0) {
       console.log('🔄 Transformando productos filtrados:', filteredProducts);
-      return filteredProducts.map(product => {
+      return filteredProducts.map((product: any) => {
+        // Obtener la primera variante disponible para precio e imagen
+        const firstVariant = product.variantes && product.variantes[0];
+        const firstImage = firstVariant && firstVariant.imagenes && firstVariant.imagenes[0];
+        
+        // Determinar precio desde la estructura de BD real
+        let price = 0;
+        if (product.precio_minimo) {
+          price = parseFloat(product.precio_minimo);
+        } else if (firstVariant && firstVariant.precio) {
+          price = parseFloat(firstVariant.precio);
+        } else if (product.stock && product.stock[0] && product.stock[0].precio) {
+          price = parseFloat(product.stock[0].precio);
+        }
+        
+        // Determinar precio original (máximo)
+        let originalPrice = price;
+        if (product.precio_maximo && parseFloat(product.precio_maximo) > price) {
+          originalPrice = parseFloat(product.precio_maximo);
+        }
+        
+        // Obtener colores disponibles de las variantes
+        const availableColors = product.variantes && product.variantes.length > 0 ? 
+          product.variantes.map((v: any) => v.nombre).join(', ') : 'N/A';
+        
+        // Obtener tallas disponibles del stock
+        const availableSizes = product.tallas_disponibles && product.tallas_disponibles.length > 0 ? 
+          product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') : 
+          (product.stock && product.stock.length > 0 ? 
+            Array.from(new Set(product.stock
+              .filter((s: any) => s.cantidad > 0)
+              .map((s: any) => s.nombre_talla || 'Talla')))
+              .join(', ') : 'N/A');
+        
+        // Verificar stock disponible
+        const hasStock = product.tiene_stock || 
+          (product.stock && product.stock.some((s: any) => s.cantidad > 0)) ||
+          (product.variantes && product.variantes.some((v: any) => v.disponible)) || 
+          false;
+        
         const transformedProduct = {
           id: product.id_producto || product.id,
           name: product.nombre || product.name || 'Producto sin nombre',
-          price: parseFloat(product.precio_minimo || product.precio || 0),
-          originalPrice: parseFloat(product.precio_maximo || product.precio_minimo || product.precio || 0),
-          image: product.imagen_url || product.image || 'https://via.placeholder.com/300x256?text=Sin+Imagen',
-          category: product.categoria_nombre || product.category || 'Sin categoría',
+          price: price,
+          originalPrice: originalPrice,
+          image: firstImage ? firstImage.url : 
+                 (product.imagen_principal || product.imagen_url || product.image || 
+                  'https://via.placeholder.com/300x256?text=Sin+Imagen'),
+          category: product.categoria_nombre || product.categoria || product.category || 'Sin categoría',
           brand: product.marca || product.brand || 'Sin marca',
-          color: product.color || 'N/A',
-          size: product.talla || product.size || 'N/A',
-          inStock: product.stock > 0 || product.inStock !== false
+          color: availableColors,
+          size: availableSizes,
+          inStock: hasStock,
+          // Información adicional para debug
+          variantes: product.variantes || [],
+          stock: product.stock || [],
+          sistema_talla: product.sistema_talla_nombre
         };
-        console.log('✅ Producto transformado:', transformedProduct);
+        console.log('✅ Producto transformado con estructura BD:', transformedProduct);
         return transformedProduct;
       });
     }
@@ -461,6 +507,24 @@ const Catalogo: NextPage = () => {
       isLoadingProducts,
       products: filteredProducts
     });
+    
+    // Debug adicional: mostrar estructura de datos de los primeros productos
+    if (filteredProducts.length > 0) {
+      console.log('🗃️ ESTRUCTURA DEL PRIMER PRODUCTO FILTRADO:');
+      const firstProduct = filteredProducts[0];
+      console.log('  - id_producto:', firstProduct.id_producto);
+      console.log('  - nombre:', firstProduct.nombre);
+      console.log('  - categoria_nombre:', firstProduct.categoria_nombre);
+      console.log('  - marca:', firstProduct.marca);
+      console.log('  - variantes:', firstProduct.variantes);
+      console.log('  - stock:', firstProduct.stock);
+      console.log('  - tallas_disponibles:', firstProduct.tallas_disponibles);
+      console.log('  - precio_minimo:', firstProduct.precio_minimo);
+      console.log('  - precio_maximo:', firstProduct.precio_maximo);
+      console.log('  - imagen_principal:', firstProduct.imagen_principal);
+      console.log('  - imagen_url:', firstProduct.imagen_url);
+      console.log('  - tiene_stock:', firstProduct.tiene_stock);
+    }
   }, [filteredProducts, selectedCategory, isLoadingProducts]);
 
   return (
@@ -1305,8 +1369,36 @@ const Catalogo: NextPage = () => {
                         <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
                         <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
                         <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                        
+                        {/* Mostrar colores disponibles (variantes) */}
+                        {product.color !== 'N/A' && (
+                          <p className="text-gray-300 text-sm mb-2">
+                            <span className="font-medium">{t('Colores')}: </span>
+                            <span className="text-green-300">{product.color}</span>
+                          </p>
+                        )}
+                        
+                        {/* Mostrar tallas disponibles */}
+                        {product.size !== 'N/A' && (
+                          <p className="text-gray-300 text-sm mb-2">
+                            <span className="font-medium">{t('Tallas')}: </span>
+                            <span className="text-blue-300">{product.size}</span>
+                          </p>
+                        )}
+                        
+                        {/* Mostrar sistema de tallas si está disponible */}
+                        {product.sistema_talla && (
+                          <p className="text-gray-400 text-xs mb-3">
+                            <span className="italic">{t('Sistema')}: {product.sistema_talla}</span>
+                          </p>
+                        )}
+                        
+                        {/* Mostrar información de variantes disponibles */}
+                        {product.variantes && product.variantes.length > 0 && (
+                          <p className="text-purple-300 text-xs mb-3">
+                            {product.variantes.length} {t('variante(s) disponible(s)')}
+                          </p>
+                        )}
                         
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
