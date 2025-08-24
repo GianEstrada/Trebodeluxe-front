@@ -141,12 +141,14 @@ const CategoryFilter = ({
             
             {!error && categories.length === 0 && !isLoading && (
               <div className="p-4 text-gray-600 text-sm">
+                {console.log('🐛 Debug CategoryFilter - categories:', categories, 'length:', categories.length, 'isLoading:', isLoading, 'error:', error)}
                 {t('No hay categorías disponibles')}
               </div>
             )}
             
             {!error && categories.length > 0 && (
               <div className="py-2">
+                {console.log('🎯 Debug CategoryFilter - Mostrando categorías:', categories)}
                 {categories.map((category) => (
                   <button
                     key={category.id || category.slug}
