@@ -50,7 +50,7 @@ interface Promotion {
 
 const Catalogo: NextPage = () => {
   const router = useRouter();
-  const { categoria } = router.query;
+  const { categoria, filter, busqueda } = router.query;
   
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
@@ -246,9 +246,24 @@ const Catalogo: NextPage = () => {
     return featuredProducts;
   };
 
-  // Función para obtener el título dinámico
+  // Función para obtener el título dinámico basado en filtros de URL
   const getProductsTitle = () => {
-    if (filteredProducts.length > 0) {
+    if (busqueda && typeof busqueda === 'string') {
+      return t('Resultados para "{{query}}"').replace('{{query}}', busqueda);
+    } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
+      return t('Categoría: {{category}}').replace('{{category}}', categoria);
+    } else if (filter && typeof filter === 'string') {
+      switch (filter) {
+        case 'populares':
+          return t('PRODUCTOS POPULARES');
+        case 'nuevos':
+          return t('PRODUCTOS NUEVOS');
+        case 'basicos':
+          return t('PRODUCTOS BÁSICOS');
+        default:
+          return t('PRODUCTOS DESTACADOS');
+      }
+    } else if (filteredProducts.length > 0) {
       return selectedCategory === 'todas' 
         ? t('Todos los productos') 
         : t('Productos en {{category}}').replace('{{category}}', selectedCategory);
@@ -256,9 +271,24 @@ const Catalogo: NextPage = () => {
     return t('PRODUCTOS DESTACADOS');
   };
 
-  // Función para obtener el subtítulo dinámico
+  // Función para obtener el subtítulo dinámico basado en filtros de URL
   const getProductsSubtitle = () => {
-    if (filteredProducts.length > 0) {
+    if (busqueda && typeof busqueda === 'string') {
+      return t('Encontrados para tu búsqueda');
+    } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
+      return t('Explora nuestra colección de {{category}}').replace('{{category}}', categoria.toLowerCase());
+    } else if (filter && typeof filter === 'string') {
+      switch (filter) {
+        case 'populares':
+          return t('Los productos más demandados');
+        case 'nuevos':
+          return t('Últimas incorporaciones a nuestro catálogo');
+        case 'basicos':
+          return t('Productos esenciales de nuestra colección');
+        default:
+          return t('Descubre nuestra selección especial');
+      }
+    } else if (filteredProducts.length > 0) {
       return selectedCategory === 'todas'
         ? t('Explora toda nuestra colección')
         : t('Explora nuestra colección de {{category}}').replace('{{category}}', selectedCategory.toLowerCase());
@@ -266,45 +296,127 @@ const Catalogo: NextPage = () => {
     return t('Descubre nuestra selección especial');
   };
 
-  // ===== SISTEMA DE CARGA DE PRODUCTOS DEL INDEX =====
+  // ===== SISTEMA DE CARGA DE PRODUCTOS BASADO EN FILTROS =====
   
-  // Función principal de carga de productos
-  const loadProducts = async () => {
+  // Función principal de carga de productos basada en filtros de URL
+  const loadProductsByFilter = async () => {
+    console.log('🚀 loadProductsByFilter iniciado:', { categoria, filter, busqueda });
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Loading featured products...');
-      // Usar getFeatured para obtener productos destacados
-      const recentResponse = await productsApi.getFeatured(12) as any;
-      console.log('📡 Featured products API response:', recentResponse);
+      console.log('🔄 Loading products by filters...', { categoria, filter, busqueda });
       
-      if (recentResponse.success) {
-        console.log('✅ Recent products raw:', recentResponse.products);
-        const transformedProducts = recentResponse.products.map(productUtils.transformToLegacyFormat);
-        console.log('🔄 Products after transformation:', transformedProducts);
-        setFeaturedProducts(transformedProducts);
+      // Determinar el tipo de filtro basado en los parámetros de URL
+      if (busqueda && typeof busqueda === 'string') {
+        // Busqueda por texto usando getAll con filtro
+        console.log('🔍 Loading products by search:', busqueda);
+        const searchResponse = await productsApi.getAll({ busqueda, limit: 20 }) as any;
+        console.log('📡 Search response:', searchResponse);
+        if (searchResponse.success) {
+          const transformedProducts = searchResponse.products.map(productUtils.transformToLegacyFormat);
+          console.log('✅ Search transformed products:', transformedProducts);
+          setFeaturedProducts(transformedProducts);
+        } else {
+          console.log('❌ Search failed:', searchResponse);
+        }
+        
+      } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
+        // Filtro por categoría específica usando getAll con filtro
+        console.log('🏷️ Loading products by category:', categoria);
+        const categoryResponse = await productsApi.getAll({ categoria, limit: 20 }) as any;
+        console.log('📡 Category response:', categoryResponse);
+        if (categoryResponse.success) {
+          const transformedProducts = categoryResponse.products.map(productUtils.transformToLegacyFormat);
+          console.log('✅ Category transformed products:', transformedProducts);
+          setFeaturedProducts(transformedProducts);
+        } else {
+          console.log('❌ Category failed:', categoryResponse);
+        }
+        
+      } else if (filter && typeof filter === 'string') {
+        // Filtros especiales: populares, nuevos, basicos
+        console.log('🎯 Loading products by filter:', filter);
+        
+        switch (filter) {
+          case 'populares':
+            // Para productos populares, usar getPromotions
+            console.log('⭐ Loading popular products...');
+            const popularResponse = await productsApi.getPromotions(20) as any;
+            console.log('📡 Popular response:', popularResponse);
+            if (popularResponse.success) {
+              const transformedProducts = popularResponse.products.map(productUtils.transformToLegacyFormat);
+              console.log('✅ Popular transformed products:', transformedProducts);
+              setFeaturedProducts(transformedProducts);
+            } else {
+              console.log('❌ Popular failed:', popularResponse);
+            }
+            break;
+            
+          case 'nuevos':
+            // Para productos nuevos, usar getRecent
+            console.log('🆕 Loading new products...');
+            const newResponse = await productsApi.getRecent(20) as any;
+            console.log('📡 New response:', newResponse);
+            if (newResponse.success) {
+              const transformedProducts = newResponse.products.map(productUtils.transformToLegacyFormat);
+              console.log('✅ New transformed products:', transformedProducts);
+              setFeaturedProducts(transformedProducts);
+            } else {
+              console.log('❌ New failed:', newResponse);
+            }
+            break;
+            
+          case 'basicos':
+            // Para productos básicos, usar getAll sin filtros específicos
+            console.log('🎯 Loading basic products...');
+            const basicResponse = await productsApi.getAll({ limit: 20 }) as any;
+            console.log('📡 Basic response:', basicResponse);
+            if (basicResponse.success) {
+              const transformedProducts = basicResponse.products.map(productUtils.transformToLegacyFormat);
+              console.log('✅ Basic transformed products:', transformedProducts);
+              setFeaturedProducts(transformedProducts);
+            } else {
+              console.log('❌ Basic failed:', basicResponse);
+            }
+            break;
+            
+          default:
+            // Fallback a productos destacados
+            console.log('⭐ Loading featured products (fallback)...');
+            const featuredResponse = await productsApi.getFeatured(20) as any;
+            console.log('📡 Featured response:', featuredResponse);
+            if (featuredResponse.success) {
+              const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+              console.log('✅ Featured transformed products:', transformedProducts);
+              setFeaturedProducts(transformedProducts);
+            } else {
+              console.log('❌ Featured failed:', featuredResponse);
+            }
+        }
+        
+      } else {
+        // Sin filtros específicos, mostrar productos destacados
+        console.log('⭐ Loading featured products (default)');
+        const featuredResponse = await productsApi.getFeatured(20) as any;
+        console.log('📡 Default featured response:', featuredResponse);
+        if (featuredResponse.success) {
+          const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+          console.log('✅ Default featured transformed products:', transformedProducts);
+          setFeaturedProducts(transformedProducts);
+        } else {
+          console.log('❌ Default featured failed:', featuredResponse);
+        }
       }
 
-      // Cargar productos recientes por categoría para la segunda sección
-      const categoryResponse = await productsApi.getRecentByCategory(4) as any;
-      if (categoryResponse.success) {
-        const transformedByCategory: any = {};
-        Object.keys(categoryResponse.productsByCategory).forEach(category => {
-          transformedByCategory[category] = categoryResponse.productsByCategory[category]
-            .map(productUtils.transformToLegacyFormat);
-        });
-        setRecentByCategory(transformedByCategory);
-      }
-
+      console.log('🏁 loadProductsByFilter completed');
     } catch (err: any) {
-      console.error('Error cargando productos:', err);
+      console.error('❌ Error cargando productos:', err);
       setError(err.message);
-      
-      // No mostrar productos fallback, solo productos de la base de datos
       setFeaturedProducts([]);
     } finally {
       setLoading(false);
+      console.log('🔒 Loading state set to false');
     }
   };
 
@@ -421,10 +533,22 @@ const Catalogo: NextPage = () => {
 
   // ===== USEEFFECTS PARA EL SISTEMA DE PRODUCTOS =====
 
-  // Cargar productos al montar el componente
+  // Cargar productos al montar el componente y cuando cambien los filtros de URL
   useEffect(() => {
-    loadProducts();
-  }, []);
+    console.log('🔄 useEffect loadProductsByFilter triggered:', { 
+      isReady: router.isReady, 
+      categoria, 
+      filter, 
+      busqueda 
+    });
+    
+    if (router.isReady) {
+      console.log('✅ Router is ready, calling loadProductsByFilter');
+      loadProductsByFilter();
+    } else {
+      console.log('⏳ Router not ready yet');
+    }
+  }, [router.isReady, categoria, filter, busqueda]);
 
   // Cargar promociones para todos los productos featured al cargar
   useEffect(() => {
@@ -1340,9 +1464,14 @@ const Catalogo: NextPage = () => {
                     <div className="mb-8 text-center">
                       <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
                       <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
-                      {filteredProducts.length > 0 && (
-                        <p className="text-green-300 text-sm mt-2">{filteredProducts.length} {t('productos encontrados')}</p>
-                      )}
+                      <p className="text-green-300 text-sm mt-2">
+                        {productsToShow.length} {t('productos encontrados')}
+                        {(busqueda || categoria || filter) && (
+                          <span className="ml-2 text-xs text-yellow-300">
+                            • {t('Filtrado por')} {busqueda ? t('búsqueda') : categoria ? t('categoría') : t('tipo')}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">

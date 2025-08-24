@@ -95,7 +95,7 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       // Crear un nuevo AbortController para productos
       productsAbortController.current = new AbortController();
 
-      let endpoint = `${API_BASE_URL}/api/products/catalog-items?limit=20`;
+      let endpoint = `${API_BASE_URL}/api/products/with-variants?limit=20`;
       
       if (categorySlug !== 'todas') {
         endpoint += `&categoria=${encodeURIComponent(categorySlug)}`;
