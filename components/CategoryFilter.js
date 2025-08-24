@@ -156,7 +156,7 @@ const CategoryFilter = ({
               </div>
             )}
             
-            {!error && categories.length > 0 && (
+            {!error && !isLoading && categories.length > 0 && (
               <div className="py-2">
                 {console.log('🎯 Debug CategoryFilter - Mostrando categorías:', categories)}
                 {categories.map((category) => (

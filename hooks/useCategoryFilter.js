@@ -58,21 +58,24 @@ const useCategoryFilter = (initialCategory = 'todas') => {
         console.log('🎯 Hook useCategoryFilter - Cargando categorías:', allCategories);
         setCategories(allCategories);
         console.log('✅ Hook useCategoryFilter - Categorías establecidas, length:', allCategories.length);
+        setIsLoading(false); // Mover aquí para evitar race condition
       } else {
         console.log('❌ Hook useCategoryFilter - API error:', data.message);
         setError(data.message || 'Error al cargar categorías');
+        setIsLoading(false); // También aquí en caso de error
       }
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('❌ Hook useCategoryFilter - Error catch:', error);
         setError(error.message);
+        setIsLoading(false); // Mover aquí para errores reales
       } else {
         console.log('🚫 Hook useCategoryFilter - Request aborted');
       }
     } finally {
-      if (abortController.current && !abortController.current.signal.aborted) {
-        console.log('✅ Hook useCategoryFilter - Finalizando, isLoading -> false');
-        setIsLoading(false);
+      // Solo limpiar el abortController, no cambiar isLoading aquí
+      if (abortController.current && abortController.current.signal.aborted) {
+        console.log('🧹 Hook useCategoryFilter - Limpiando request abortado');
       }
     }
   };
