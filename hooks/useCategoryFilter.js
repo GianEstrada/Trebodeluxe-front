@@ -31,13 +31,11 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       setIsLoading(true);
       setError(null);
 
-      // Cancelar la solicitud anterior si existe
-      if (abortController.current) {
-        abortController.current.abort();
+      // NO abortar para categorías - se cargan una sola vez
+      // Solo crear AbortController si no existe
+      if (!abortController.current) {
+        abortController.current = new AbortController();
       }
-
-      // Crear un nuevo AbortController
-      abortController.current = new AbortController();
 
       const response = await fetch(`${API_BASE_URL}/api/products/categories`, {
         signal: abortController.current.signal
