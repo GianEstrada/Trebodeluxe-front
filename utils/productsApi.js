@@ -248,7 +248,8 @@ export const productUtils = {
       name: product.nombre || product.producto_nombre,
       price: correctPrice, // Precio actual de BD - se actualizará con descuentos
       originalPrice: correctPrice, // Precio original de BD - se mantiene fijo
-      image: firstImage ? firstImage.url : (product.imagen_principal || '/sin-ttulo1-2@2x.png'),
+      image: firstImage ? firstImage.url : (product.imagen_principal || 
+        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDMwMCAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjU2IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cmVjdCB4PSI3NSIgeT0iNjQiIHdpZHRoPSIxNTAiIGhlaWdodD0iMTI4IiByeD0iOCIgZmlsbD0iIzFBNkIxQSIgZmlsbC1vcGFjaXR5PSIwLjIiLz4KPHN2ZyB4PSIxMzUiIHk9IjExNiIgd2lkdGg9IjMwIiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMxQTZCMUEiIGZpbGwtb3BhY2l0eT0iMC41Ij4KICA8cGF0aCBkPSJtMjEgMTlWNUg5bDIgMmgxMGEyIDIgMCAwIDEgMiAybC0yIDEwWm0wLTJIOVY3aDEydjEwWk0xIDIxaDJWOUg1VjdIMzYuNjk0IDUuNzY0YTEgMSAwIDAgMSAuMzYyIDEuMzc0TDEuMDU2IDIwLjc2NEExIDEgMCAwIDEgMS4wNTYgMjAuNzY0Wm05LTE0SDJ2MTBoOHYtMTBabS03IDlIM3YtOGg3djhaIi8+Cjwvc3ZnPgo8dGV4dCB4PSIxNTAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuNyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U2luIEltYWdlbjwvdGV4dD4KPC9zdmc+'),
       category: product.categoria || product.categoria_nombre || 'Sin categoría',
       brand: product.marca || 'Sin marca',
       color: allColors || 'Sin color',
