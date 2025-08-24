@@ -15,8 +15,9 @@ const useCategoryFilter = (initialCategory = 'todas') => {
   const [isLoading, setIsLoading] = useState(true); // Iniciar como true
   const [error, setError] = useState(null);
   
-  // Referencia para cancelar solicitudes anteriores
-  const abortController = useRef(null);
+  // Referencias separadas para categorías y productos
+  const categoriesAbortController = useRef(null);
+  const productsAbortController = useRef(null);
 
   // Cargar categorías disponibles
   const loadCategories = async () => {
@@ -33,12 +34,12 @@ const useCategoryFilter = (initialCategory = 'todas') => {
 
       // NO abortar para categorías - se cargan una sola vez
       // Solo crear AbortController si no existe
-      if (!abortController.current) {
-        abortController.current = new AbortController();
+      if (!categoriesAbortController.current) {
+        categoriesAbortController.current = new AbortController();
       }
 
       const response = await fetch(`${API_BASE_URL}/api/products/categories`, {
-        signal: abortController.current.signal
+        signal: categoriesAbortController.current.signal
       });
 
       if (!response.ok) {
@@ -71,8 +72,8 @@ const useCategoryFilter = (initialCategory = 'todas') => {
         console.log('🚫 Hook useCategoryFilter - Request aborted');
       }
     } finally {
-      // Solo limpiar el abortController, no cambiar isLoading aquí
-      if (abortController.current && abortController.current.signal.aborted) {
+      // Solo limpiar el categoriesAbortController, no cambiar isLoading aquí
+      if (categoriesAbortController.current && categoriesAbortController.current.signal.aborted) {
         console.log('🧹 Hook useCategoryFilter - Limpiando request abortado');
       }
     }
@@ -86,13 +87,13 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       setIsLoading(true);
       setError(null);
 
-      // Cancelar la solicitud anterior si existe
-      if (abortController.current) {
-        abortController.current.abort();
+      // Cancelar la solicitud anterior de productos si existe
+      if (productsAbortController.current) {
+        productsAbortController.current.abort();
       }
 
-      // Crear un nuevo AbortController
-      abortController.current = new AbortController();
+      // Crear un nuevo AbortController para productos
+      productsAbortController.current = new AbortController();
 
       let endpoint = `${API_BASE_URL}/api/products/catalog-items?limit=20`;
       
@@ -101,7 +102,7 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       }
 
       const response = await fetch(endpoint, {
-        signal: abortController.current.signal
+        signal: productsAbortController.current.signal
       });
 
       if (!response.ok) {
@@ -123,7 +124,7 @@ const useCategoryFilter = (initialCategory = 'todas') => {
         setFilteredProducts([]);
       }
     } finally {
-      if (abortController.current && !abortController.current.signal.aborted) {
+      if (productsAbortController.current && !productsAbortController.current.signal.aborted) {
         setIsLoading(false);
       }
     }
@@ -133,10 +134,13 @@ const useCategoryFilter = (initialCategory = 'todas') => {
   useEffect(() => {
     loadCategories();
 
-    // Cleanup al desmontar
+    // Cleanup al desmontar - limpiar ambos controllers
     return () => {
-      if (abortController.current) {
-        abortController.current.abort();
+      if (categoriesAbortController.current) {
+        categoriesAbortController.current.abort();
+      }
+      if (productsAbortController.current) {
+        productsAbortController.current.abort();
       }
     };
   }, []);
