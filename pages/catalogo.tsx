@@ -18,7 +18,6 @@ import VariantSizeSelector from "../components/VariantSizeSelector";
 // Imports para el sistema de productos y promociones
 import { productsApi, productUtils } from "../utils/productsApi";
 import { promotionsApi } from "../utils/promotionsApi";
-import { categoriesApi } from "../utils/categoriesApi";
 
 // Interfaces para productos y promociones
 interface Product {
@@ -73,7 +72,6 @@ const Catalogo: NextPage = () => {
   // Estados del sistema de productos del index
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [recentByCategory, setRecentByCategory] = useState<{[key: string]: any[]}>({});
-  const [activeCategoriesWithContent, setActiveCategoriesWithContent] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<{[productId: number]: any[]}>({});
   const [loading, setLoading] = useState(false);
   const [loadingPromotions, setLoadingPromotions] = useState(false);
@@ -163,57 +161,6 @@ const Catalogo: NextPage = () => {
 
   // ===== SISTEMA DE CARGA DE PRODUCTOS DEL INDEX =====
   
-  // Función para obtener productos filtrados por categoría seleccionada
-  const getFilteredProductsByCategory = () => {
-    return featuredProducts.filter(product => product.category === selectedCategory);
-  };
-
-  // Función para cargar categorías activas con contenido
-  const loadActiveCategoriesWithContent = async () => {
-    try {
-      console.log('🔄 Cargando categorías dinámicas...');
-      const response = await categoriesApi.getAll() as any;
-      console.log('📊 Respuesta de categorías:', response);
-      
-      if (response.success && response.categories && response.categories.length > 0) {
-        console.log('✅ Categorías cargadas exitosamente:', response.categories);
-        setActiveCategoriesWithContent(response.categories);
-        
-        // Si hay categorías activas, establecer la primera como seleccionada
-        const firstCategory = response.categories[0];
-        const categoryName = firstCategory?.nombre || firstCategory?.name || 'Camisetas';
-        setSelectedCategory(categoryName);
-        console.log('🎯 Categoría seleccionada:', categoryName);
-      } else {
-        console.log('⚠️ No hay categorías de la API, usando fallback');
-        // Fallback a categorías por defecto si no hay respuesta de la API
-        const fallbackCategories = [
-          { id_categoria: 1, nombre: 'Camisetas' },
-          { id_categoria: 2, nombre: 'Polos' },
-          { id_categoria: 3, nombre: 'Zapatos' },
-          { id_categoria: 4, nombre: 'Gorras' },
-          { id_categoria: 5, nombre: 'Accesorios' },
-          { id_categoria: 6, nombre: 'Pantalones' }
-        ];
-        setActiveCategoriesWithContent(fallbackCategories);
-        setSelectedCategory('Camisetas');
-      }
-    } catch (error) {
-      console.error('❌ Error cargando categorías activas:', error);
-      // Fallback en caso de error
-      const fallbackCategories = [
-        { id_categoria: 1, nombre: 'Camisetas' },
-        { id_categoria: 2, nombre: 'Polos' },
-        { id_categoria: 3, nombre: 'Zapatos' },
-        { id_categoria: 4, nombre: 'Gorras' },
-        { id_categoria: 5, nombre: 'Accesorios' },
-        { id_categoria: 6, nombre: 'Pantalones' }
-      ];
-      setActiveCategoriesWithContent(fallbackCategories);
-      setSelectedCategory('Camisetas');
-    }
-  };
-
   // Función principal de carga de productos
   const loadProducts = async () => {
     setLoading(true);
@@ -242,9 +189,6 @@ const Catalogo: NextPage = () => {
         });
         setRecentByCategory(transformedByCategory);
       }
-
-      // Cargar categorías activas con contenido
-      await loadActiveCategoriesWithContent();
 
     } catch (err: any) {
       console.error('Error cargando productos:', err);
@@ -1322,106 +1266,6 @@ const Catalogo: NextPage = () => {
           {error && (
             <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6 mx-4">
               <p className="text-red-200 text-center">Error: {error}</p>
-            </div>
-          )}
-
-          {/* ===== SECCIÓN DE PRODUCTOS POR CATEGORÍA ===== */}
-          {activeCategoriesWithContent.length > 0 && (
-            <div className="self-stretch flex flex-col items-start justify-start text-center text-black">
-              <div className="self-stretch flex flex-row items-center justify-start">
-                {activeCategoriesWithContent.map((category, index) => {
-                  const categoryName = category.nombre || category.name || 'Categoría';
-                  return (
-                  <div 
-                    key={category.id_categoria}
-                    className={`flex-1 relative h-[90px] transition-colors duration-300 cursor-pointer ${
-                      selectedCategory === categoryName ? 'bg-[#1a6b1a]' : 'bg-gray-100 hover:bg-[#1a6b1a]'
-                    }`}
-                    onClick={() => setSelectedCategory(categoryName)}
-                  >
-                    <div className={`absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center transition-colors duration-300 ${
-                      selectedCategory === categoryName ? 'text-white' : 'hover:text-white'
-                    }`}>
-                      {t(categoryName)}
-                    </div>
-                  </div>
-                  );
-                })}
-                {activeCategoriesWithContent.length === 0 && (
-                  <div className="flex-1 relative h-[90px] bg-gray-100 flex items-center justify-center">
-                    <div className="text-gray-500">Cargando categorías...</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Sección de productos por categoría */}
-          {getFilteredProductsByCategory().length > 0 && (
-            <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
-              <div className="w-full">
-                <div className="mb-8 text-center">
-                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t((selectedCategory || 'Camisetas').toUpperCase())}</h2>
-                  <p className="text-gray-300 text-lg">{t('Explora nuestra colección de')} {t((selectedCategory || 'camisetas').toLowerCase())}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                  {getFilteredProductsByCategory().slice(0, 6).map((product: Product) => (
-                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                        <div className="relative mb-4">
-                          <Image
-                            className="w-full h-64 object-cover rounded-lg"
-                            width={300}
-                            height={256}
-                            src={product.image}
-                            alt={product.name}
-                          />
-                          {!product.inStock && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                              <span className="text-white font-bold text-lg">{t('Agotado')}</span>
-                            </div>
-                          )}
-                          {/* Mostrar promociones */}
-                          {renderPromotions(product.id)}
-                        </div>
-                        
-                        <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                        <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                        <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
-                        
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
-                            {product.originalPrice > product.price && (
-                              <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <button
-                          disabled={!product.inStock}
-                          className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
-                            product.inStock 
-                              ? 'bg-white text-black hover:bg-gray-100' 
-                              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                          }`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (product.inStock) {
-                              handleAddToCart(product);
-                            }
-                          }}
-                        >
-                          {product.inStock ? t('Añadir al carrito') : t('Agotado')}
-                        </button>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
