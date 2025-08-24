@@ -12,7 +12,7 @@ const useCategoryFilter = (initialCategory = 'todas') => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('todas');
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Iniciar como true
   const [error, setError] = useState(null);
   
   // Referencia para cancelar solicitudes anteriores
@@ -20,7 +20,14 @@ const useCategoryFilter = (initialCategory = 'todas') => {
 
   // Cargar categorías disponibles
   const loadCategories = async () => {
+    // Si ya tenemos categorías, no recargar
+    if (categories.length > 0) {
+      console.log('🔄 Hook useCategoryFilter - Categorías ya cargadas, skipping');
+      return;
+    }
+    
     try {
+      console.log('🚀 Hook useCategoryFilter - Iniciando carga de categorías');
       setIsLoading(true);
       setError(null);
 
