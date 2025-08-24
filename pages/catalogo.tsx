@@ -149,8 +149,22 @@ const Catalogo: NextPage = () => {
 
   // Funciones para manejar filtros
   const handleCategoryFilter = (filterData: any) => {
+    console.log('🔧 handleCategoryFilter llamado con:', filterData);
+    console.log('📊 filterData.products:', filterData.products);
+    console.log('📋 filterData.category:', filterData.category);
+    
     setSelectedCategory(filterData.category);
     setFilteredProducts(filterData.products || []);
+    setIsLoadingProducts(false);
+    
+    console.log('✅ Estado actualizado - filteredProducts length:', filterData.products?.length || 0);
+  };
+
+  // Función para limpiar filtros si es necesario
+  const clearFilters = () => {
+    console.log('🧹 Limpiando filtros...');
+    setFilteredProducts([]);
+    setSelectedCategory('todas');
     setIsLoadingProducts(false);
   };
 
@@ -163,20 +177,26 @@ const Catalogo: NextPage = () => {
   const getProductsToShow = () => {
     // Si hay productos filtrados, mostrar esos con el formato de cards mejoradas
     if (filteredProducts.length > 0) {
-      return filteredProducts.map(product => ({
-        id: product.id_producto,
-        name: product.nombre,
-        price: product.precio_minimo || product.precio || 0,
-        originalPrice: product.precio_maximo || product.precio_minimo || product.precio || 0,
-        image: product.imagen_url || '/placeholder-product.jpg',
-        category: product.categoria_nombre || 'Sin categoría',
-        brand: product.marca || 'Sin marca',
-        color: product.color || 'N/A',
-        size: product.talla || 'N/A',
-        inStock: product.stock > 0 || true
-      }));
+      console.log('🔄 Transformando productos filtrados:', filteredProducts);
+      return filteredProducts.map(product => {
+        const transformedProduct = {
+          id: product.id_producto || product.id,
+          name: product.nombre || product.name || 'Producto sin nombre',
+          price: parseFloat(product.precio_minimo || product.precio || 0),
+          originalPrice: parseFloat(product.precio_maximo || product.precio_minimo || product.precio || 0),
+          image: product.imagen_url || product.image || 'https://via.placeholder.com/300x256?text=Sin+Imagen',
+          category: product.categoria_nombre || product.category || 'Sin categoría',
+          brand: product.marca || product.brand || 'Sin marca',
+          color: product.color || 'N/A',
+          size: product.talla || product.size || 'N/A',
+          inStock: product.stock > 0 || product.inStock !== false
+        };
+        console.log('✅ Producto transformado:', transformedProduct);
+        return transformedProduct;
+      });
     }
     // Si no hay filtros aplicados, mostrar productos destacados
+    console.log('📦 Mostrando productos destacados:', featuredProducts.length);
     return featuredProducts;
   };
 
@@ -432,6 +452,16 @@ const Catalogo: NextPage = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Debug: Monitorear cambios en productos filtrados
+  useEffect(() => {
+    console.log('🔍 CAMBIO EN FILTERED PRODUCTS:', {
+      length: filteredProducts.length,
+      selectedCategory,
+      isLoadingProducts,
+      products: filteredProducts
+    });
+  }, [filteredProducts, selectedCategory, isLoadingProducts]);
 
   return (
     <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
@@ -1229,19 +1259,30 @@ const Catalogo: NextPage = () => {
           </div>
           
           {/* ===== SECCIÓN DE PRODUCTOS (FILTRADOS O DESTACADOS) ===== */}
-          {(getProductsToShow().length > 0 || !isLoadingProducts) && (
-            <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
-              <div className="w-full">
-                <div className="mb-8 text-center">
-                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
-                  <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
-                  {filteredProducts.length > 0 && (
-                    <p className="text-green-300 text-sm mt-2">{filteredProducts.length} {t('productos encontrados')}</p>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                  {getProductsToShow().slice(0, 18).map((product: any) => (
+          {(() => {
+            const productsToShow = getProductsToShow();
+            console.log('🎯 Productos a mostrar:', productsToShow.length, 'productos');
+            console.log('🔍 Estado filtros:', { 
+              filteredProducts: filteredProducts.length,
+              featuredProducts: featuredProducts.length,
+              isLoadingProducts,
+              loading
+            });
+            
+            if (productsToShow.length > 0 && !loading && !isLoadingProducts) {
+              return (
+                <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
+                  <div className="w-full">
+                    <div className="mb-8 text-center">
+                      <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
+                      <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
+                      {filteredProducts.length > 0 && (
+                        <p className="text-green-300 text-sm mt-2">{filteredProducts.length} {t('productos encontrados')}</p>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                      {productsToShow.slice(0, 18).map((product: any) => (
                     <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                       <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                         <div className="relative mb-4">
@@ -1295,10 +1336,13 @@ const Catalogo: NextPage = () => {
                       </div>
                     </Link>
                   ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              );
+            }
+            return null;
+          })()}
 
           {/* Manejo de estados de carga y error para productos destacados */}
           {loading && (
