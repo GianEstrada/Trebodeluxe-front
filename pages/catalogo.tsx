@@ -159,6 +159,47 @@ const Catalogo: NextPage = () => {
     window.location.href = `/product/${product.id_producto}`;
   };
 
+  // Función para obtener los productos a mostrar (filtrados o destacados)
+  const getProductsToShow = () => {
+    // Si hay productos filtrados, mostrar esos con el formato de cards mejoradas
+    if (filteredProducts.length > 0) {
+      return filteredProducts.map(product => ({
+        id: product.id_producto,
+        name: product.nombre,
+        price: product.precio_minimo || product.precio || 0,
+        originalPrice: product.precio_maximo || product.precio_minimo || product.precio || 0,
+        image: product.imagen_url || '/placeholder-product.jpg',
+        category: product.categoria_nombre || 'Sin categoría',
+        brand: product.marca || 'Sin marca',
+        color: product.color || 'N/A',
+        size: product.talla || 'N/A',
+        inStock: product.stock > 0 || true
+      }));
+    }
+    // Si no hay filtros aplicados, mostrar productos destacados
+    return featuredProducts;
+  };
+
+  // Función para obtener el título dinámico
+  const getProductsTitle = () => {
+    if (filteredProducts.length > 0) {
+      return selectedCategory === 'todas' 
+        ? t('Todos los productos') 
+        : t('Productos en {{category}}').replace('{{category}}', selectedCategory);
+    }
+    return t('PRODUCTOS DESTACADOS');
+  };
+
+  // Función para obtener el subtítulo dinámico
+  const getProductsSubtitle = () => {
+    if (filteredProducts.length > 0) {
+      return selectedCategory === 'todas'
+        ? t('Explora toda nuestra colección')
+        : t('Explora nuestra colección de {{category}}').replace('{{category}}', selectedCategory.toLowerCase());
+    }
+    return t('Descubre nuestra selección especial');
+  };
+
   // ===== SISTEMA DE CARGA DE PRODUCTOS DEL INDEX =====
   
   // Función principal de carga de productos
@@ -1187,17 +1228,20 @@ const Catalogo: NextPage = () => {
             </div>
           </div>
           
-          {/* ===== SECCIÓN DE PRODUCTOS DESTACADOS ===== */}
-          {featuredProducts.length > 0 && (
+          {/* ===== SECCIÓN DE PRODUCTOS (FILTRADOS O DESTACADOS) ===== */}
+          {(getProductsToShow().length > 0 || !isLoadingProducts) && (
             <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
               <div className="w-full">
                 <div className="mb-8 text-center">
-                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('PRODUCTOS DESTACADOS')}</h2>
-                  <p className="text-gray-300 text-lg">{t('Descubre nuestra selección especial')}</p>
+                  <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
+                  <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
+                  {filteredProducts.length > 0 && (
+                    <p className="text-green-300 text-sm mt-2">{filteredProducts.length} {t('productos encontrados')}</p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                  {featuredProducts.slice(0, 12).map((product: Product) => (
+                  {getProductsToShow().slice(0, 18).map((product: any) => (
                     <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                       <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                         <div className="relative mb-4">
@@ -1269,82 +1313,8 @@ const Catalogo: NextPage = () => {
             </div>
           )}
 
-          {/* Productos filtrados */}
-          {filteredProducts.length > 0 && (
-            <div className="mb-8">
-              <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl font-bold text-white mb-6 text-center">
-                  {selectedCategory === 'todas' 
-                    ? t('Todos los productos') 
-                    : t('Productos en {{category}}').replace('{{category}}', selectedCategory)
-                  }
-                </h2>
-                
-                {/* Grid de productos */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {filteredProducts.map((product) => (
-                    <div key={product.id_producto} className="bg-white/10 rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors cursor-pointer">
-                      <Link href={`/product/${product.id_producto}`} className="block no-underline">
-                        {/* Imagen del producto */}
-                        <div className="aspect-square bg-gray-200 rounded-lg mb-3 overflow-hidden">
-                          {product.imagen_url ? (
-                            <Image
-                              src={product.imagen_url}
-                              alt={product.nombre || ''}
-                              width={200}
-                              height={200}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Información del producto */}
-                        <div className="space-y-2">
-                          <h3 className="font-medium text-white truncate text-sm">
-                            {product.nombre}
-                          </h3>
-                          
-                          {product.categoria_nombre && (
-                            <p className="text-xs text-gray-400">
-                              {t(product.categoria_nombre)}
-                            </p>
-                          )}
-                          
-                          {/* Precio */}
-                          {product.precio_minimo && (
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-white text-sm">
-                                {formatPrice(product.precio_minimo, currentCurrency, 'MXN')}
-                              </span>
-                              {product.precio_maximo && product.precio_maximo !== product.precio_minimo && (
-                                <span className="text-xs text-gray-400">
-                                  - {formatPrice(product.precio_maximo, currentCurrency, 'MXN')}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Botón de ver producto */}
-                          <button className="w-full bg-white/20 hover:bg-white/30 text-white py-2 px-3 rounded text-sm transition-colors">
-                            {t('Ver producto')}
-                          </button>
-                        </div>
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Mensaje de carga */}
-          {isLoadingProducts && (
+          {/* Mensaje de carga unificado */}
+          {(loading || isLoadingProducts) && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
               <p className="text-white text-lg">{t('Cargando productos...')}</p>
@@ -1352,15 +1322,15 @@ const Catalogo: NextPage = () => {
           )}
           
           {/* Mensaje cuando no hay productos */}
-          {!isLoadingProducts && filteredProducts.length === 0 && selectedCategory !== 'todas' && (
+          {!loading && !isLoadingProducts && getProductsToShow().length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🔍</div>
               <p className="text-white text-xl mb-2">{t('No se encontraron productos')}</p>
-              <p className="text-gray-300">{t('Intenta con una categoría diferente')}</p>
+              <p className="text-gray-300">{t('Intenta con una búsqueda diferente o explora nuestras categorías')}</p>
             </div>
           )}
-          
-          {/* Aquí puedes agregar el contenido que necesites */}
+
+                    {/* Aquí puedes agregar el contenido que necesites */}
           <div className="text-white text-center py-16">
             <p className="text-xl">Contenido del catálogo aquí</p>
           </div>
