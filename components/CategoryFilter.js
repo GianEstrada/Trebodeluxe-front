@@ -22,6 +22,15 @@ const CategoryFilter = ({
     error
   } = useCategoryFilter();
 
+  // DEBUG: Log cada render del componente
+  console.log('🔥 CategoryFilter RENDER:', {
+    categories_length: categories.length,
+    categories_data: categories,
+    isLoading,
+    error,
+    selectedCategory
+  });
+
   // Manejar clics fuera del componente para cerrar el dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -151,14 +160,14 @@ const CategoryFilter = ({
             
             {!error && !isLoading && categories.length === 0 && (
               <div className="p-4 text-gray-600 text-sm">
-                {console.log('🐛 Debug CategoryFilter - categories:', categories, 'length:', categories.length, 'isLoading:', isLoading, 'error:', error)}
+                {console.log('� ACTIVADO: "No hay categorías" - categories:', categories, 'length:', categories.length, 'isLoading:', isLoading, 'error:', error)}
                 {t('No hay categorías disponibles')}
               </div>
             )}
             
             {!error && !isLoading && categories.length > 0 && (
               <div className="py-2">
-                {console.log('🎯 Debug CategoryFilter - Mostrando categorías:', categories)}
+                {console.log('✅ ACTIVADO: Mostrar lista - categories:', categories, 'length:', categories.length)}
                 {categories.map((category) => (
                   <button
                     key={category.id || category.slug}
