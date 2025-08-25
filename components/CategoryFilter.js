@@ -162,7 +162,7 @@ const CategoryFilter = ({
               </div>
             )}
             
-            {error && !isLoading && (
+            {error && !isLoading && selectedCategory !== 'todas' && (
               <div className="p-4 text-amber-600 text-sm border-l-2 border-amber-500 bg-amber-50">
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">

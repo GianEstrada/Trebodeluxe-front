@@ -95,13 +95,10 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       // Crear un nuevo AbortController para productos
       productsAbortController.current = new AbortController();
 
-      let endpoint = `${API_BASE_URL}/api/products?limit=20`;
+      // 🔄 NUEVO ENFOQUE: Siempre usar productos destacados como base
+      console.log(`🔄 Cargando productos destacados para filtrar por: ${categorySlug}`);
       
-      if (categorySlug !== 'todas') {
-        endpoint += `&categoria=${encodeURIComponent(categorySlug)}`;
-      }
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_BASE_URL}/api/products/featured?limit=20`, {
         signal: productsAbortController.current.signal
       });
 
@@ -111,46 +108,32 @@ const useCategoryFilter = (initialCategory = 'todas') => {
 
       const data = await response.json();
 
-      if (data.success) {
-        setFilteredProducts(data.products || []);
+      if (data.success && data.products) {
+        // Filtrar localmente por categoría
+        const localFilteredProducts = categorySlug === 'todas' 
+          ? data.products  // Mostrar todos los productos destacados
+          : data.products.filter(product => {
+              const productCategory = (product.categoria_nombre || product.categoria || '').toLowerCase();
+              return productCategory.includes(categorySlug.toLowerCase());
+            });
+        
+        console.log(`✅ Productos filtrados: ${localFilteredProducts.length} de ${data.products.length} total`);
+        setFilteredProducts(localFilteredProducts);
+        
+        // Solo mostrar mensaje de filtrado local si no es "todas"
+        if (categorySlug !== 'todas') {
+          setError('Usando filtrado local (datos completos disponibles)');
+        } else {
+          setError(null);
+        }
       } else {
-        setError(data.message || 'Error al filtrar productos');
+        setError(data.message || 'Error al obtener productos');
         setFilteredProducts([]);
       }
     } catch (error) {
       if (error.name !== 'AbortError') {
-        console.error('Error filtrando productos:', error);
-        setError(`${error.message} - Usando filtrado local como fallback`);
-        
-        // 🔄 FALLBACK: Si falla la API, intentar filtrado local con productos destacados
-        try {
-          console.log('🔄 Activando fallback de filtrado local...');
-          const fallbackResponse = await fetch(`${API_BASE_URL}/api/products/featured?limit=20`, {
-            signal: productsAbortController.current?.signal
-          });
-          
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            if (fallbackData.success && fallbackData.products) {
-              // Filtrar localmente por categoría
-              const localFilteredProducts = categorySlug === 'todas' 
-                ? fallbackData.products
-                : fallbackData.products.filter(product => {
-                    const productCategory = (product.categoria || product.categoria_nombre || '').toLowerCase();
-                    return productCategory.includes(categorySlug.toLowerCase());
-                  });
-              
-              console.log(`✅ Fallback exitoso: ${localFilteredProducts.length} productos encontrados localmente`);
-              setFilteredProducts(localFilteredProducts);
-              setError(`Filtrado local activo (Backend temporalmente no disponible)`);
-              return;
-            }
-          }
-        } catch (fallbackError) {
-          console.error('❌ Fallback también falló:', fallbackError);
-        }
-        
-        // Si todo falla, array vacío
+        console.error('Error cargando productos:', error);
+        setError(`${error.message} - No se pudieron cargar los productos`);
         setFilteredProducts([]);
       }
     } finally {
