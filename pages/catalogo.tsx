@@ -72,6 +72,12 @@ const Catalogo: NextPage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
 
+  // Estados para paginación y ordenamiento
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState('nombre'); // 'nombre', 'precio_asc', 'precio_desc', 'recientes'
+  const [allCategoryProducts, setAllCategoryProducts] = useState<any[]>([]);
+  const productsPerPage = 30; // 6 columnas x 5 filas = 30 productos por página
+
   // Estados del sistema de productos del index
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [recentByCategory, setRecentByCategory] = useState<{[key: string]: any[]}>({});
@@ -101,6 +107,12 @@ const Catalogo: NextPage = () => {
   // Usar configuraciones del sitio desde la base de datos
   const { headerSettings, loading: settingsLoading } = useSiteSettings();
   
+  // Usar textos promocionales desde la base de datos, con fallback
+  const promoTexts = headerSettings?.promoTexts || [
+    "Agrega 4 productos y paga 2",
+    "2x1 en gorras"
+  ];
+  
   // Usar imágenes index desde la base de datos
   const { getImageByState, loading: imagesLoading } = useIndexImages();
 
@@ -109,12 +121,6 @@ const Catalogo: NextPage = () => {
   
   // Usar tasas de cambio dinámicas desde Open Exchange Rates
   const { formatPrice } = useExchangeRates();
-
-  // Textos promocionales del header
-  const promoTexts = [
-    'Descubre la nueva colección de temporada',
-    'Envío gratis en pedidos superiores a $1000'
-  ];
 
   // Funciones de interacción
   const changeLanguage = (lang: string) => {
@@ -183,7 +189,10 @@ const Catalogo: NextPage = () => {
     // Si hay productos filtrados con promociones aplicadas, mostrar esos
     if (filteredProductsWithPromotions.length > 0) {
       console.log('� [MEMO] Mostrando productos filtrados con promociones:', filteredProductsWithPromotions.length);
-      return filteredProductsWithPromotions;
+      productsToProcess = filteredProductsWithPromotions;
+    } else if (allCategoryProducts.length > 0 && selectedCategory !== 'todas') {
+      console.log('📦 [MEMO] Usando productos de categoría completa:', allCategoryProducts.length);
+      productsToProcess = allCategoryProducts;
     }
     // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
     console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
@@ -221,26 +230,96 @@ const Catalogo: NextPage = () => {
   // Función para obtener el subtítulo dinámico basado en filtros de URL
   const getProductsSubtitle = () => {
     if (busqueda && typeof busqueda === 'string') {
-      return t('Encontrados para tu búsqueda');
+      return t('Productos relacionados con tu búsqueda');
     } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
-      return t('Explora nuestra colección de {{category}}').replace('{{category}}', categoria.toLowerCase());
+      return t('Descubre nuestra selección en {{category}}').replace('{{category}}', categoria.toLowerCase());
     } else if (filter && typeof filter === 'string') {
       switch (filter) {
         case 'populares':
-          return t('Los productos más demandados');
+          return t('Los más solicitados por nuestros clientes');
         case 'nuevos':
-          return t('Últimas incorporaciones a nuestro catálogo');
+          return t('Últimas novedades en nuestra tienda');
         case 'basicos':
-          return t('Productos esenciales de nuestra colección');
+          return t('Productos esenciales para tu guardarropa');
         default:
-          return t('Descubre nuestra selección especial');
+          return promoTexts[currentTextIndex] || t('Encuentra lo que buscas');
       }
     } else if (filteredProducts.length > 0) {
       return selectedCategory === 'todas'
-        ? t('Explora toda nuestra colección')
-        : t('Explora nuestra colección de {{category}}').replace('{{category}}', selectedCategory.toLowerCase());
+        ? promoTexts[currentTextIndex] || t('Toda nuestra colección disponible')
+        : t('Todo en {{category}} con los mejores precios').replace('{{category}}', selectedCategory.toLowerCase());
     }
-    return t('Descubre nuestra selección especial');
+    return promoTexts[currentTextIndex] || t('Calidad y estilo en cada producto');
+  };
+
+  // ===== FUNCIONES DE ORDENAMIENTO Y PAGINACIÓN =====
+  
+  // Función para ordenar productos
+  const sortProducts = (products: any[], sortType: string) => {
+    const sorted = [...products];
+    switch (sortType) {
+      case 'nombre':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'precio_asc':
+        return sorted.sort((a, b) => a.price - b.price);
+      case 'precio_desc':
+        return sorted.sort((a, b) => b.price - a.price);
+      case 'recientes':
+        return sorted.sort((a, b) => b.id - a.id);
+      default:
+        return sorted;
+    }
+  };
+
+  // Función para cargar TODOS los productos de una categoría (paginación)
+  const loadAllCategoryProducts = async (categorySlug: string) => {
+    try {
+      setIsLoadingProducts(true);
+      console.log(`🔄 Cargando TODOS los productos de categoría: ${categorySlug}`);
+      
+      // Para "todas", obtener productos destacados + recientes
+      if (categorySlug === 'todas') {
+        const [featuredRes, recentRes] = await Promise.all([
+          productsApi.getFeatured(50),
+          productsApi.getRecent(50)
+        ]);
+        
+        const allProducts = [
+          ...((featuredRes as any).success ? (featuredRes as any).products : []),
+          ...((recentRes as any).success ? (recentRes as any).products : [])
+        ];
+        
+        // Eliminar duplicados por ID
+        const uniqueProducts = allProducts.filter((product, index, self) => 
+          index === self.findIndex(p => p.id === product.id)
+        );
+        
+        const transformedProducts = uniqueProducts.map(productUtils.transformToLegacyFormat).filter(Boolean);
+        setAllCategoryProducts(transformedProducts);
+        return transformedProducts;
+      } else {
+        // Para categoría específica, obtener productos con límite alto
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/featured?limit=100`);
+        const data = await response.json();
+        
+        if (data.success && data.products) {
+          // Filtrar por categoría específica
+          const categoryProducts = data.products.filter((product: any) => {
+            const productCategory = (product.categoria_nombre || product.categoria || '').toLowerCase();
+            return productCategory.includes(categorySlug.toLowerCase());
+          });
+          
+          const transformedProducts = categoryProducts.map(productUtils.transformToLegacyFormat).filter(Boolean);
+          setAllCategoryProducts(transformedProducts);
+          return transformedProducts;
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando productos de categoría:', error);
+      return [];
+    } finally {
+      setIsLoadingProducts(false);
+    }
   };
 
   // ===== SISTEMA DE CARGA DE PRODUCTOS BASADO EN FILTROS =====
@@ -602,6 +681,29 @@ const Catalogo: NextPage = () => {
       setFilteredProductsWithPromotions([]);
     }
   }, [filteredProducts, promotions]); // Dependencias: filteredProducts y promotions
+
+  // 🔄 NUEVO: Ordenar productos cuando cambie el criterio de ordenamiento
+  useEffect(() => {
+    console.log('🔄 Aplicando ordenamiento:', sortBy);
+    
+    // Ordenar productos filtrados con promociones
+    if (filteredProductsWithPromotions.length > 0) {
+      const sortedFiltered = sortProducts(filteredProductsWithPromotions, sortBy);
+      setFilteredProductsWithPromotions(sortedFiltered);
+    }
+    
+    // Ordenar productos destacados  
+    if (featuredProducts.length > 0) {
+      const sortedFeatured = sortProducts(featuredProducts, sortBy);
+      setFeaturedProducts(sortedFeatured);
+    }
+    
+    // Ordenar productos de categoría completa
+    if (allCategoryProducts.length > 0) {
+      const sortedCategory = sortProducts(allCategoryProducts, sortBy);
+      setAllCategoryProducts(sortedCategory);
+    }
+  }, [sortBy]); // Solo depende de sortBy para evitar loops infinitos
 
   // Aplicar descuentos de promociones cuando cambien las promociones
   useEffect(() => {
@@ -1440,7 +1542,7 @@ const Catalogo: NextPage = () => {
           <div className="mb-8">
             <div className="max-w-4xl mx-auto">
               {/* Controles de búsqueda y filtro */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 {/* Barra de búsqueda */}
                 <div className="md:col-span-2">
                   <ProductSearchBar
@@ -1461,6 +1563,31 @@ const Catalogo: NextPage = () => {
                     onFilterChange={handleCategoryFilter}
                     showProductCount={true}
                   />
+                </div>
+                
+                {/* Dropdown de ordenamiento */}
+                <div className="md:col-span-1">
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => {
+                        setSortBy(e.target.value);
+                        setCurrentPage(1); // Reset to first page when sorting changes
+                      }}
+                      className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent appearance-none cursor-pointer hover:bg-white/30 transition-all duration-200"
+                    >
+                      <option value="nombre" className="bg-gray-800 text-white">{t('Nombre (A-Z)')}</option>
+                      <option value="precio_asc" className="bg-gray-800 text-white">{t('Precio: Menor a Mayor')}</option>
+                      <option value="precio_desc" className="bg-gray-800 text-white">{t('Precio: Mayor a Menor')}</option>
+                      <option value="recientes" className="bg-gray-800 text-white">{t('Más Recientes')}</option>
+                    </select>
+                    {/* Icono de dropdown personalizado */}
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -1501,17 +1628,25 @@ const Catalogo: NextPage = () => {
                       <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
                       <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
                       <p className="text-green-300 text-sm mt-2">
-                        {productsToShow.length} {t('productos encontrados')}
+                        {productsToShow.length} {t('productos mostrados')}
                         {(busqueda || categoria || filter) && (
                           <span className="ml-2 text-xs text-yellow-300">
                             • {t('Filtrado por')} {busqueda ? t('búsqueda') : categoria ? t('categoría') : t('tipo')}
                           </span>
                         )}
+                        <span className="ml-2 text-xs text-blue-300">
+                          • {t('Ordenado por')} {
+                            sortBy === 'nombre' ? t('Nombre') :
+                            sortBy === 'precio_asc' ? t('Precio ↑') :
+                            sortBy === 'precio_desc' ? t('Precio ↓') :
+                            sortBy === 'recientes' ? t('Más Recientes') : t('Relevancia')
+                          }
+                        </span>
                       </p>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                      {productsToShow.slice(0, 18).map((product: any) => (
+                      {productsToShow.slice(0, 30).map((product: any) => (
                     <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                       <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                         <div className="relative mb-4">
@@ -1608,11 +1743,6 @@ const Catalogo: NextPage = () => {
               <p className="text-gray-300">{t('Intenta con una búsqueda diferente o explora nuestras categorías')}</p>
             </div>
           )}
-
-                    {/* Aquí puedes agregar el contenido que necesites */}
-          <div className="text-white text-center py-16">
-            <p className="text-xl">Contenido del catálogo aquí</p>
-          </div>
         </div>
 
         {/* Footer completo */}
