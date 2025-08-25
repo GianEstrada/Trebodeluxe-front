@@ -188,13 +188,18 @@ const Catalogo: NextPage = () => {
         return transformedProduct;
       }).filter(Boolean); // Filtrar productos null/undefined
       
-      console.log('✅ [MEMO] Productos transformados:', transformed.length);
-      return transformed;
+      // 🎯 APLICAR PROMOCIONES: Aplicar descuentos como en el index
+      const withPromotions = Object.keys(promotions).length > 0 
+        ? productUtils.applyPromotionDiscounts(transformed, promotions)
+        : transformed;
+      
+      console.log('✅ [MEMO] Productos transformados:', transformed.length, 'con promociones:', withPromotions.length);
+      return withPromotions;
     }
-    // Si no hay filtros aplicados, mostrar productos destacados
+    // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
     console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
     return featuredProducts;
-  }, [filteredProducts, featuredProducts]); // Dependencias: solo re-calcular si cambian los productos
+  }, [filteredProducts, featuredProducts, promotions]); // Dependencias: incluir promotions
 
   // Función legacy para compatibilidad (ahora solo devuelve el valor memoizado)
   const getProductsToShow = () => productsToShow;
@@ -569,6 +574,16 @@ const Catalogo: NextPage = () => {
       loadPromotionsForProduct(product.id, product.category);
     });
   }, [recentByCategory]);
+
+  // 🎯 NUEVO: Cargar promociones para productos filtrados
+  useEffect(() => {
+    if (filteredProducts.length > 0) {
+      console.log('🔄 Cargando promociones para productos filtrados:', filteredProducts.length);
+      filteredProducts.forEach((product: any) => {
+        loadPromotionsForProduct(product.id, product.categoria_nombre || product.categoria);
+      });
+    }
+  }, [filteredProducts]);
 
   // Aplicar descuentos de promociones cuando cambien las promociones
   useEffect(() => {
