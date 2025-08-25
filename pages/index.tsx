@@ -1349,6 +1349,12 @@ const HomeScreen: NextPage = () => {
                       height={256}
                       src={product.image}
                       alt={product.name}
+                      onError={(e) => {
+                        // Fallback a logo si la imagen falla
+                        (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                      }}
+                      placeholder="blur"
+                      blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDMwMCAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjU2IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuMyIvPgo8L3N2Zz4K"
                     />
                     {!product.inStock && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
@@ -1460,6 +1466,12 @@ const HomeScreen: NextPage = () => {
                       height={256}
                       src={product.image}
                       alt={product.name}
+                      onError={(e) => {
+                        // Fallback a logo si la imagen falla
+                        (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                      }}
+                      placeholder="blur"
+                      blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDMwMCAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjU2IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuMyIvPgo8L3N2Zz4K"
                     />
                     {!product.inStock && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">

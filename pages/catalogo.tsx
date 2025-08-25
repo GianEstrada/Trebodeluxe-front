@@ -1557,36 +1557,8 @@ const Catalogo: NextPage = () => {
                         <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
                         <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
                         <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                        
-                        {/* Mostrar colores disponibles (variantes) */}
-                        {product.color !== 'N/A' && (
-                          <p className="text-gray-300 text-sm mb-2">
-                            <span className="font-medium">{t('Colores')}: </span>
-                            <span className="text-green-300">{product.color}</span>
-                          </p>
-                        )}
-                        
-                        {/* Mostrar tallas disponibles */}
-                        {product.size !== 'N/A' && (
-                          <p className="text-gray-300 text-sm mb-2">
-                            <span className="font-medium">{t('Tallas')}: </span>
-                            <span className="text-blue-300">{product.size}</span>
-                          </p>
-                        )}
-                        
-                        {/* Mostrar sistema de tallas si está disponible */}
-                        {product.sistema_talla && (
-                          <p className="text-gray-400 text-xs mb-3">
-                            <span className="italic">{t('Sistema')}: {product.sistema_talla}</span>
-                          </p>
-                        )}
-                        
-                        {/* Mostrar información de variantes disponibles */}
-                        {product.variantes && product.variantes.length > 0 && (
-                          <p className="text-purple-300 text-xs mb-3">
-                            {product.variantes.length} {t('variante(s) disponible(s)')}
-                          </p>
-                        )}
+                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
+                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
                         
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
