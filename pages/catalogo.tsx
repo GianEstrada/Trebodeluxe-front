@@ -68,6 +68,7 @@ const Catalogo: NextPage = () => {
   
   // Estados para filtros y productos (existentes)
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [filteredProductsWithPromotions, setFilteredProductsWithPromotions] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
 
@@ -179,28 +180,15 @@ const Catalogo: NextPage = () => {
   // Función para obtener los productos a mostrar (filtrados o destacados)
   // Función memoizada para obtener los productos a mostrar con transformación optimizada
   const productsToShow = useMemo(() => {
-    // Si hay productos filtrados, mostrar esos usando transformToLegacyFormat
-    if (filteredProducts.length > 0) {
-      console.log('🔄 [MEMO] Transformando productos filtrados:', filteredProducts.length);
-      const transformed = filteredProducts.map((product: any) => {
-        // Usar la función estándar de transformación para consistencia
-        const transformedProduct = productUtils.transformToLegacyFormat(product);
-        return transformedProduct;
-      }).filter(Boolean); // Filtrar productos null/undefined
-      
-      // 🎯 APLICAR PROMOCIONES: Aplicar descuentos como en el index
-      console.log('🔍 Estado promociones:', Object.keys(promotions).length, 'productos con promociones');
-      const withPromotions = Object.keys(promotions).length > 0 
-        ? productUtils.applyPromotionDiscounts(transformed, promotions)
-        : transformed;
-      
-      console.log('✅ [MEMO] Productos transformados:', transformed.length, 'con promociones aplicadas:', withPromotions.length);
-      return withPromotions;
+    // Si hay productos filtrados con promociones aplicadas, mostrar esos
+    if (filteredProductsWithPromotions.length > 0) {
+      console.log('� [MEMO] Mostrando productos filtrados con promociones:', filteredProductsWithPromotions.length);
+      return filteredProductsWithPromotions;
     }
     // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
     console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
     return featuredProducts;
-  }, [filteredProducts, featuredProducts, promotions]); // Dependencias: incluir promotions
+  }, [filteredProductsWithPromotions, featuredProducts]); // Dependencias simplificadas
 
   // Función legacy para compatibilidad (ahora solo devuelve el valor memoizado)
   const getProductsToShow = () => productsToShow;
@@ -589,6 +577,31 @@ const Catalogo: NextPage = () => {
       });
     }
   }, [filteredProducts]);
+
+  // 🎯 Transformar y aplicar promociones a productos filtrados
+  useEffect(() => {
+    if (filteredProducts.length > 0) {
+      console.log('🔄 Transformando productos filtrados:', filteredProducts.length);
+      
+      // Transformar productos usando transformToLegacyFormat
+      const transformed = filteredProducts.map((product: any) => {
+        const transformedProduct = productUtils.transformToLegacyFormat(product);
+        return transformedProduct;
+      }).filter(Boolean);
+      
+      // Aplicar promociones si están disponibles
+      console.log('🔍 Estado promociones para filtrados:', Object.keys(promotions).length, 'productos con promociones');
+      const withPromotions = Object.keys(promotions).length > 0 
+        ? productUtils.applyPromotionDiscounts(transformed, promotions)
+        : transformed;
+      
+      console.log('✅ Productos filtrados procesados:', transformed.length, 'con promociones aplicadas:', withPromotions.length);
+      setFilteredProductsWithPromotions(withPromotions);
+    } else {
+      // Si no hay productos filtrados, limpiar el estado
+      setFilteredProductsWithPromotions([]);
+    }
+  }, [filteredProducts, promotions]); // Dependencias: filteredProducts y promotions
 
   // Aplicar descuentos de promociones cuando cambien las promociones
   useEffect(() => {
