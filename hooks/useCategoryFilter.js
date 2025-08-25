@@ -120,10 +120,37 @@ const useCategoryFilter = (initialCategory = 'todas') => {
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Error filtrando productos:', error);
-        setError(error.message);
+        setError(`${error.message} - Usando filtrado local como fallback`);
         
-        // En caso de error, simplemente no filtrar (mostrar array vacío)
-        // Esto permite que el componente principal maneje el fallback
+        // 🔄 FALLBACK: Si falla la API, intentar filtrado local con productos destacados
+        try {
+          console.log('🔄 Activando fallback de filtrado local...');
+          const fallbackResponse = await fetch(`${API_BASE_URL}/api/products/featured?limit=20`, {
+            signal: productsAbortController.current?.signal
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            if (fallbackData.success && fallbackData.products) {
+              // Filtrar localmente por categoría
+              const localFilteredProducts = categorySlug === 'todas' 
+                ? fallbackData.products
+                : fallbackData.products.filter(product => {
+                    const productCategory = (product.categoria || product.categoria_nombre || '').toLowerCase();
+                    return productCategory.includes(categorySlug.toLowerCase());
+                  });
+              
+              console.log(`✅ Fallback exitoso: ${localFilteredProducts.length} productos encontrados localmente`);
+              setFilteredProducts(localFilteredProducts);
+              setError(`Filtrado local activo (Backend temporalmente no disponible)`);
+              return;
+            }
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback también falló:', fallbackError);
+        }
+        
+        // Si todo falla, array vacío
         setFilteredProducts([]);
       }
     } finally {
