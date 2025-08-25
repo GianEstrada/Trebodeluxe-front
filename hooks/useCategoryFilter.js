@@ -120,12 +120,8 @@ const useCategoryFilter = (initialCategory = 'todas') => {
         console.log(`✅ Productos filtrados: ${localFilteredProducts.length} de ${data.products.length} total`);
         setFilteredProducts(localFilteredProducts);
         
-        // Solo mostrar mensaje de filtrado local si no es "todas"
-        if (categorySlug !== 'todas') {
-          setError('Usando filtrado local (datos completos disponibles)');
-        } else {
-          setError(null);
-        }
+        // Todo funcionó correctamente - no mostrar mensajes de error
+        setError(null);
       } else {
         setError(data.message || 'Error al obtener productos');
         setFilteredProducts([]);
