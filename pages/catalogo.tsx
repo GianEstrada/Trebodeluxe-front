@@ -189,11 +189,12 @@ const Catalogo: NextPage = () => {
       }).filter(Boolean); // Filtrar productos null/undefined
       
       // 🎯 APLICAR PROMOCIONES: Aplicar descuentos como en el index
+      console.log('🔍 Estado promociones:', Object.keys(promotions).length, 'productos con promociones');
       const withPromotions = Object.keys(promotions).length > 0 
         ? productUtils.applyPromotionDiscounts(transformed, promotions)
         : transformed;
       
-      console.log('✅ [MEMO] Productos transformados:', transformed.length, 'con promociones:', withPromotions.length);
+      console.log('✅ [MEMO] Productos transformados:', transformed.length, 'con promociones aplicadas:', withPromotions.length);
       return withPromotions;
     }
     // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
@@ -429,7 +430,8 @@ const Catalogo: NextPage = () => {
 
   // Función para cargar promociones de un producto específico
   const loadPromotionsForProduct = async (productId: number, categoria?: string | null) => {
-    if (promotions[productId] || loadingPromotions) return;
+    // Solo evitar cargar si ya existen promociones para este producto específico
+    if (promotions[productId]) return;
     
     try {
       setLoadingPromotions(true);
@@ -440,6 +442,9 @@ const Catalogo: NextPage = () => {
           ...prev,
           [productId]: promotionData.promotions
         }));
+        console.log(`🎯 Promociones cargadas para producto ${productId}:`, promotionData.promotions.length);
+      } else {
+        console.log(`ℹ️ Sin promociones para producto ${productId}`);
       }
     } catch (error) {
       console.error('Error cargando promociones para producto:', productId, error);
