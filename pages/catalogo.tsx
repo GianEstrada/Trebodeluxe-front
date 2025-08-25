@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
@@ -177,21 +177,27 @@ const Catalogo: NextPage = () => {
   };
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
-  const getProductsToShow = () => {
+  // Función memoizada para obtener los productos a mostrar con transformación optimizada
+  const productsToShow = useMemo(() => {
     // Si hay productos filtrados, mostrar esos usando transformToLegacyFormat
     if (filteredProducts.length > 0) {
-      console.log('🔄 Transformando productos filtrados:', filteredProducts);
-      return filteredProducts.map((product: any) => {
+      console.log('🔄 [MEMO] Transformando productos filtrados:', filteredProducts.length);
+      const transformed = filteredProducts.map((product: any) => {
         // Usar la función estándar de transformación para consistencia
         const transformedProduct = productUtils.transformToLegacyFormat(product);
-        console.log('✅ Producto transformado con transformToLegacyFormat:', transformedProduct);
         return transformedProduct;
       }).filter(Boolean); // Filtrar productos null/undefined
+      
+      console.log('✅ [MEMO] Productos transformados:', transformed.length);
+      return transformed;
     }
     // Si no hay filtros aplicados, mostrar productos destacados
-    console.log('📦 Mostrando productos destacados:', featuredProducts.length);
+    console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
     return featuredProducts;
-  };
+  }, [filteredProducts, featuredProducts]); // Dependencias: solo re-calcular si cambian los productos
+
+  // Función legacy para compatibilidad (ahora solo devuelve el valor memoizado)
+  const getProductsToShow = () => productsToShow;
 
   // Función para obtener el título dinámico basado en filtros de URL
   const getProductsTitle = () => {
@@ -1446,7 +1452,6 @@ const Catalogo: NextPage = () => {
           
           {/* ===== SECCIÓN DE PRODUCTOS (FILTRADOS O DESTACADOS) ===== */}
           {(() => {
-            const productsToShow = getProductsToShow();
             console.log('🎯 Productos a mostrar:', productsToShow.length, 'productos');
             console.log('🔍 Estado filtros:', { 
               filteredProducts: filteredProducts.length,
@@ -1563,7 +1568,7 @@ const Catalogo: NextPage = () => {
           )}
           
           {/* Mensaje cuando no hay productos */}
-          {!loading && !isLoadingProducts && getProductsToShow().length === 0 && (
+          {!loading && !isLoadingProducts && productsToShow.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🔍</div>
               <p className="text-white text-xl mb-2">{t('No se encontraron productos')}</p>
