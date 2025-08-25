@@ -178,70 +178,15 @@ const Catalogo: NextPage = () => {
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
   const getProductsToShow = () => {
-    // Si hay productos filtrados, mostrar esos con el formato de cards mejoradas
+    // Si hay productos filtrados, mostrar esos usando transformToLegacyFormat
     if (filteredProducts.length > 0) {
       console.log('🔄 Transformando productos filtrados:', filteredProducts);
       return filteredProducts.map((product: any) => {
-        // Obtener la primera variante disponible para precio e imagen
-        const firstVariant = product.variantes && product.variantes[0];
-        const firstImage = firstVariant && firstVariant.imagenes && firstVariant.imagenes[0];
-        
-        // Determinar precio desde la estructura de BD real
-        let price = 0;
-        if (product.precio_minimo) {
-          price = parseFloat(product.precio_minimo);
-        } else if (firstVariant && firstVariant.precio) {
-          price = parseFloat(firstVariant.precio);
-        } else if (product.stock && product.stock[0] && product.stock[0].precio) {
-          price = parseFloat(product.stock[0].precio);
-        }
-        
-        // Determinar precio original (máximo)
-        let originalPrice = price;
-        if (product.precio_maximo && parseFloat(product.precio_maximo) > price) {
-          originalPrice = parseFloat(product.precio_maximo);
-        }
-        
-        // Obtener colores disponibles de las variantes
-        const availableColors = product.variantes && product.variantes.length > 0 ? 
-          product.variantes.map((v: any) => v.nombre).join(', ') : 'N/A';
-        
-        // Obtener tallas disponibles del stock
-        const availableSizes = product.tallas_disponibles && product.tallas_disponibles.length > 0 ? 
-          product.tallas_disponibles.map((t: any) => t.nombre_talla).join(', ') : 
-          (product.stock && product.stock.length > 0 ? 
-            Array.from(new Set(product.stock
-              .filter((s: any) => s.cantidad > 0)
-              .map((s: any) => s.nombre_talla || 'Talla')))
-              .join(', ') : 'N/A');
-        
-        // Verificar stock disponible
-        const hasStock = product.tiene_stock || 
-          (product.stock && product.stock.some((s: any) => s.cantidad > 0)) ||
-          (product.variantes && product.variantes.some((v: any) => v.disponible)) || 
-          false;
-        
-        const transformedProduct = {
-          id: product.id_producto || product.id,
-          name: product.nombre || product.name || 'Producto sin nombre',
-          price: price,
-          originalPrice: originalPrice,
-          image: firstImage ? firstImage.url : 
-                 (product.imagen_principal || product.imagen_url || product.image || 
-                  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDMwMCAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjU2IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cmVjdCB4PSI3NSIgeT0iNjQiIHdpZHRoPSIxNTAiIGhlaWdodD0iMTI4IiByeD0iOCIgZmlsbD0iIzFBNkIxQSIgZmlsbC1vcGFjaXR5PSIwLjIiLz4KPHN2ZyB4PSIxMzUiIHk9IjExNiIgd2lkdGg9IjMwIiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMxQTZCMUEiIGZpbGwtb3BhY2l0eT0iMC41Ij4KICA8cGF0aCBkPSJtMjEgMTlWNUg5bDIgMmgxMGEyIDIgMCAwIDEgMiAybC0yIDEwWm0wLTJIOVY3aDEydjEwWk0xIDIxaDJWOUg1VjdIMzYuNjk0IDUuNzY0YTEgMSAwIDAgMSAuMzYyIDEuMzc0TDEuMDU2IDIwLjc2NEExIDEgMCAwIDEgMS4wNTYgMjAuNzY0Wm05LTE0SDJ2MTBoOHYtMTBabS03IDlIM3YtOGg3djhaIi8+Cjwvc3ZnPgo8dGV4dCB4PSIxNTAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuNyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U2luIEltYWdlbjwvdGV4dD4KPC9zdmc+'),
-          category: product.categoria_nombre || product.categoria || product.category || 'Sin categoría',
-          brand: product.marca || product.brand || 'Sin marca',
-          color: availableColors,
-          size: availableSizes,
-          inStock: hasStock,
-          // Información adicional para debug
-          variantes: product.variantes || [],
-          stock: product.stock || [],
-          sistema_talla: product.sistema_talla_nombre
-        };
-        console.log('✅ Producto transformado con estructura BD:', transformedProduct);
+        // Usar la función estándar de transformación para consistencia
+        const transformedProduct = productUtils.transformToLegacyFormat(product);
+        console.log('✅ Producto transformado con transformToLegacyFormat:', transformedProduct);
         return transformedProduct;
-      });
+      }).filter(Boolean); // Filtrar productos null/undefined
     }
     // Si no hay filtros aplicados, mostrar productos destacados
     console.log('📦 Mostrando productos destacados:', featuredProducts.length);
