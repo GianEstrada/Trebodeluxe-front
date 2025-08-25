@@ -95,7 +95,7 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       // Crear un nuevo AbortController para productos
       productsAbortController.current = new AbortController();
 
-      let endpoint = `${API_BASE_URL}/api/products/with-variants?limit=20`;
+      let endpoint = `${API_BASE_URL}/api/products?limit=20`;
       
       if (categorySlug !== 'todas') {
         endpoint += `&categoria=${encodeURIComponent(categorySlug)}`;
@@ -121,6 +121,9 @@ const useCategoryFilter = (initialCategory = 'todas') => {
       if (error.name !== 'AbortError') {
         console.error('Error filtrando productos:', error);
         setError(error.message);
+        
+        // En caso de error, simplemente no filtrar (mostrar array vacío)
+        // Esto permite que el componente principal maneje el fallback
         setFilteredProducts([]);
       }
     } finally {

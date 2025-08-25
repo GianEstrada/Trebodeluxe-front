@@ -52,6 +52,8 @@ const Catalogo: NextPage = () => {
   const router = useRouter();
   const { categoria, filter, busqueda } = router.query;
   
+  console.log('🎬 Catalogo component mounted/rendered', { categoria, filter, busqueda, isReady: router.isReady });
+  
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
@@ -319,6 +321,13 @@ const Catalogo: NextPage = () => {
           setFeaturedProducts(transformedProducts);
         } else {
           console.log('❌ Search failed:', searchResponse);
+          // Si falla la búsqueda, mostrar productos destacados como fallback
+          console.log('🔄 Fallback to featured products after search error');
+          const featuredResponse = await productsApi.getFeatured(20) as any;
+          if (featuredResponse.success) {
+            const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+            setFeaturedProducts(transformedProducts);
+          }
         }
         
       } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
@@ -332,6 +341,13 @@ const Catalogo: NextPage = () => {
           setFeaturedProducts(transformedProducts);
         } else {
           console.log('❌ Category failed:', categoryResponse);
+          // Si falla la búsqueda por categoría, mostrar productos destacados como fallback
+          console.log('🔄 Fallback to featured products after category error');
+          const featuredResponse = await productsApi.getFeatured(20) as any;
+          if (featuredResponse.success) {
+            const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+            setFeaturedProducts(transformedProducts);
+          }
         }
         
       } else if (filter && typeof filter === 'string') {
@@ -349,7 +365,13 @@ const Catalogo: NextPage = () => {
               console.log('✅ Popular transformed products:', transformedProducts);
               setFeaturedProducts(transformedProducts);
             } else {
-              console.log('❌ Popular failed:', popularResponse);
+              console.log('❌ Popular failed, using fallback');
+              // Fallback a productos destacados
+              const featuredResponse = await productsApi.getFeatured(20) as any;
+              if (featuredResponse.success) {
+                const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+                setFeaturedProducts(transformedProducts);
+              }
             }
             break;
             
@@ -363,7 +385,13 @@ const Catalogo: NextPage = () => {
               console.log('✅ New transformed products:', transformedProducts);
               setFeaturedProducts(transformedProducts);
             } else {
-              console.log('❌ New failed:', newResponse);
+              console.log('❌ New failed, using fallback');
+              // Fallback a productos destacados
+              const featuredResponse = await productsApi.getFeatured(20) as any;
+              if (featuredResponse.success) {
+                const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+                setFeaturedProducts(transformedProducts);
+              }
             }
             break;
             
@@ -377,7 +405,13 @@ const Catalogo: NextPage = () => {
               console.log('✅ Basic transformed products:', transformedProducts);
               setFeaturedProducts(transformedProducts);
             } else {
-              console.log('❌ Basic failed:', basicResponse);
+              console.log('❌ Basic failed, using fallback');
+              // Fallback a productos destacados
+              const featuredResponse = await productsApi.getFeatured(20) as any;
+              if (featuredResponse.success) {
+                const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+                setFeaturedProducts(transformedProducts);
+              }
             }
             break;
             
@@ -413,7 +447,24 @@ const Catalogo: NextPage = () => {
     } catch (err: any) {
       console.error('❌ Error cargando productos:', err);
       setError(err.message);
-      setFeaturedProducts([]);
+      
+      // Sistema de fallback global - cargar productos destacados
+      try {
+        console.log('🔄 Global fallback - Loading featured products...');
+        const fallbackResponse = await productsApi.getFeatured(12) as any;
+        if (fallbackResponse.success) {
+          const transformedProducts = fallbackResponse.products.map(productUtils.transformToLegacyFormat);
+          console.log('✅ Fallback products loaded:', transformedProducts.length);
+          setFeaturedProducts(transformedProducts);
+          // Limpiar el error si el fallback funciona
+          setError(null);
+        } else {
+          setFeaturedProducts([]);
+        }
+      } catch (fallbackErr) {
+        console.error('❌ Fallback also failed:', fallbackErr);
+        setFeaturedProducts([]);
+      }
     } finally {
       setLoading(false);
       console.log('🔒 Loading state set to false');
@@ -533,22 +584,24 @@ const Catalogo: NextPage = () => {
 
   // ===== USEEFFECTS PARA EL SISTEMA DE PRODUCTOS =====
 
+  // Debug log para ver valores en cada render
+  console.log('🔍 DEBUG Current values in render:', { categoria, filter, busqueda });
+
+  // TEST: useEffect sin dependencias para verificar que React funciona
+  useEffect(() => {
+    console.log('🧪 TEST useEffect sin dependencias - esto SIEMPRE debe ejecutarse');
+  }, []);
+
   // Cargar productos al montar el componente y cuando cambien los filtros de URL
   useEffect(() => {
-    console.log('🔄 useEffect loadProductsByFilter triggered:', { 
-      isReady: router.isReady, 
+    console.log('🎯🎯🎯 useEffect EJECUTADO - loadProductsByFilter triggered:', { 
       categoria, 
       filter, 
       busqueda 
     });
+    loadProductsByFilter();
     
-    if (router.isReady) {
-      console.log('✅ Router is ready, calling loadProductsByFilter');
-      loadProductsByFilter();
-    } else {
-      console.log('⏳ Router not ready yet');
-    }
-  }, [router.isReady, categoria, filter, busqueda]);
+  }, [categoria, filter, busqueda]); // Remover router.isReady de dependencias
 
   // Cargar promociones para todos los productos featured al cargar
   useEffect(() => {
