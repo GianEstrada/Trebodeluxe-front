@@ -1523,11 +1523,11 @@ const Catalogo: NextPage = () => {
           
           {/* Barra de búsqueda y filtros */}
           <div className="mb-8">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto">
               {/* Controles de búsqueda y filtro */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 {/* Barra de búsqueda */}
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2 lg:col-span-2">
                   <ProductSearchBar
                     placeholder="Buscar productos en tiempo real..."
                     className="w-full"
@@ -1539,7 +1539,7 @@ const Catalogo: NextPage = () => {
                 </div>
                 
                 {/* Filtro de categorías */}
-                <div className="md:col-span-1">
+                <div className="sm:col-span-1 lg:col-span-1">
                   <CategoryFilter
                     className="w-full"
                     t={t}
@@ -1550,7 +1550,7 @@ const Catalogo: NextPage = () => {
                 </div>
                 
                 {/* Dropdown de ordenamiento */}
-                <div className="md:col-span-1">
+                <div className="sm:col-span-1 lg:col-span-1">
                   <div className="relative">
                     <select
                       value={sortBy}
@@ -1576,17 +1576,17 @@ const Catalogo: NextPage = () => {
               </div>
               
               {/* Información de filtros activos */}
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-300">
-                <p>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-300 px-4 sm:px-0 mt-4">
+                <p className="text-center">
                   {t('Busca por nombre, categoría o descripción del producto')}
                 </p>
                 {selectedCategory !== 'todas' && (
-                  <span className="bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <span className="bg-white/20 px-3 py-1 rounded-full text-xs whitespace-nowrap">
                     {t('Filtrando por categoría')}: <strong>{selectedCategory}</strong>
                   </span>
                 )}
                 {filteredProducts.length > 0 && (
-                  <span className="bg-green-600/20 px-3 py-1 rounded-full text-xs text-green-300">
+                  <span className="bg-green-600/20 px-3 py-1 rounded-full text-xs text-green-300 whitespace-nowrap">
                     {filteredProducts.length} {t('productos encontrados')}
                   </span>
                 )}
