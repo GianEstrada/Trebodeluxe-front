@@ -1624,26 +1624,6 @@ const Catalogo: NextPage = () => {
               return (
                 <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
                   <div className="w-full">
-                    <div className="mb-8 text-center">
-                      <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{getProductsTitle()}</h2>
-                      <p className="text-gray-300 text-lg">{getProductsSubtitle()}</p>
-                      <p className="text-green-300 text-sm mt-2">
-                        {productsToShow.length} {t('productos mostrados')}
-                        {(busqueda || categoria || filter) && (
-                          <span className="ml-2 text-xs text-yellow-300">
-                            • {t('Filtrado por')} {busqueda ? t('búsqueda') : categoria ? t('categoría') : t('tipo')}
-                          </span>
-                        )}
-                        <span className="ml-2 text-xs text-blue-300">
-                          • {t('Ordenado por')} {
-                            sortBy === 'nombre' ? t('Nombre') :
-                            sortBy === 'precio_asc' ? t('Precio ↑') :
-                            sortBy === 'precio_desc' ? t('Precio ↓') :
-                            sortBy === 'recientes' ? t('Más Recientes') : t('Relevancia')
-                          }
-                        </span>
-                      </p>
-                    </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                       {productsToShow.slice(0, 30).map((product: any) => (
