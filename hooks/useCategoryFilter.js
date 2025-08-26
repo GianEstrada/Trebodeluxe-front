@@ -10,7 +10,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-bac
  */
 const useCategoryFilter = (initialCategory = 'todas') => {
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('todas');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory); // Usar la categoría inicial
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true); // Iniciar como true
   const [error, setError] = useState(null);
@@ -168,6 +168,15 @@ const useCategoryFilter = (initialCategory = 'todas') => {
   const resetFilter = () => {
     setSelectedCategory('todas');
   };
+
+  // Actualizar categoría seleccionada cuando cambie la inicial
+  useEffect(() => {
+    if (initialCategory && initialCategory !== selectedCategory) {
+      console.log('🔄 Hook useCategoryFilter - Actualizando categoría inicial:', initialCategory);
+      setSelectedCategory(initialCategory);
+      filterProductsByCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   return {
     categories,

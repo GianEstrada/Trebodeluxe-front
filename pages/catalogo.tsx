@@ -354,55 +354,6 @@ const Catalogo: NextPage = () => {
           }
         }
         
-      } else if (categoria && typeof categoria === 'string' && categoria === 'todas') {
-        // Filtro por "todas las categorías" - cargar productos destacados y recientes
-        console.log('🏷️ Loading ALL categories (todas)');
-        const [featuredRes, recentRes] = await Promise.all([
-          productsApi.getFeatured(250),
-          productsApi.getRecent(250)
-        ]);
-        
-        const allProducts = [
-          ...((featuredRes as any).success ? (featuredRes as any).products : []),
-          ...((recentRes as any).success ? (recentRes as any).products : [])
-        ];
-        
-        // Eliminar duplicados por ID
-        const uniqueProducts = allProducts.filter((product, index, self) => 
-          index === self.findIndex(p => p.id === product.id)
-        );
-        
-        const transformedProducts = uniqueProducts.map(productUtils.transformToLegacyFormat).filter(Boolean);
-        console.log('✅ All categories products loaded:', transformedProducts.length);
-        setFeaturedProducts(transformedProducts);
-        
-      } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
-        // Filtro por categoría específica usando getAll con filtro
-        console.log('🏷️ Loading products by category:', categoria);
-        console.log('🔍 Categoria value type:', typeof categoria);
-        console.log('🔍 Categoria trimmed:', categoria.trim());
-        
-        const categoryResponse = await productsApi.getAll({ categoria: categoria.trim(), limit: 500 }) as any;
-        console.log('📡 Category response:', categoryResponse);
-        console.log('📊 Products in response:', categoryResponse?.products?.length || 0);
-        
-        if (categoryResponse.success) {
-          const transformedProducts = categoryResponse.products.map(productUtils.transformToLegacyFormat);
-          console.log('✅ Category transformed products:', transformedProducts);
-          console.log('📊 Transformed products count:', transformedProducts.length);
-          setFeaturedProducts(transformedProducts);
-        } else {
-          console.log('❌ Category failed:', categoryResponse);
-          console.log('❌ Category response error:', categoryResponse?.error || 'Unknown error');
-          // Si falla la búsqueda por categoría, mostrar productos destacados como fallback
-          console.log('🔄 Fallback to featured products after category error');
-          const featuredResponse = await productsApi.getFeatured(500) as any;
-          if (featuredResponse.success) {
-            const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-            setFeaturedProducts(transformedProducts);
-          }
-        }
-        
       } else if (filter && typeof filter === 'string') {
         // Filtros especiales: populares, nuevos, basicos
         console.log('🎯 Loading products by filter:', filter);
@@ -649,7 +600,7 @@ const Catalogo: NextPage = () => {
     console.log('🧪 TEST useEffect sin dependencias - esto SIEMPRE debe ejecutarse');
   }, []);
 
-  // Cargar productos al montar el componente y cuando cambien los filtros de URL
+  // Cargar productos al montar el componente y cuando cambien los filtros de URL (excepto categoria)
   useEffect(() => {
     if (!router.isReady) return; // Solo ejecutar cuando el router esté listo
     
@@ -661,7 +612,7 @@ const Catalogo: NextPage = () => {
     });
     loadProductsByFilter();
     
-  }, [router.isReady, categoria, filter, busqueda]); // Incluir router.isReady como dependencia
+  }, [router.isReady, filter, busqueda]); // Remover categoria de las dependencias
 
   // Cargar promociones para todos los productos featured al cargar
   useEffect(() => {
@@ -1594,6 +1545,7 @@ const Catalogo: NextPage = () => {
                     t={t}
                     onFilterChange={handleCategoryFilter}
                     showProductCount={true}
+                    initialCategory={categoria as string || 'todas'}
                   />
                 </div>
                 

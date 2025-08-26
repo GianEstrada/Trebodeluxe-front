@@ -7,7 +7,8 @@ const CategoryFilter = ({
   className = '', 
   onFilterChange,
   t, // Función de traducción pasada como prop
-  showProductCount = true 
+  showProductCount = true,
+  initialCategory = 'todas' // Nueva prop para categoría inicial
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -20,7 +21,7 @@ const CategoryFilter = ({
     filteredProducts,
     isLoading,
     error
-  } = useCategoryFilter();
+  } = useCategoryFilter(initialCategory); // Pasar la categoría inicial al hook
 
   // DEBUG: Log cada render del componente
   console.log('🔥 CategoryFilter RENDER:', {
