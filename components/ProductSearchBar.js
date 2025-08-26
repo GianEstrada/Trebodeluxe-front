@@ -91,7 +91,7 @@ const ProductSearchBar = ({
   return (
     <div className={`relative w-full ${className}`} ref={searchRef}>
       {/* Input de búsqueda */}
-      <div className="relative">
+      <div className="relative flex">
         <input
           type="text"
           value={query}
@@ -99,7 +99,7 @@ const ProductSearchBar = ({
           onFocus={handleInputFocus}
           onKeyDown={handleKeyPress}
           placeholder={t(placeholder)}
-          className="w-full bg-white/20 border border-white/30 rounded-lg py-3 px-4 pr-20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+          className="w-auto min-w-0 flex-1 bg-white/20 border border-white/30 rounded-lg py-3 px-4 pr-20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
           autoComplete="off"
         />
         
