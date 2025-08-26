@@ -188,16 +188,16 @@ const Catalogo: NextPage = () => {
   const productsToShow = useMemo(() => {
     // Si hay productos filtrados con promociones aplicadas, mostrar esos
     if (filteredProductsWithPromotions.length > 0) {
-      console.log('� [MEMO] Mostrando productos filtrados con promociones:', filteredProductsWithPromotions.length);
-      productsToProcess = filteredProductsWithPromotions;
+      console.log('🎯 [MEMO] Mostrando productos filtrados con promociones:', filteredProductsWithPromotions.length);
+      return filteredProductsWithPromotions;
     } else if (allCategoryProducts.length > 0 && selectedCategory !== 'todas') {
       console.log('📦 [MEMO] Usando productos de categoría completa:', allCategoryProducts.length);
-      productsToProcess = allCategoryProducts;
+      return allCategoryProducts;
     }
     // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
     console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
     return featuredProducts;
-  }, [filteredProductsWithPromotions, featuredProducts]); // Dependencias simplificadas
+  }, [filteredProductsWithPromotions, allCategoryProducts, selectedCategory, featuredProducts]); // Dependencias corregidas
 
   // Función legacy para compatibilidad (ahora solo devuelve el valor memoizado)
   const getProductsToShow = () => productsToShow;
