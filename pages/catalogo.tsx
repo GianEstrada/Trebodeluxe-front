@@ -280,8 +280,8 @@ const Catalogo: NextPage = () => {
       // Para "todas", obtener productos destacados + recientes
       if (categorySlug === 'todas') {
         const [featuredRes, recentRes] = await Promise.all([
-          productsApi.getFeatured(50),
-          productsApi.getRecent(50)
+          productsApi.getFeatured(250),
+          productsApi.getRecent(250)
         ]);
         
         const allProducts = [
@@ -299,7 +299,7 @@ const Catalogo: NextPage = () => {
         return transformedProducts;
       } else {
         // Para categoría específica, obtener productos con límite alto
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/featured?limit=100`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/products/featured?limit=500`);
         const data = await response.json();
         
         if (data.success && data.products) {
@@ -337,7 +337,7 @@ const Catalogo: NextPage = () => {
       if (busqueda && typeof busqueda === 'string') {
         // Busqueda por texto usando getAll con filtro
         console.log('🔍 Loading products by search:', busqueda);
-        const searchResponse = await productsApi.getAll({ busqueda, limit: 20 }) as any;
+        const searchResponse = await productsApi.getAll({ busqueda, limit: 500 }) as any;
         console.log('📡 Search response:', searchResponse);
         if (searchResponse.success) {
           const transformedProducts = searchResponse.products.map(productUtils.transformToLegacyFormat);
@@ -347,7 +347,7 @@ const Catalogo: NextPage = () => {
           console.log('❌ Search failed:', searchResponse);
           // Si falla la búsqueda, mostrar productos destacados como fallback
           console.log('🔄 Fallback to featured products after search error');
-          const featuredResponse = await productsApi.getFeatured(20) as any;
+          const featuredResponse = await productsApi.getFeatured(500) as any;
           if (featuredResponse.success) {
             const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
             setFeaturedProducts(transformedProducts);
@@ -357,7 +357,7 @@ const Catalogo: NextPage = () => {
       } else if (categoria && typeof categoria === 'string' && categoria !== 'todas') {
         // Filtro por categoría específica usando getAll con filtro
         console.log('🏷️ Loading products by category:', categoria);
-        const categoryResponse = await productsApi.getAll({ categoria, limit: 20 }) as any;
+        const categoryResponse = await productsApi.getAll({ categoria, limit: 500 }) as any;
         console.log('📡 Category response:', categoryResponse);
         if (categoryResponse.success) {
           const transformedProducts = categoryResponse.products.map(productUtils.transformToLegacyFormat);
@@ -367,7 +367,7 @@ const Catalogo: NextPage = () => {
           console.log('❌ Category failed:', categoryResponse);
           // Si falla la búsqueda por categoría, mostrar productos destacados como fallback
           console.log('🔄 Fallback to featured products after category error');
-          const featuredResponse = await productsApi.getFeatured(20) as any;
+          const featuredResponse = await productsApi.getFeatured(500) as any;
           if (featuredResponse.success) {
             const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
             setFeaturedProducts(transformedProducts);
@@ -382,7 +382,7 @@ const Catalogo: NextPage = () => {
           case 'populares':
             // Para productos populares, usar getPromotions
             console.log('⭐ Loading popular products...');
-            const popularResponse = await productsApi.getPromotions(20) as any;
+            const popularResponse = await productsApi.getPromotions(500) as any;
             console.log('📡 Popular response:', popularResponse);
             if (popularResponse.success) {
               const transformedProducts = popularResponse.products.map(productUtils.transformToLegacyFormat);
@@ -391,7 +391,7 @@ const Catalogo: NextPage = () => {
             } else {
               console.log('❌ Popular failed, using fallback');
               // Fallback a productos destacados
-              const featuredResponse = await productsApi.getFeatured(20) as any;
+              const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
                 setFeaturedProducts(transformedProducts);
@@ -402,7 +402,7 @@ const Catalogo: NextPage = () => {
           case 'nuevos':
             // Para productos nuevos, usar getRecent
             console.log('🆕 Loading new products...');
-            const newResponse = await productsApi.getRecent(20) as any;
+            const newResponse = await productsApi.getRecent(500) as any;
             console.log('📡 New response:', newResponse);
             if (newResponse.success) {
               const transformedProducts = newResponse.products.map(productUtils.transformToLegacyFormat);
@@ -411,7 +411,7 @@ const Catalogo: NextPage = () => {
             } else {
               console.log('❌ New failed, using fallback');
               // Fallback a productos destacados
-              const featuredResponse = await productsApi.getFeatured(20) as any;
+              const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
                 setFeaturedProducts(transformedProducts);
@@ -422,7 +422,7 @@ const Catalogo: NextPage = () => {
           case 'basicos':
             // Para productos básicos, usar getAll sin filtros específicos
             console.log('🎯 Loading basic products...');
-            const basicResponse = await productsApi.getAll({ limit: 20 }) as any;
+            const basicResponse = await productsApi.getAll({ limit: 500 }) as any;
             console.log('📡 Basic response:', basicResponse);
             if (basicResponse.success) {
               const transformedProducts = basicResponse.products.map(productUtils.transformToLegacyFormat);
@@ -431,7 +431,7 @@ const Catalogo: NextPage = () => {
             } else {
               console.log('❌ Basic failed, using fallback');
               // Fallback a productos destacados
-              const featuredResponse = await productsApi.getFeatured(20) as any;
+              const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
                 setFeaturedProducts(transformedProducts);
@@ -442,7 +442,7 @@ const Catalogo: NextPage = () => {
           default:
             // Fallback a productos destacados
             console.log('⭐ Loading featured products (fallback)...');
-            const featuredResponse = await productsApi.getFeatured(20) as any;
+            const featuredResponse = await productsApi.getFeatured(500) as any;
             console.log('📡 Featured response:', featuredResponse);
             if (featuredResponse.success) {
               const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
@@ -456,7 +456,7 @@ const Catalogo: NextPage = () => {
       } else {
         // Sin filtros específicos, mostrar productos destacados
         console.log('⭐ Loading featured products (default)');
-        const featuredResponse = await productsApi.getFeatured(20) as any;
+        const featuredResponse = await productsApi.getFeatured(500) as any;
         console.log('📡 Default featured response:', featuredResponse);
         if (featuredResponse.success) {
           const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
@@ -475,7 +475,7 @@ const Catalogo: NextPage = () => {
       // Sistema de fallback global - cargar productos destacados
       try {
         console.log('🔄 Global fallback - Loading featured products...');
-        const fallbackResponse = await productsApi.getFeatured(12) as any;
+        const fallbackResponse = await productsApi.getFeatured(500) as any;
         if (fallbackResponse.success) {
           const transformedProducts = fallbackResponse.products.map(productUtils.transformToLegacyFormat);
           console.log('✅ Fallback products loaded:', transformedProducts.length);
@@ -1626,7 +1626,7 @@ const Catalogo: NextPage = () => {
                   <div className="w-full">
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                      {productsToShow.slice(0, 30).map((product: any) => (
+                      {productsToShow.slice(0, 500).map((product: any) => (
                     <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                       <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                         <div className="relative mb-4">
