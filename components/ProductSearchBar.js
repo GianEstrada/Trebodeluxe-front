@@ -71,6 +71,7 @@ const ProductSearchBar = ({
 
   const handleProductSelect = (product) => {
     const selectedProduct = selectResult(product);
+    hideResults(); // Cerrar el dropdown después de seleccionar
     if (onProductSelect) {
       onProductSelect(selectedProduct);
     }
@@ -159,7 +160,7 @@ const ProductSearchBar = ({
               {results.map((product) => (
                 <Link
                   key={product.id_producto}
-                  href={`/product/${product.id_producto}`}
+                  href={`/producto/${product.id_producto}`}
                   className="block no-underline"
                   onClick={() => handleProductSelect(product)}
                 >

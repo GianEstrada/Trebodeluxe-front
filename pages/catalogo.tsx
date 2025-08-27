@@ -178,9 +178,9 @@ const Catalogo: NextPage = () => {
   };
 
   const handleProductSelect = (product: any) => {
-    // Redirigir al producto seleccionado usando la estructura de BD correcta
-    const productId = product.id_producto || product.id;
-    window.location.href = `/producto/${productId}`;
+    // Solo limpiar la búsqueda y dejar que Next.js Link maneje la navegación
+    console.log('Producto seleccionado:', product);
+    // No hacer redirección manual, el Link component se encargará
   };
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
