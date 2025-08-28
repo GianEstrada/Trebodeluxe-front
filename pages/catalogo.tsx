@@ -11,7 +11,6 @@ import { useIndexImages } from "../hooks/useIndexImages";
 import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { useCategories } from "../hooks/useCategories";
-import ProductSearchBar from "../components/ProductSearchBar";
 import CategoryFilter from "../components/CategoryFilter";
 import VariantSizeSelector from "../components/VariantSizeSelector";
 
@@ -61,6 +60,7 @@ const Catalogo: NextPage = () => {
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // Para la búsqueda del catálogo
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const [currentCurrency, setCurrentCurrency] = useState("MXN");
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -177,27 +177,46 @@ const Catalogo: NextPage = () => {
     setIsLoadingProducts(false);
   };
 
-  const handleProductSelect = (product: any) => {
-    // Solo limpiar la búsqueda y dejar que Next.js Link maneje la navegación
-    console.log('Producto seleccionado:', product);
-    // No hacer redirección manual, el Link component se encargará
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    // Resetear página cuando se hace una nueva búsqueda
+    setCurrentPage(1);
   };
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
   // Función memoizada para obtener los productos a mostrar con transformación optimizada
   const productsToShow = useMemo(() => {
-    // Si hay productos filtrados con promociones aplicadas, mostrar esos
+    let products = [];
+    
+    // Determinar qué productos usar como base
     if (filteredProductsWithPromotions.length > 0) {
-      console.log('🎯 [MEMO] Mostrando productos filtrados con promociones:', filteredProductsWithPromotions.length);
-      return filteredProductsWithPromotions;
+      console.log('🎯 [MEMO] Usando productos filtrados con promociones:', filteredProductsWithPromotions.length);
+      products = filteredProductsWithPromotions;
     } else if (allCategoryProducts.length > 0 && selectedCategory !== 'todas') {
       console.log('📦 [MEMO] Usando productos de categoría completa:', allCategoryProducts.length);
-      return allCategoryProducts;
+      products = allCategoryProducts;
+    } else {
+      console.log('📦 [MEMO] Usando productos destacados:', featuredProducts.length);
+      products = featuredProducts;
     }
-    // Si no hay filtros aplicados, mostrar productos destacados (ya tienen promociones aplicadas)
-    console.log('📦 [MEMO] Mostrando productos destacados:', featuredProducts.length);
-    return featuredProducts;
-  }, [filteredProductsWithPromotions, allCategoryProducts, selectedCategory, featuredProducts]); // Dependencias corregidas
+    
+    // Aplicar filtro de búsqueda si existe
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const searchLower = searchQuery.toLowerCase().trim();
+      products = products.filter(product => {
+        const name = (product.name || product.nombre || '').toLowerCase();
+        const description = (product.description || product.descripcion || '').toLowerCase();
+        const category = (product.category || product.categoria || '').toLowerCase();
+        
+        return name.includes(searchLower) || 
+               description.includes(searchLower) || 
+               category.includes(searchLower);
+      });
+      console.log('� [MEMO] Productos después del filtro de búsqueda:', products.length, 'para:', searchQuery);
+    }
+    
+    return products;
+  }, [filteredProductsWithPromotions, allCategoryProducts, selectedCategory, featuredProducts, searchQuery]); // Dependencias corregidas
 
   // Función legacy para compatibilidad (ahora solo devuelve el valor memoizado)
   const getProductsToShow = () => productsToShow;
@@ -1528,14 +1547,20 @@ const Catalogo: NextPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 {/* Barra de búsqueda */}
                 <div className="md:col-span-3">
-                  <ProductSearchBar
-                    placeholder="Buscar productos en tiempo real..."
-                    className="w-full"
-                    t={t}
-                    formatPrice={formatPrice}
-                    currentCurrency={currentCurrency}
-                    onProductSelect={handleProductSelect}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      placeholder={t("Buscar productos...")}
+                      className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent transition-all duration-200"
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Filtro de categorías */}
@@ -1580,14 +1605,19 @@ const Catalogo: NextPage = () => {
                 <p>
                   {t('Busca por nombre, categoría o descripción del producto')}
                 </p>
+                {searchQuery && (
+                  <span className="bg-blue-600/20 px-3 py-1 rounded-full text-xs text-blue-300">
+                    {t('Buscando')}: <strong>"{searchQuery}"</strong>
+                  </span>
+                )}
                 {selectedCategory !== 'todas' && (
                   <span className="bg-white/20 px-3 py-1 rounded-full text-xs">
                     {t('Filtrando por categoría')}: <strong>{selectedCategory}</strong>
                   </span>
                 )}
-                {filteredProducts.length > 0 && (
+                {productsToShow.length > 0 && (
                   <span className="bg-green-600/20 px-3 py-1 rounded-full text-xs text-green-300">
-                    {filteredProducts.length} {t('productos encontrados')}
+                    {productsToShow.length} {t('productos encontrados')}
                   </span>
                 )}
               </div>
