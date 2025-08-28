@@ -157,7 +157,16 @@ const ProductSearchBar = ({
                 </div>
               </div>
               
-              {results.map((product) => (
+              {results.map((product) => {
+                console.log('🖼️ Producto en render:', {
+                  id: product.id_producto,
+                  nombre: product.nombre,
+                  imagen_url: product.imagen_url,
+                  imagen_principal: product.imagen_principal,
+                  imagen: product.imagen,
+                  todas_las_keys: Object.keys(product)
+                });
+                return (
                 <Link
                   key={product.id_producto}
                   href={`/producto/${product.id_producto}`}
@@ -168,10 +177,10 @@ const ProductSearchBar = ({
                     <div className="flex items-center gap-3">
                       {/* Imagen del producto */}
                       <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
-                        {(product.imagen_url || product.imagen_principal || product.imagen) ? (
+                        {(product.imagen_url || product.imagen_principal || product.imagen || product.image) ? (
                           <Image
-                            src={product.imagen_url || product.imagen_principal || product.imagen}
-                            alt={product.nombre || ''}
+                            src={product.imagen_url || product.imagen_principal || product.imagen || product.image}
+                            alt={product.nombre || product.name || ''}
                             width={64}
                             height={64}
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
@@ -188,23 +197,23 @@ const ProductSearchBar = ({
                       {/* Información del producto */}
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 truncate">
-                          {product.nombre}
+                          {product.nombre || product.name}
                         </h4>
                         <p className="text-sm text-gray-600 truncate">
-                          {truncateText(product.descripcion, 60)}
+                          {truncateText(product.descripcion || product.description, 60)}
                         </p>
-                        {product.categoria_nombre && (
+                        {(product.categoria_nombre || product.category) && (
                           <p className="text-xs text-gray-500">
-                            {t('Categoría')}: {product.categoria_nombre}
+                            {t('Categoría')}: {product.categoria_nombre || product.category}
                           </p>
                         )}
                       </div>
                       
                       {/* Precio */}
-                      {product.precio_minimo && (
+                      {(product.precio_minimo || product.price) && (
                         <div className="text-right">
                           <div className="font-bold text-gray-900">
-                            {formatPrice(product.precio_minimo, currentCurrency, 'MXN')}
+                            {formatPrice(product.precio_minimo || product.price, currentCurrency, 'MXN')}
                           </div>
                           {product.precio_maximo && product.precio_maximo !== product.precio_minimo && (
                             <div className="text-xs text-gray-500">
@@ -216,7 +225,8 @@ const ProductSearchBar = ({
                     </div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
               
               {/* Ver todos los resultados */}
               <div className="p-3 border-t border-gray-200">

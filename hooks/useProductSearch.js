@@ -48,6 +48,7 @@ const useProductSearch = (initialQuery = '', delay = 300) => {
       const data = await response.json();
 
       if (data.success) {
+        console.log('🔍 Datos de búsqueda recibidos:', data.products?.slice(0, 2)); // Log de los primeros 2 productos
         setResults(data.products || []);
         setShowResults(true);
       } else {
