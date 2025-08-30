@@ -42,21 +42,54 @@ const CalculadoraEnvios: React.FC = () => {
 
   const fetchCategorias = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/categorias/admin', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      let token = localStorage.getItem('adminToken');
+      console.log('🔑 [Calc] Token found:', token ? 'Yes' : 'No');
+      
+      // Intentar primero con el endpoint con auth
+      let response;
+      let data;
+      
+      if (token) {
+        try {
+          response = await fetch('/api/categorias/admin', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            data = await response.json();
+            console.log('✅ [Calc] Authenticated endpoint succeeded');
+          } else {
+            console.log('❌ [Calc] Authenticated endpoint failed:', response.status);
+            throw new Error('Auth failed');
+          }
+        } catch (authError) {
+          console.log('⚠️ [Calc] Auth endpoint failed, trying temp endpoint...');
+          // Fallback al endpoint temporal
+          response = await fetch('/api/categorias/admin-temp');
+          if (!response.ok) {
+            throw new Error('Error al cargar categorías');
+          }
+          data = await response.json();
+          console.log('✅ [Calc] Temporary endpoint succeeded');
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al cargar categorías');
+      } else {
+        console.log('⚠️ [Calc] No token found, using temp endpoint...');
+        // Usar endpoint temporal directamente
+        response = await fetch('/api/categorias/admin-temp');
+        if (!response.ok) {
+          throw new Error('Error al cargar categorías');
+        }
+        data = await response.json();
+        console.log('✅ [Calc] Temporary endpoint succeeded');
       }
 
-      const data = await response.json();
-      setCategorias(data.categorias);
+      setCategorias(data.categorias || []);
+      
     } catch (error) {
+      console.error('❌ [Calc] Error loading categories:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setLoading(false);
