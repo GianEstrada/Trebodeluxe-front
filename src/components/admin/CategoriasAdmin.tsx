@@ -8,6 +8,12 @@ interface Categoria {
   orden: number;
   fecha_creacion: string;
   fecha_actualizacion: string;
+  // Nuevos campos para SkyDropX
+  alto_cm: number;
+  largo_cm: number;
+  ancho_cm: number;
+  peso_kg: number;
+  nivel_compresion: 'bajo' | 'medio' | 'alto';
 }
 
 interface FormData {
@@ -15,6 +21,12 @@ interface FormData {
   descripcion: string;
   activo: boolean;
   orden: number;
+  // Nuevos campos para SkyDropX
+  alto_cm: number;
+  largo_cm: number;
+  ancho_cm: number;
+  peso_kg: number;
+  nivel_compresion: 'bajo' | 'medio' | 'alto';
 }
 
 const CategoriasAdmin: React.FC = () => {
@@ -27,7 +39,13 @@ const CategoriasAdmin: React.FC = () => {
     nombre: '',
     descripcion: '',
     activo: true,
-    orden: 0
+    orden: 0,
+    // Valores por defecto para SkyDropX
+    alto_cm: 0,
+    largo_cm: 0,
+    ancho_cm: 0,
+    peso_kg: 0,
+    nivel_compresion: 'medio'
   });
   const [productosCount, setProductosCount] = useState<{[key: number]: number}>({});
 
@@ -125,7 +143,12 @@ const CategoriasAdmin: React.FC = () => {
       nombre: categoria.nombre,
       descripcion: categoria.descripcion || '',
       activo: categoria.activo,
-      orden: categoria.orden
+      orden: categoria.orden,
+      alto_cm: categoria.alto_cm || 0,
+      largo_cm: categoria.largo_cm || 0,
+      ancho_cm: categoria.ancho_cm || 0,
+      peso_kg: categoria.peso_kg || 0,
+      nivel_compresion: categoria.nivel_compresion || 'medio'
     });
     setShowForm(true);
   };
@@ -166,7 +189,12 @@ const CategoriasAdmin: React.FC = () => {
       nombre: '',
       descripcion: '',
       activo: true,
-      orden: 0
+      orden: 0,
+      alto_cm: 0,
+      largo_cm: 0,
+      ancho_cm: 0,
+      peso_kg: 0,
+      nivel_compresion: 'medio'
     });
     setEditingCategoria(null);
   };
@@ -271,6 +299,99 @@ const CategoriasAdmin: React.FC = () => {
               </label>
             </div>
 
+            {/* Sección de SkyDropX */}
+            <div className="border-t pt-4">
+              <h3 className="text-md font-medium text-gray-900 mb-4">
+                📦 Configuración de Envío (SkyDropX)
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Alto (cm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.alto_cm}
+                    onChange={(e) => setFormData({...formData, alto_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Largo (cm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.largo_cm}
+                    onChange={(e) => setFormData({...formData, largo_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ancho (cm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.ancho_cm}
+                    onChange={(e) => setFormData({...formData, ancho_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Peso (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={formData.peso_kg}
+                    onChange={(e) => setFormData({...formData, peso_kg: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nivel de Compresión
+                  </label>
+                  <select
+                    value={formData.nivel_compresion}
+                    onChange={(e) => setFormData({...formData, nivel_compresion: e.target.value as 'bajo' | 'medio' | 'alto'})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="bajo">Bajo - Rígido (zapatos, electrónicos)</option>
+                    <option value="medio">Medio - Semi-flexible (pantalones)</option>
+                    <option value="alto">Alto - Muy comprimible (camisetas, ropa interior)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  💡 <strong>Tip:</strong> Estas dimensiones se usan para calcular automáticamente el costo de envío con SkyDropX. 
+                  Se agregará un margen de empaque automáticamente.
+                </p>
+              </div>
+            </div>
+
             <div className="flex space-x-3 pt-4">
               <button
                 type="submit"
@@ -315,6 +436,15 @@ const CategoriasAdmin: React.FC = () => {
                     Productos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    📦 Dimensiones (cm)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ⚖️ Peso (kg)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    🗜️ Compresión
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -340,6 +470,26 @@ const CategoriasAdmin: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {productosCount[categoria.id_categoria] || 0} productos
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs text-gray-600">
+                        <div>{categoria.alto_cm || 0} × {categoria.largo_cm || 0} × {categoria.ancho_cm || 0}</div>
+                        <div className="text-gray-400">(alto × largo × ancho)</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {categoria.peso_kg || 0} kg
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        categoria.nivel_compresion === 'alto' 
+                          ? 'bg-green-100 text-green-800' 
+                          : categoria.nivel_compresion === 'medio'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {categoria.nivel_compresion || 'medio'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

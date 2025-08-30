@@ -13,6 +13,8 @@ import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
 import NotesAdmin from '../components/admin/NotesAdmin';
 import CategoriasAdmin from '../components/admin/CategoriasAdmin';
+import SkyDropXConfig from '../src/components/admin/SkyDropXConfig';
+import CalculadoraEnvios from '../src/components/admin/CalculadoraEnvios';
 
 interface Product {
   id_producto: number;
@@ -2559,6 +2561,31 @@ const AdminPage: NextPage = () => {
           >
             📏 {t('Sistemas de Tallas')}
           </button>
+          
+          {/* Sección SkyDropX */}
+          <div className="border-t border-gray-600 pt-2 mt-4">
+            <p className="px-4 py-2 text-xs uppercase text-gray-400 font-semibold">SkyDropX</p>
+            <button
+              onClick={() => setActiveSection('skydropx-config')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeSection === 'skydropx-config'
+                  ? 'bg-green-600 text-white'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              ⚙️ {t('Configuración SkyDropX')}
+            </button>
+            <button
+              onClick={() => setActiveSection('calculadora-envios')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                activeSection === 'calculadora-envios'
+                  ? 'bg-green-600 text-white'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              🧮 {t('Calculadora de Envíos')}
+            </button>
+          </div>
         </nav>
       </div>
       <div className="absolute bottom-6 left-6">
@@ -3821,6 +3848,10 @@ const AdminPage: NextPage = () => {
         return renderNotes();
       case 'sizes':
         return renderSizeSystems();
+      case 'skydropx-config':
+        return <SkyDropXConfig />;
+      case 'calculadora-envios':
+        return <CalculadoraEnvios />;
       default:
         return renderDashboard();
     }
