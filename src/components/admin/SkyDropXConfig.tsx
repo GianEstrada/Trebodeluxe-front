@@ -13,6 +13,7 @@ const SkyDropXConfig: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     fetchConfiguraciones();
@@ -88,8 +89,29 @@ const SkyDropXConfig: React.FC = () => {
       return;
     }
 
-    // Aquí podrías hacer una llamada de prueba a la API de SkyDropX
-    alert('Función de prueba de conexión disponible próximamente');
+    setTesting(true);
+    try {
+      const response = await fetch('/api/skydropx/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('✅ Conexión exitosa con SkyDropX!\n\nDetalles de la cuenta:\n' + JSON.stringify(result.data, null, 2));
+      } else {
+        alert('❌ Error al conectar con SkyDropX:\n' + (result.message || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error probando conexión:', error);
+      alert('❌ Error al probar la conexión: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setTesting(false);
+    }
   };
 
   if (loading) {
@@ -110,9 +132,14 @@ const SkyDropXConfig: React.FC = () => {
         </div>
         <button
           onClick={testConnection}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          disabled={testing}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            testing
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700'
+          }`}
         >
-          🧪 Probar Conexión
+          {testing ? '🔄 Probando...' : '🧪 Probar Conexión'}
         </button>
       </div>
 

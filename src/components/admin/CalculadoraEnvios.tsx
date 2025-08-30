@@ -18,6 +18,13 @@ interface DimensionesEnvio {
   compresion: string;
 }
 
+interface CotizacionEnvio {
+  carrier: string;
+  service: string;
+  cost: number;
+  delivery_time: string;
+}
+
 const CalculadoraEnvios: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<number | null>(null);
@@ -25,6 +32,9 @@ const CalculadoraEnvios: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [calculando, setCalculando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [cotizaciones, setCotizaciones] = useState<CotizacionEnvio[]>([]);
+  const [cotizando, setCotizando] = useState(false);
 
   useEffect(() => {
     fetchCategorias();
@@ -70,6 +80,51 @@ const CalculadoraEnvios: React.FC = () => {
       setError(error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setCalculando(false);
+    }
+  };
+
+  const obtenerCotizaciones = async () => {
+    if (!categoriaSeleccionada || !codigoPostal) {
+      alert('Selecciona una categoría e ingresa un código postal');
+      return;
+    }
+
+    setCotizando(true);
+    setCotizaciones([]);
+    
+    try {
+      const response = await fetch('/api/skydropx/quote-category', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          category_id: categoriaSeleccionada,
+          destination_zip: codigoPostal
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener cotizaciones');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.quotations) {
+        setCotizaciones(data.quotations.map((q: any) => ({
+          carrier: q.carrier_name || q.carrier,
+          service: q.service_level_name || q.service,
+          cost: parseFloat(q.total_pricing || q.cost || 0),
+          delivery_time: q.delivery_estimate || q.days || 'N/A'
+        })));
+      } else {
+        alert('No se pudieron obtener cotizaciones: ' + (data.message || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error obteniendo cotizaciones:', error);
+      alert('Error al obtener cotizaciones: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setCotizando(false);
     }
   };
 
@@ -199,6 +254,91 @@ const CalculadoraEnvios: React.FC = () => {
               Selecciona una categoría para calcular las dimensiones de envío
             </div>
           )}
+        </div>
+
+        {/* Cotización de Envío en Tiempo Real */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4">🚚 Cotización de Envío SkyDropX</h2>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Código Postal de Destino
+                </label>
+                <input
+                  type="text"
+                  value={codigoPostal}
+                  onChange={(e) => setCodigoPostal(e.target.value)}
+                  placeholder="Ej: 06100"
+                  maxLength={5}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={obtenerCotizaciones}
+                  disabled={cotizando || !categoriaSeleccionada || !codigoPostal}
+                  className={`w-full px-4 py-3 rounded-lg font-medium transition-colors ${
+                    cotizando || !categoriaSeleccionada || !codigoPostal
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {cotizando ? '🔄 Cotizando...' : '📦 Obtener Cotización'}
+                </button>
+              </div>
+            </div>
+
+            {cotizaciones.length > 0 && (
+              <div className="mt-6 overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-300">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Paquetería
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Servicio
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Costo
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tiempo de Entrega
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {cotizaciones.map((cotizacion, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {cotizacion.carrier}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {cotizacion.service}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className="font-bold text-green-600">
+                            ${cotizacion.cost.toFixed(2)} MXN
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {cotizacion.delivery_time}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {codigoPostal && categoriaSeleccionada && cotizaciones.length === 0 && !cotizando && (
+              <div className="text-center py-8 text-gray-500">
+                Haz clic en "Obtener Cotización" para ver las opciones de envío disponibles
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
