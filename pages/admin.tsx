@@ -12,7 +12,7 @@ import IndexImagesAdmin from '../components/admin/IndexImagesAdmin';
 import PromotionsAdmin from '../components/admin/PromotionsAdmin';
 import OrdersAdmin from '../components/admin/OrdersAdmin';
 import NotesAdmin from '../components/admin/NotesAdmin';
-import CategoriasAdmin from '../components/admin/CategoriasAdmin';
+import CategoriasAdmin from '../src/components/admin/CategoriasAdmin';
 import SkyDropXConfig from '../src/components/admin/SkyDropXConfig';
 import CalculadoraEnvios from '../src/components/admin/CalculadoraEnvios';
 
