@@ -205,6 +205,9 @@ interface ProductFormData {
 }
 
 const AdminPage: NextPage = () => {
+  // Configuración de API centralizada
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+  
   const router = useRouter();
   const { user } = useAuth();
   const { makeAuthenticatedRequest, getToken } = useTokenManager();
@@ -400,28 +403,69 @@ const AdminPage: NextPage = () => {
   const loadCategorias = useCallback(async () => {
     setCategoriasLoading(true);
     try {
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/categorias/admin', {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json'
+      let token = getToken();
+      console.log('🔑 [Admin] Token found for categories:', token ? 'Yes' : 'No');
+      
+      // Intentar primero con el endpoint con auth
+      let response;
+      let data;
+      
+      if (token) {
+        try {
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            data = await response.json();
+            console.log('✅ [Admin] Authenticated categorias endpoint succeeded');
+          } else {
+            console.log('❌ [Admin] Authenticated categorias endpoint failed:', response.status);
+            throw new Error('Auth failed');
+          }
+        } catch (authError) {
+          console.log('⚠️ [Admin] Auth endpoint failed, trying temp endpoint...');
+          // Fallback al endpoint temporal
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
+          if (!response.ok) {
+            throw new Error('Error al cargar categorías');
+          }
+          data = await response.json();
+          console.log('✅ [Admin] Temporary categorias endpoint succeeded');
         }
-      });
-      const data = await response.json();
+      } else {
+        console.log('⚠️ [Admin] No token found, using temp categorias endpoint...');
+        // Usar endpoint temporal directamente
+        response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
+        if (!response.ok) {
+          throw new Error('Error al cargar categorías');
+        }
+        data = await response.json();
+        console.log('✅ [Admin] Temporary categorias endpoint succeeded');
+      }
+      
       if (data.success) {
-        setCategorias(data.categorias);
+        setCategorias(data.categorias || []);
+        console.log(`📊 [Admin] Loaded ${data.categorias?.length || 0} categories`);
+      } else {
+        console.error('❌ [Admin] Categories response not successful:', data);
       }
     } catch (error) {
-      console.error('Error loading categorias:', error);
+      console.error('❌ [Admin] Error loading categorias:', error);
+      setCategorias([]); // Fallback a array vacío
     } finally {
       setCategoriasLoading(false);
     }
-  }, []);
+  }, [API_BASE_URL, getToken]);
 
   // Función para cargar imágenes del index - Memoizada
   const loadIndexImages = useCallback(async () => {
     setIndexImagesLoading(true);
     try {
-      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/index-images');
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/index-images`);
       const data = await response.json();
       if (data.success) {
         setIndexImages(data.images);
@@ -431,7 +475,7 @@ const AdminPage: NextPage = () => {
     } finally {
       setIndexImagesLoading(false);
     }
-  }, [makeAuthenticatedRequest]);
+  }, [makeAuthenticatedRequest, API_BASE_URL]);
 
   // Función para cargar estadísticas del dashboard
   const loadDashboardStats = async () => {
@@ -442,7 +486,6 @@ const AdminPage: NextPage = () => {
     });
     
     try {
-      const baseUrl = 'https://trebodeluxe-backend.onrender.com';
       console.log('🔄 Cargando estadísticas del dashboard...');
       
       // Inicializar datos por defecto
@@ -454,7 +497,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar variants
       try {
-        const variantsResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/variants`);
+        const variantsResponse = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/variants`);
         variantsData = await variantsResponse.json();
         console.log('📦 Variants data:', variantsData);
       } catch (error) {
@@ -463,7 +506,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar promotions
       try {
-        const promotionsResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/promotions`);
+        const promotionsResponse = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/promotions`);
         promotionsData = await promotionsResponse.json();
         console.log('🏷️ Promotions data:', promotionsData);
       } catch (error) {
@@ -472,10 +515,10 @@ const AdminPage: NextPage = () => {
 
       // Cargar orders (intentar diferentes endpoints)
       try {
-        const ordersResponse = await makeAuthenticatedRequest(`${baseUrl}/api/admin/orders`);
+        const ordersResponse = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/orders`);
         if (!ordersResponse.ok) {
           // Intentar endpoint alternativo
-          const altOrdersResponse = await makeAuthenticatedRequest(`${baseUrl}/api/orders`);
+          const altOrdersResponse = await makeAuthenticatedRequest(`${API_BASE_URL}/api/orders`);
           ordersData = await altOrdersResponse.json();
         } else {
           ordersData = await ordersResponse.json();
@@ -487,7 +530,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar notes stats
       try {
-        const notesStatsResponse = await fetch(`${baseUrl}/api/notes/stats`);
+        const notesStatsResponse = await fetch(`${API_BASE_URL}/api/notes/stats`);
         notesStatsData = await notesStatsResponse.json();
         console.log('📊 Notes stats:', notesStatsData);
       } catch (error) {
@@ -496,7 +539,7 @@ const AdminPage: NextPage = () => {
 
       // Cargar recent high priority notes
       try {
-        const notesResponse = await fetch(`${baseUrl}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
+        const notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
         recentNotesData = await notesResponse.json();
         console.log('📝 Recent notes:', recentNotesData);
       } catch (error) {
@@ -563,7 +606,7 @@ const AdminPage: NextPage = () => {
   const loadVariants = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/variants');
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/variants`);
       const data = await response.json();
       if (data.success) {
         setVariants(data.variants);
@@ -574,11 +617,11 @@ const AdminPage: NextPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [makeAuthenticatedRequest]);
+  }, [makeAuthenticatedRequest, API_BASE_URL]);
 
   const loadProducts = useCallback(async () => {
     try {
-      const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/products');
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/api/admin/products`);
       const data = await response.json();
       if (data.success) {
         setProducts(data.products);
@@ -586,7 +629,7 @@ const AdminPage: NextPage = () => {
     } catch (error) {
       console.error('Error loading products:', error);
     }
-  }, [makeAuthenticatedRequest]);
+  }, [makeAuthenticatedRequest, API_BASE_URL]);
 
   const loadSizeSystems = useCallback(async () => {
     console.log('loadSizeSystems: Iniciando carga de sistemas de tallas...');
