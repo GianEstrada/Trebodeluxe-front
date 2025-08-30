@@ -17,8 +17,17 @@ const CategoriaSelector: React.FC<CategoriaSelectorProps> = ({
   className = ""
 }) => {
   const { categorias, loading, error } = useCategorias();
+  
+  // Debug logging
+  console.log('🔍 [CategoriaSelector] Render state:', {
+    categorias: categorias.length,
+    loading,
+    error,
+    value
+  });
 
   if (loading) {
+    console.log('⏳ [CategoriaSelector] Still loading...');
     return (
       <select 
         disabled 
@@ -30,6 +39,7 @@ const CategoriaSelector: React.FC<CategoriaSelectorProps> = ({
   }
 
   if (error) {
+    console.error('❌ [CategoriaSelector] Error state:', error);
     return (
       <div className="text-red-600 text-sm">
         Error al cargar categorías: {error}
@@ -38,6 +48,7 @@ const CategoriaSelector: React.FC<CategoriaSelectorProps> = ({
   }
 
   const categoriasActivas = categorias.filter(cat => cat.activo);
+  console.log('🔍 [CategoriaSelector] Active categories:', categoriasActivas.length);
 
   return (
     <select
