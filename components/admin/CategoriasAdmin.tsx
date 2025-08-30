@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect } from 'react';
 
 interface Categoria {
   id_categoria: number;
@@ -10,79 +9,87 @@ interface Categoria {
   fecha_creacion: string;
   fecha_actualizacion: string;
   productos_count?: number;
+  // Nuevos campos para SkyDropX
+  alto_cm: number;
+  largo_cm: number;
+  ancho_cm: number;
+  peso_kg: number;
+  nivel_compresion: 'bajo' | 'medio' | 'alto';
 }
 
-interface CategoriasAdminProps {
-  onCategoryChange?: () => void;
+interface FormData {
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+  orden: number;
+  // Nuevos campos para SkyDropX
+  alto_cm: number;
+  largo_cm: number;
+  ancho_cm: number;
+  peso_kg: number;
+  nivel_compresion: 'bajo' | 'medio' | 'alto';
 }
 
-const CategoriasAdmin: React.FC<CategoriasAdminProps> = ({ onCategoryChange }) => {
+const CategoriasAdmin: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     nombre: '',
     descripcion: '',
+    activo: true,
     orden: 0,
-    activo: true
+    // Valores por defecto para SkyDropX
+    alto_cm: 0,
+    largo_cm: 0,
+    ancho_cm: 0,
+    peso_kg: 0,
+    nivel_compresion: 'medio'
   });
 
-  // Función helper para obtener token
-  const getAuthToken = () => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      return userData.token;
-    }
-    return null;
-  };
+  useEffect(() => {
+    fetchCategorias();
+  }, []);
 
-  // Cargar categorías
-  const loadCategorias = useCallback(async () => {
-    setLoading(true);
+  const fetchCategorias = async () => {
     try {
-      const token = getAuthToken();
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/categorias/admin?search=${searchQuery}`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/categorias/admin', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      const data = await response.json();
-      if (data.success) {
-        setCategorias(data.categorias);
+
+      if (!response.ok) {
+        throw new Error('Error al cargar categorías');
       }
+
+      const data = await response.json();
+      setCategorias(data.categorias);
     } catch (error) {
-      console.error('Error loading categorias:', error);
+      setError(error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  };
 
-  // Cargar al inicio
-  useEffect(() => {
-    loadCategorias();
-  }, [loadCategorias]);
-
-  // Manejar formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.nombre.trim()) {
-      alert('El nombre es requerido');
-      return;
-    }
+    setError(null);
 
     try {
-      const token = getAuthToken();
+      const token = localStorage.getItem('adminToken');
       const url = editingCategoria 
-        ? `https://trebodeluxe-backend.onrender.com/api/categorias/${editingCategoria.id_categoria}`
-        : 'https://trebodeluxe-backend.onrender.com/api/categorias';
+        ? `/api/categorias/${editingCategoria.id_categoria}`
+        : '/api/categorias';
       
+      const method = editingCategoria ? 'PUT' : 'POST';
+
       const response = await fetch(url, {
-        method: editingCategoria ? 'PUT' : 'POST',
+        method,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -90,43 +97,48 @@ const CategoriasAdmin: React.FC<CategoriasAdminProps> = ({ onCategoryChange }) =
         body: JSON.stringify(formData)
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(editingCategoria ? 'Categoría actualizada' : 'Categoría creada');
-        setShowForm(false);
-        setEditingCategoria(null);
-        setFormData({ nombre: '', descripcion: '', orden: 0, activo: true });
-        loadCategorias();
-        onCategoryChange?.();
-      } else {
-        alert(data.message || 'Error al guardar');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al guardar categoría');
       }
+
+      await fetchCategorias();
+      resetForm();
+      setShowForm(false);
     } catch (error) {
-      console.error('Error saving categoria:', error);
-      alert('Error al guardar');
+      setError(error instanceof Error ? error.message : 'Error desconocido');
     }
   };
 
-  // Editar categoría
   const handleEdit = (categoria: Categoria) => {
     setEditingCategoria(categoria);
     setFormData({
       nombre: categoria.nombre,
       descripcion: categoria.descripcion || '',
+      activo: categoria.activo,
       orden: categoria.orden,
-      activo: categoria.activo
+      alto_cm: categoria.alto_cm || 0,
+      largo_cm: categoria.largo_cm || 0,
+      ancho_cm: categoria.ancho_cm || 0,
+      peso_kg: categoria.peso_kg || 0,
+      nivel_compresion: categoria.nivel_compresion || 'medio'
     });
     setShowForm(true);
   };
 
-  // Eliminar categoría
   const handleDelete = async (categoria: Categoria) => {
-    if (!confirm(`¿Eliminar la categoría "${categoria.nombre}"?`)) return;
+    if ((categoria.productos_count || 0) > 0) {
+      alert(`No se puede eliminar la categoría "${categoria.nombre}" porque tiene ${categoria.productos_count} productos asociados.`);
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de que quieres eliminar la categoría "${categoria.nombre}"?`)) {
+      return;
+    }
 
     try {
-      const token = getAuthToken();
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/categorias/${categoria.id_categoria}`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`/api/categorias/${categoria.id_categoria}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -134,184 +146,435 @@ const CategoriasAdmin: React.FC<CategoriasAdminProps> = ({ onCategoryChange }) =
         }
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Categoría eliminada');
-        loadCategorias();
-        onCategoryChange?.();
-      } else {
-        alert(data.message || 'Error al eliminar');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al eliminar categoría');
       }
+
+      await fetchCategorias();
     } catch (error) {
-      console.error('Error deleting categoria:', error);
-      alert('Error al eliminar');
+      setError(error instanceof Error ? error.message : 'Error desconocido');
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      nombre: '',
+      descripcion: '',
+      activo: true,
+      orden: 0,
+      alto_cm: 0,
+      largo_cm: 0,
+      ancho_cm: 0,
+      peso_kg: 0,
+      nivel_compresion: 'medio'
+    });
+    setEditingCategoria(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+    setError(null);
+  };
+
+  const calcularDimensionesEnvio = async (idCategoria: number) => {
+    try {
+      const response = await fetch(`/api/categorias/${idCategoria}/dimensiones-envio`);
+      
+      if (!response.ok) {
+        throw new Error('Error al calcular dimensiones');
+      }
+
+      const data = await response.json();
+      const dimensiones = data.dimensiones;
+      
+      alert(`Dimensiones de envío calculadas:
+      
+Alto: ${dimensiones.alto_total} cm
+Largo: ${dimensiones.largo_total} cm  
+Ancho: ${dimensiones.ancho_total} cm
+Peso: ${dimensiones.peso_total} kg
+Compresión: ${dimensiones.compresion}
+      
+Volumen: ${(dimensiones.alto_total * dimensiones.largo_total * dimensiones.ancho_total / 1000).toFixed(2)} litros`);
+    } catch (error) {
+      alert(`Error al calcular dimensiones: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white">📁 Gestión de Categorías</h2>
-        {loading && <div className="text-green-400">⏳ Cargando...</div>}
-      </div>
-
-      {/* Barra de búsqueda y botón agregar */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-        <div className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Buscar categorías..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50"
-          />
-          <button
-            onClick={loadCategorias}
-            disabled={loading}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            🔍 Buscar
-          </button>
-          <button
-            onClick={() => {
-              setEditingCategoria(null);
-              setFormData({ nombre: '', descripcion: '', orden: 0, activo: true });
-              setShowForm(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            + Agregar Categoría
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestión de Categorías</h1>
+          <p className="text-gray-600">Administra las categorías de productos</p>
         </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          + Nueva Categoría
+        </button>
       </div>
 
-      {/* Lista de categorías */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categorias.map((categoria) => (
-          <div key={categoria.id_categoria} className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-bold text-white">{categoria.nombre}</h3>
-              <div className="flex gap-2">
-                <span className={`text-xs px-2 py-1 rounded ${categoria.activo ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'}`}>
-                  {categoria.activo ? 'Activa' : 'Inactiva'}
-                </span>
-              </div>
-            </div>
-            
-            {categoria.descripcion && (
-              <p className="text-gray-300 text-sm mb-4">{categoria.descripcion}</p>
-            )}
-            
-            <div className="text-sm text-gray-400 mb-4">
-              <p>Orden: {categoria.orden}</p>
-              <p>Productos: {categoria.productos_count || 0}</p>
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleEdit(categoria)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                ✏️ Editar
-              </button>
-              <button
-                onClick={() => handleDelete(categoria)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-                disabled={(categoria.productos_count || 0) > 0}
-              >
-                🗑️ Eliminar
-              </button>
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Formulario */}
+      {showForm && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold">
+                {editingCategoria ? '✏️ Editar Categoría' : '➕ Nueva Categoría'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Incluye configuración de dimensiones para envíos SkyDropX
+              </p>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Formulario modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">
-                {editingCategoria ? 'Editar Categoría' : 'Nueva Categoría'}
-              </h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nombre *
                 </label>
                 <input
                   type="text"
                   value={formData.nombre}
-                  onChange={(e) => setFormData(prev => ({...prev, nombre: e.target.value}))}
-                  className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                  onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
+                  placeholder="Ej: Camisetas"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Descripción
-                </label>
-                <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData(prev => ({...prev, descripcion: e.target.value}))}
-                  className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Orden
                 </label>
                 <input
                   type="number"
                   value={formData.orden}
-                  onChange={(e) => setFormData(prev => ({...prev, orden: parseInt(e.target.value) || 0}))}
-                  className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white focus:border-blue-400/50 focus:outline-none"
+                  onChange={(e) => setFormData({...formData, orden: parseInt(e.target.value) || 0})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  min="0"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="flex items-center text-white">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descripción
+              </label>
+              <textarea
+                value={formData.descripcion}
+                onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Descripción de la categoría..."
+              />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="activo"
+                checked={formData.activo}
+                onChange={(e) => setFormData({...formData, activo: e.target.checked})}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="activo" className="ml-2 text-sm text-gray-700">
+                Categoría activa
+              </label>
+            </div>
+
+            {/* Sección de SkyDropX */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <span className="mr-2">📦</span> Configuración de Envío SkyDropX
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      📏 Alto (cm)
+                    </span>
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={(e) => setFormData(prev => ({...prev, activo: e.target.checked}))}
-                    className="mr-2"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.alto_cm}
+                    onChange={(e) => setFormData({...formData, alto_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 10.5"
                   />
-                  Categoría activa
-                </label>
+                  <p className="text-xs text-gray-500 mt-1">Altura del producto empacado</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      📐 Largo (cm)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.largo_cm}
+                    onChange={(e) => setFormData({...formData, largo_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 25.0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Largo del producto empacado</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      📏 Ancho (cm)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.ancho_cm}
+                    onChange={(e) => setFormData({...formData, ancho_cm: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 15.0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Ancho del producto empacado</p>
+                </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  💾 Guardar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  ❌ Cancelar
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      ⚖️ Peso (kg)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.peso_kg}
+                    onChange={(e) => setFormData({...formData, peso_kg: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 0.25"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Peso aproximado del producto</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      🗜️ Nivel de Compresión
+                    </span>
+                  </label>
+                  <select
+                    value={formData.nivel_compresion}
+                    onChange={(e) => setFormData({...formData, nivel_compresion: e.target.value as 'bajo' | 'medio' | 'alto'})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="bajo">🔸 Bajo - Rígido (zapatos, electrónicos)</option>
+                    <option value="medio">🔹 Medio - Semi-flexible (pantalones, chaquetas)</option>
+                    <option value="alto">🔻 Alto - Muy comprimible (camisetas, ropa interior)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Qué tanto se puede comprimir el producto</p>
+                </div>
               </div>
-            </form>
-          </div>
+
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <span className="text-blue-600 mt-0.5">💡</span>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 mb-1">Información importante:</p>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Estas dimensiones se usarán para calcular automáticamente el costo de envío</li>
+                      <li>• SkyDropX agregará automáticamente el margen de empaque</li>
+                      <li>• El nivel de compresión afecta el volumen final del paquete</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {editingCategoria ? 'Actualizar' : 'Crear'} Categoría
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
         </div>
       )}
+
+      {/* Lista de Categorías */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h2 className="text-lg font-semibold">Categorías ({categorias.length})</h2>
+        </div>
+
+        {categorias.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No hay categorías registradas
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categoría
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Descripción
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Productos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    📦 Dimensiones (cm)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ⚖️ Peso (kg)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    🗜️ Compresión
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Orden
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {categorias.map((categoria) => (
+                  <tr key={categoria.id_categoria}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-medium text-gray-900 flex items-center">
+                        {categoria.nombre}
+                        {(categoria.alto_cm > 0 || categoria.largo_cm > 0 || categoria.ancho_cm > 0 || categoria.peso_kg > 0) && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            📦 SkyDropX
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">ID: {categoria.id_categoria}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs truncate">
+                        {categoria.descripcion || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {categoria.productos_count || 0} productos
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium">{categoria.alto_cm || 0} × {categoria.largo_cm || 0} × {categoria.ancho_cm || 0} cm</div>
+                        <div className="text-xs text-gray-500">
+                          Vol: {((categoria.alto_cm || 0) * (categoria.largo_cm || 0) * (categoria.ancho_cm || 0) / 1000).toFixed(2)}L
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 font-medium">{categoria.peso_kg || 0} kg</div>
+                      <div className="text-xs text-gray-500">
+                        {categoria.peso_kg > 0 ? 'Configurado' : 'Sin peso'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        categoria.nivel_compresion === 'alto' 
+                          ? 'bg-green-100 text-green-800' 
+                          : categoria.nivel_compresion === 'medio'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {categoria.nivel_compresion === 'alto' ? '🔻 Alto' :
+                         categoria.nivel_compresion === 'medio' ? '🔹 Medio' : '🔸 Bajo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        categoria.activo 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {categoria.activo ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {categoria.orden}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEdit(categoria)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Editar
+                      </button>
+                      {(categoria.alto_cm > 0 || categoria.largo_cm > 0 || categoria.ancho_cm > 0) && (
+                        <button
+                          onClick={() => calcularDimensionesEnvio(categoria.id_categoria)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Calcular dimensiones de envío"
+                        >
+                          📐 Calcular
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(categoria)}
+                        className="text-red-600 hover:text-red-900"
+                        disabled={(categoria.productos_count || 0) > 0}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
