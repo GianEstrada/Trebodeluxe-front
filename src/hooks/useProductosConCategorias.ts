@@ -25,13 +25,16 @@ export const useProductosConCategorias = (): UseProductosConCategorias => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
   const fetchProductos = async () => {
     try {
       setLoading(true);
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/products', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/products`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -7,6 +7,9 @@ interface VariantsManagerV2Props {
 }
 
 const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }) => {
+  // Configuración de API centralizada
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+  
   const { variants, loading, error, refetch, createVariant, updateVariant } = useVariantsV2();
   const [showForm, setShowForm] = useState(false);
   const [editingVariant, setEditingVariant] = useState<any>(null);
@@ -33,7 +36,7 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
   const fetchProductos = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/products', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/products`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -52,7 +55,7 @@ const VariantsManagerV2: React.FC<VariantsManagerV2Props> = ({ currentLanguage }
   const fetchSistemasTalla = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/size-systems', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/size-systems`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

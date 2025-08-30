@@ -33,13 +33,16 @@ export const useVariantsV2 = (): UseVariantsV2 => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
   const fetchVariants = async () => {
     try {
       setLoading(true);
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/variants`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -65,7 +68,7 @@ export const useVariantsV2 = (): UseVariantsV2 => {
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/variants', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/variants`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -93,7 +96,7 @@ export const useVariantsV2 = (): UseVariantsV2 => {
       setError(null);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/variants/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/variants/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

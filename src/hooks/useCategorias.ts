@@ -20,22 +20,35 @@ export const useCategorias = (): UseCategorias => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
   const fetchCategorias = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/categorias');
+      // Intentar primero el endpoint público
+      let response = await fetch(`${API_BASE_URL}/api/categorias`);
       
       if (!response.ok) {
-        throw new Error('Error al cargar categorías');
+        // Si falla, intentar el endpoint temporal como fallback
+        console.log('⚠️ [useCategorias] Public endpoint failed, trying temp endpoint...');
+        response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
+        
+        if (!response.ok) {
+          throw new Error('Error al cargar categorías');
+        }
       }
 
       const data = await response.json();
-      setCategorias(data.data || []);
+      // Manejar tanto el formato público como admin
+      const categoriasData = data.categorias || data.data || [];
+      setCategorias(categoriasData);
+      console.log(`✅ [useCategorias] Loaded ${categoriasData.length} categories`);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error desconocido');
-      console.error('Error fetching categorias:', error);
+      console.error('❌ [useCategorias] Error fetching categorias:', error);
     } finally {
       setLoading(false);
     }
