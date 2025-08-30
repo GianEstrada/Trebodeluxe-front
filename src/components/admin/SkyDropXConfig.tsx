@@ -15,6 +15,9 @@ const SkyDropXConfig: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
   useEffect(() => {
     fetchConfiguraciones();
   }, []);
@@ -22,7 +25,7 @@ const SkyDropXConfig: React.FC = () => {
   const fetchConfiguraciones = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/categorias/admin/skydropx-config', {
+      const response = await fetch(`${API_BASE_URL}/api/categorias/admin/skydropx-config`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -59,7 +62,7 @@ const SkyDropXConfig: React.FC = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/categorias/admin/skydropx-config', {
+      const response = await fetch(`${API_BASE_URL}/api/categorias/admin/skydropx-config`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -91,7 +94,7 @@ const SkyDropXConfig: React.FC = () => {
 
     setTesting(true);
     try {
-      const response = await fetch('/api/skydropx/test-connection', {
+      const response = await fetch(`${API_BASE_URL}/api/skydropx/test-connection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

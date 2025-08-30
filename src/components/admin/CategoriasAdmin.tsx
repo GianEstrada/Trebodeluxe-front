@@ -49,6 +49,9 @@ const CategoriasAdmin: React.FC = () => {
     nivel_compresion: 'medio'
   });
 
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
+
   useEffect(() => {
     fetchCategorias();
   }, []);
@@ -64,7 +67,7 @@ const CategoriasAdmin: React.FC = () => {
       
       if (token) {
         try {
-          response = await fetch('/api/categorias/admin', {
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -81,7 +84,7 @@ const CategoriasAdmin: React.FC = () => {
         } catch (authError) {
           console.log('⚠️ Auth endpoint failed, trying temp endpoint...');
           // Fallback al endpoint temporal
-          response = await fetch('/api/categorias/admin-temp');
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
           if (!response.ok) {
             throw new Error('Error al cargar categorías');
           }
@@ -91,7 +94,7 @@ const CategoriasAdmin: React.FC = () => {
       } else {
         console.log('⚠️ No token found, using temp endpoint...');
         // Usar endpoint temporal directamente
-        response = await fetch('/api/categorias/admin-temp');
+        response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
         if (!response.ok) {
           throw new Error('Error al cargar categorías');
         }
@@ -125,8 +128,8 @@ const CategoriasAdmin: React.FC = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const url = editingCategoria 
-        ? `/api/categorias/${editingCategoria.id_categoria}`
-        : '/api/categorias';
+        ? `${API_BASE_URL}/api/categorias/${editingCategoria.id_categoria}`
+        : `${API_BASE_URL}/api/categorias`;
       
       const method = editingCategoria ? 'PUT' : 'POST';
 
@@ -180,7 +183,7 @@ const CategoriasAdmin: React.FC = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/categorias/${categoria.id_categoria}`, {
+      const response = await fetch(`${API_BASE_URL}/api/categorias/${categoria.id_categoria}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -222,7 +225,7 @@ const CategoriasAdmin: React.FC = () => {
 
   const calcularDimensionesEnvio = async (idCategoria: number) => {
     try {
-      const response = await fetch(`/api/categorias/${idCategoria}/dimensiones-envio`);
+      const response = await fetch(`${API_BASE_URL}/api/categorias/${idCategoria}/dimensiones-envio`);
       
       if (!response.ok) {
         throw new Error('Error al calcular dimensiones');

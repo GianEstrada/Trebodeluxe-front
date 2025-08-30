@@ -28,6 +28,9 @@ interface CotizacionEnvio {
 const CalculadoraEnvios: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<number | null>(null);
+  
+  // Configurar URL base del backend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
   const [dimensionesCalculadas, setDimensionesCalculadas] = useState<DimensionesEnvio | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculando, setCalculando] = useState(false);
@@ -51,7 +54,7 @@ const CalculadoraEnvios: React.FC = () => {
       
       if (token) {
         try {
-          response = await fetch('/api/categorias/admin', {
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -68,7 +71,7 @@ const CalculadoraEnvios: React.FC = () => {
         } catch (authError) {
           console.log('⚠️ [Calc] Auth endpoint failed, trying temp endpoint...');
           // Fallback al endpoint temporal
-          response = await fetch('/api/categorias/admin-temp');
+          response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
           if (!response.ok) {
             throw new Error('Error al cargar categorías');
           }
@@ -78,7 +81,7 @@ const CalculadoraEnvios: React.FC = () => {
       } else {
         console.log('⚠️ [Calc] No token found, using temp endpoint...');
         // Usar endpoint temporal directamente
-        response = await fetch('/api/categorias/admin-temp');
+        response = await fetch(`${API_BASE_URL}/api/categorias/admin-temp`);
         if (!response.ok) {
           throw new Error('Error al cargar categorías');
         }
@@ -101,7 +104,7 @@ const CalculadoraEnvios: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/categorias/${idCategoria}/dimensiones-envio`);
+      const response = await fetch(`${API_BASE_URL}/api/categorias/${idCategoria}/dimensiones-envio`);
 
       if (!response.ok) {
         throw new Error('Error al calcular dimensiones');
@@ -126,7 +129,7 @@ const CalculadoraEnvios: React.FC = () => {
     setCotizaciones([]);
     
     try {
-      const response = await fetch('/api/skydropx/quote-category', {
+      const response = await fetch(`${API_BASE_URL}/api/skydropx/quote-category`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
