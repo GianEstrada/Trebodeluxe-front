@@ -1871,11 +1871,32 @@ const AdminPage: NextPage = () => {
             updatedVariantData.imagenes = uploadedImages;
           }
           
+          // Validar y completar tallas con precios válidos
+          const currentTallas = getCurrentProductTallas();
+          console.log('🔍 [DEBUG] Current tallas before validation:', currentTallas);
+          
+          const validatedTallas = currentTallas.map(talla => {
+            const existingTalla = singleVariantData.tallas.find(t => t.id_talla === talla.id_talla);
+            return {
+              id_talla: talla.id_talla,
+              nombre_talla: talla.nombre_talla,
+              cantidad: existingTalla?.cantidad || 0,
+              precio: uniquePrice 
+                ? (singleVariantData.precio_referencia || 0)
+                : (existingTalla?.precio || 0) // Asegurar que nunca sea null
+            };
+          });
+          
+          console.log('🔍 [DEBUG] Validated tallas:', validatedTallas);
+          updatedVariantData.tallas = validatedTallas;
+          
           // Modo creación - nueva variante
           const payload = {
             id_producto: selectedProductId,
             ...updatedVariantData
           };
+          
+          console.log('🔍 [DEBUG] Final payload:', payload);
           
           response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/admin/products/variants', {
             method: 'POST',
