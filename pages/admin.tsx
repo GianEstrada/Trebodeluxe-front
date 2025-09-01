@@ -1577,32 +1577,42 @@ const AdminPage: NextPage = () => {
 
       // useEffect para resetear formulario al cambiar tipo
       useEffect(() => {
-        // Resetear datos cuando no estamos editando
-        setProductFormData({
-          producto_nombre: '',
-          producto_descripcion: '',
-          categoria: '',
-          marca: '',
-          id_sistema_talla: 0,
-          variantes: [
-            {
-              nombre: '',
-              precio_unico: true,
-              precio_referencia: 0,
-              imagenes: [],
-              tallas: []
-            }
-          ]
-        });
+        console.log('🔍 [DEBUG] useEffect reset triggered, formType:', formType);
+        console.log('🔍 [DEBUG] selectedProductId:', selectedProductId);
         
-        setSingleVariantData({
-          nombre: '',
-          precio_unico: true,
-          precio_referencia: 0,
-          imagenes: [],
-          tallas: []
-        });
-      }, [formType]);
+        // Solo resetear si realmente cambiamos de tipo de formulario
+        // No resetear si estamos en nueva_variante y ya hay un producto seleccionado
+        if (!(formType === 'nueva_variante' && selectedProductId)) {
+          console.log('🔍 [DEBUG] Resetting form data...');
+          // Resetear datos cuando no estamos editando
+          setProductFormData({
+            producto_nombre: '',
+            producto_descripcion: '',
+            categoria: '',
+            marca: '',
+            id_sistema_talla: 0,
+            variantes: [
+              {
+                nombre: '',
+                precio_unico: true,
+                precio_referencia: 0,
+                imagenes: [],
+                tallas: []
+              }
+            ]
+          });
+          
+          setSingleVariantData({
+            nombre: '',
+            precio_unico: true,
+            precio_referencia: 0,
+            imagenes: [],
+            tallas: []
+          });
+        } else {
+          console.log('🔍 [DEBUG] Skipping reset - product already selected');
+        }
+      }, [formType, selectedProductId]);
 
     // useEffect para cargar sistemas de tallas cuando se abra el modal de variante
     useEffect(() => {
