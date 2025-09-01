@@ -2263,8 +2263,13 @@ const AdminPage: NextPage = () => {
                         console.log('🔍 [DEBUG] Calling handleSizeSystemChange with:', product.id_sistema_talla);
                         
                         // Primero actualizar las tallas
+                        console.log('🔍 [DEBUG] Looking for system with ID:', product.id_sistema_talla);
+                        console.log('🔍 [DEBUG] Available sizeSystems:', sizeSystems);
                         const system = sizeSystems.find(s => s.id_sistema_talla === product.id_sistema_talla);
+                        console.log('🔍 [DEBUG] Found system:', system);
+                        
                         if (system) {
+                          console.log('🔍 [DEBUG] System found, generating tallas...');
                           const tallasDefault = system.tallas.map(talla => ({
                             id_talla: talla.id_talla,
                             nombre_talla: talla.nombre_talla,
@@ -2272,13 +2277,18 @@ const AdminPage: NextPage = () => {
                             precio: uniquePrice ? uniquePriceValue : 0
                           }));
 
+                          console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
                           // Actualizar ambos estados en paralelo
                           console.log('🔍 [DEBUG] Updating states simultaneously...');
                           setSelectedProductId(productId);
-                          setSingleVariantData(prev => ({
-                            ...prev,
-                            tallas: tallasDefault
-                          }));
+                          setSingleVariantData(prev => {
+                            const newState = {
+                              ...prev,
+                              tallas: tallasDefault
+                            };
+                            console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
+                            return newState;
+                          });
                         } else {
                           console.log('🔍 [DEBUG] No system found for productId:', productId);
                           setSelectedProductId(productId);
