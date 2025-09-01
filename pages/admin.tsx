@@ -2253,7 +2253,6 @@ const AdminPage: NextPage = () => {
                     onChange={(e) => {
                       const productId = Number(e.target.value);
                       console.log('🔍 [DEBUG] Product selected:', productId);
-                      setSelectedProductId(productId);
                       
                       // Auto-configurar tallas basado en el sistema del producto
                       const product = products.find(p => p.id_producto === productId);
@@ -2262,9 +2261,31 @@ const AdminPage: NextPage = () => {
                       
                       if (product?.id_sistema_talla) {
                         console.log('🔍 [DEBUG] Calling handleSizeSystemChange with:', product.id_sistema_talla);
-                        handleSizeSystemChange(product.id_sistema_talla);
+                        
+                        // Primero actualizar las tallas
+                        const system = sizeSystems.find(s => s.id_sistema_talla === product.id_sistema_talla);
+                        if (system) {
+                          const tallasDefault = system.tallas.map(talla => ({
+                            id_talla: talla.id_talla,
+                            nombre_talla: talla.nombre_talla,
+                            cantidad: 0,
+                            precio: uniquePrice ? uniquePriceValue : 0
+                          }));
+
+                          // Actualizar ambos estados en paralelo
+                          console.log('🔍 [DEBUG] Updating states simultaneously...');
+                          setSelectedProductId(productId);
+                          setSingleVariantData(prev => ({
+                            ...prev,
+                            tallas: tallasDefault
+                          }));
+                        } else {
+                          console.log('🔍 [DEBUG] No system found for productId:', productId);
+                          setSelectedProductId(productId);
+                        }
                       } else {
                         console.log('🔍 [DEBUG] No size system found for product');
+                        setSelectedProductId(productId);
                       }
                     }}
                     className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
