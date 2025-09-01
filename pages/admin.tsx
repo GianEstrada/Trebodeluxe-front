@@ -1612,6 +1612,12 @@ const AdminPage: NextPage = () => {
       }
     }, [showVariantForm, formType, sizeSystems.length, loadSizeSystems]);
 
+    // useEffect para debug - monitorear cambios en singleVariantData.tallas
+    useEffect(() => {
+      console.log('🔍 [DEBUG] singleVariantData.tallas changed:', singleVariantData.tallas);
+      console.log('🔍 [DEBUG] singleVariantData.tallas.length:', singleVariantData.tallas.length);
+    }, [singleVariantData.tallas]);
+
     const handleSizeSystemChange = (systemId: number) => {
       console.log('🔍 [DEBUG] handleSizeSystemChange called with systemId:', systemId);
       console.log('🔍 [DEBUG] Available sizeSystems:', sizeSystems.length);
@@ -1629,8 +1635,10 @@ const AdminPage: NextPage = () => {
         }));
 
         console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
+        console.log('🔍 [DEBUG] Current formType:', formType);
 
         if (formType === 'nuevo_producto') {
+          console.log('🔍 [DEBUG] Updating productFormData...');
           setProductFormData(prev => ({
             ...prev,
             id_sistema_talla: systemId,
@@ -1640,10 +1648,15 @@ const AdminPage: NextPage = () => {
           }));
         } else {
           console.log('🔍 [DEBUG] Updating singleVariantData with tallas...');
-          setSingleVariantData(prev => ({
-            ...prev,
-            tallas: tallasDefault
-          }));
+          console.log('🔍 [DEBUG] Previous singleVariantData tallas:', singleVariantData.tallas);
+          setSingleVariantData(prev => {
+            const newData = {
+              ...prev,
+              tallas: tallasDefault
+            };
+            console.log('🔍 [DEBUG] New singleVariantData:', newData);
+            return newData;
+          });
         }
       } else {
         console.log('🔍 [DEBUG] No system found for systemId:', systemId);
