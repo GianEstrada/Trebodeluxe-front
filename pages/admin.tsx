@@ -1602,8 +1602,24 @@ const AdminPage: NextPage = () => {
           imagenes: [],
           tallas: []
         });
-      }, [formType]);    const handleSizeSystemChange = (systemId: number) => {
+      }, [formType]);
+
+    // useEffect para cargar sistemas de tallas cuando se abra el modal de variante
+    useEffect(() => {
+      if (showVariantForm && formType === 'nueva_variante' && sizeSystems.length === 0) {
+        console.log('🔍 [DEBUG] Cargando sistemas de tallas para modal de nueva variante...');
+        loadSizeSystems();
+      }
+    }, [showVariantForm, formType, sizeSystems.length, loadSizeSystems]);
+
+    const handleSizeSystemChange = (systemId: number) => {
+      console.log('🔍 [DEBUG] handleSizeSystemChange called with systemId:', systemId);
+      console.log('🔍 [DEBUG] Available sizeSystems:', sizeSystems.length);
+      console.log('🔍 [DEBUG] sizeSystems data:', sizeSystems);
+      
       const system = sizeSystems.find(s => s.id_sistema_talla === systemId);
+      console.log('🔍 [DEBUG] Found system:', system);
+      
       if (system) {
         const tallasDefault = system.tallas.map(talla => ({
           id_talla: talla.id_talla,
@@ -1611,6 +1627,8 @@ const AdminPage: NextPage = () => {
           cantidad: 0,
           precio: uniquePrice ? uniquePriceValue : 0
         }));
+
+        console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
 
         if (formType === 'nuevo_producto') {
           setProductFormData(prev => ({
@@ -1621,11 +1639,14 @@ const AdminPage: NextPage = () => {
             )
           }));
         } else {
+          console.log('🔍 [DEBUG] Updating singleVariantData with tallas...');
           setSingleVariantData(prev => ({
             ...prev,
             tallas: tallasDefault
           }));
         }
+      } else {
+        console.log('🔍 [DEBUG] No system found for systemId:', systemId);
       }
     };
 
@@ -2208,12 +2229,19 @@ const AdminPage: NextPage = () => {
                     value={selectedProductId || ''}
                     onChange={(e) => {
                       const productId = Number(e.target.value);
+                      console.log('🔍 [DEBUG] Product selected:', productId);
                       setSelectedProductId(productId);
                       
                       // Auto-configurar tallas basado en el sistema del producto
                       const product = products.find(p => p.id_producto === productId);
+                      console.log('🔍 [DEBUG] Found product:', product);
+                      console.log('🔍 [DEBUG] Product has size system:', product?.id_sistema_talla);
+                      
                       if (product?.id_sistema_talla) {
+                        console.log('🔍 [DEBUG] Calling handleSizeSystemChange with:', product.id_sistema_talla);
                         handleSizeSystemChange(product.id_sistema_talla);
+                      } else {
+                        console.log('🔍 [DEBUG] No size system found for product');
                       }
                     }}
                     className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
@@ -2334,6 +2362,15 @@ const AdminPage: NextPage = () => {
                 ) : null}
 
                 {/* Tabla de tallas para variante individual */}
+                {(() => {
+                  console.log('🔍 [DEBUG] Tabla tallas conditions:', {
+                    selectedProductId,
+                    singleVariantDataTallasLength: singleVariantData.tallas.length,
+                    singleVariantDataTallas: singleVariantData.tallas,
+                    shouldShowTable: selectedProductId && singleVariantData.tallas.length > 0
+                  });
+                  return null;
+                })()}
                 {selectedProductId && singleVariantData.tallas.length > 0 && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-300 mb-2">{t('Tallas y Stock')}</h5>
