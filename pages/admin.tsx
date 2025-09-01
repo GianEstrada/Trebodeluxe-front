@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { NextPage } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -2278,17 +2279,22 @@ const AdminPage: NextPage = () => {
                           }));
 
                           console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
-                          // Actualizar ambos estados en paralelo
+                          // Actualizar ambos estados en paralelo con flushSync para forzar actualización inmediata
                           console.log('🔍 [DEBUG] Updating states simultaneously...');
-                          setSelectedProductId(productId);
-                          setSingleVariantData(prev => {
-                            const newState = {
-                              ...prev,
-                              tallas: tallasDefault
-                            };
-                            console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
-                            return newState;
+                          
+                          flushSync(() => {
+                            setSelectedProductId(productId);
+                            setSingleVariantData(prev => {
+                              const newState = {
+                                ...prev,
+                                tallas: tallasDefault
+                              };
+                              console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
+                              return newState;
+                            });
                           });
+                          
+                          console.log('🔍 [DEBUG] flushSync completed, states should be updated');
                         } else {
                           console.log('🔍 [DEBUG] No system found for productId:', productId);
                           setSelectedProductId(productId);
