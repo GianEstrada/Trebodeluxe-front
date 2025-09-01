@@ -1898,25 +1898,42 @@ const AdminPage: NextPage = () => {
                 };
                 console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'Result:', finalTalla);
                 return finalTalla;
+              }).filter(talla => {
+                // Solo incluir tallas con cantidad > 0
+                const shouldInclude = talla.cantidad > 0;
+                console.log('🔍 [DEBUG] Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
+                return shouldInclude;
               });
               
-              console.log('🔍 [DEBUG] Final validated tallas:', validatedTallas);
+              console.log('🔍 [DEBUG] Final validated tallas (filtered):', validatedTallas);
               updatedVariantData.tallas = validatedTallas;
             } else {
               console.log('🔍 [DEBUG] No size system found, using existing tallas');
-              // Fallback: asegurar que las tallas existentes tengan precios válidos
-              updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
-                ...talla,
-                precio: talla.precio || 0 // Asegurar que no sea null
-              }));
+              // Fallback: asegurar que las tallas existentes tengan precios válidos y filtrar cantidad 0
+              updatedVariantData.tallas = singleVariantData.tallas
+                .map(talla => ({
+                  ...talla,
+                  precio: talla.precio || 0 // Asegurar que no sea null
+                }))
+                .filter(talla => {
+                  const shouldInclude = talla.cantidad > 0;
+                  console.log('🔍 [DEBUG] Fallback - Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
+                  return shouldInclude;
+                });
             }
           } else {
             console.log('🔍 [DEBUG] No product or size system, using existing tallas');
-            // Fallback: asegurar que las tallas existentes tengan precios válidos
-            updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
-              ...talla,
-              precio: talla.precio || 0 // Asegurar que no sea null
-            }));
+            // Fallback: asegurar que las tallas existentes tengan precios válidos y filtrar cantidad 0
+            updatedVariantData.tallas = singleVariantData.tallas
+              .map(talla => ({
+                ...talla,
+                precio: talla.precio || 0 // Asegurar que no sea null
+              }))
+              .filter(talla => {
+                const shouldInclude = talla.cantidad > 0;
+                console.log('🔍 [DEBUG] Final fallback - Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
+                return shouldInclude;
+              });
           }
           
           // Modo creación - nueva variante
