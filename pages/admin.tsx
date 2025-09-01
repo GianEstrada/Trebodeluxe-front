@@ -1628,6 +1628,24 @@ const AdminPage: NextPage = () => {
       console.log('🔍 [DEBUG] singleVariantData.tallas.length:', singleVariantData.tallas.length);
     }, [singleVariantData.tallas]);
 
+    // Función para obtener las tallas del producto seleccionado directamente
+    const getCurrentProductTallas = useCallback(() => {
+      if (!selectedProductId) return [];
+      
+      const product = products.find(p => p.id_producto === selectedProductId);
+      if (!product?.id_sistema_talla) return [];
+      
+      const system = sizeSystems.find(s => s.id_sistema_talla === product.id_sistema_talla);
+      if (!system) return [];
+      
+      return system.tallas.map(talla => ({
+        id_talla: talla.id_talla,
+        nombre_talla: talla.nombre_talla,
+        cantidad: singleVariantData.tallas.find(t => t.id_talla === talla.id_talla)?.cantidad || 0,
+        precio: singleVariantData.tallas.find(t => t.id_talla === talla.id_talla)?.precio || 0
+      }));
+    }, [selectedProductId, products, sizeSystems, singleVariantData.tallas]);
+
     const handleSizeSystemChange = (systemId: number) => {
       console.log('🔍 [DEBUG] handleSizeSystemChange called with systemId:', systemId);
       console.log('🔍 [DEBUG] Available sizeSystems:', sizeSystems.length);
@@ -2421,83 +2439,133 @@ const AdminPage: NextPage = () => {
 
                 {/* Tabla de tallas para variante individual */}
                 {(() => {
+                  const currentTallas = getCurrentProductTallas();
                   console.log('🔍 [DEBUG] Tabla tallas conditions:', {
                     selectedProductId,
+                    currentTallasLength: currentTallas.length,
+                    currentTallas: currentTallas,
                     singleVariantDataTallasLength: singleVariantData.tallas.length,
-                    singleVariantDataTallas: singleVariantData.tallas,
-                    shouldShowTable: selectedProductId && singleVariantData.tallas.length > 0
+                    shouldShowTable: selectedProductId !== null
                   });
                   return null;
                 })()}
                 {selectedProductId && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-300 mb-2">{t('Tallas y Stock')}</h5>
-                    {singleVariantData.tallas.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-black/50">
-                              {singleVariantData.tallas.map((talla) => (
-                                <th key={talla.id_talla} className="p-2 text-white text-center">
-                                  {talla.nombre_talla}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              {singleVariantData.tallas.map((talla) => (
-                                <td key={`cantidad-${talla.id_talla}`} className="p-2">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={talla.cantidad}
-                                    onChange={(e) => setSingleVariantData(prev => ({
-                                      ...prev,
-                                      tallas: prev.tallas.map(t => 
-                                        t.id_talla === talla.id_talla 
-                                          ? {...t, cantidad: Number(e.target.value)}
-                                          : t
-                                      )
-                                    }))}
-                                    className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
-                                    placeholder="0"
-                                  />
-                                </td>
-                              ))}
-                            </tr>
-                            {!uniquePrice && (
-                              <tr>
-                                {singleVariantData.tallas.map((talla) => (
-                                  <td key={`precio-${talla.id_talla}`} className="p-2">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={talla.precio || 0}
-                                      onChange={(e) => setSingleVariantData(prev => ({
-                                        ...prev,
-                                        tallas: prev.tallas.map(t => 
-                                          t.id_talla === talla.id_talla 
-                                            ? {...t, precio: Number(e.target.value)}
-                                            : t
-                                        )
-                                      }))}
-                                      className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
-                                      placeholder="0.00"
-                                    />
-                                  </td>
-                                ))}
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-gray-400 text-sm p-4 bg-black/20 rounded-lg text-center">
-                        {t('Selecciona un producto para ver las tallas disponibles')}
-                      </div>
-                    )}
+                    {(() => {
+                      const currentTallas = getCurrentProductTallas();
+                      
+                      if (currentTallas.length > 0) {
+                        return (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-black/50">
+                                  {currentTallas.map((talla) => (
+                                    <th key={talla.id_talla} className="p-2 text-white text-center">
+                                      {talla.nombre_talla}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  {currentTallas.map((talla) => (
+                                    <td key={`cantidad-${talla.id_talla}`} className="p-2">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={talla.cantidad}
+                                        onChange={(e) => {
+                                          const newCantidad = Number(e.target.value);
+                                          setSingleVariantData(prev => {
+                                            const existingTalla = prev.tallas.find(t => t.id_talla === talla.id_talla);
+                                            if (existingTalla) {
+                                              // Actualizar talla existente
+                                              return {
+                                                ...prev,
+                                                tallas: prev.tallas.map(t => 
+                                                  t.id_talla === talla.id_talla 
+                                                    ? {...t, cantidad: newCantidad}
+                                                    : t
+                                                )
+                                              };
+                                            } else {
+                                              // Agregar nueva talla
+                                              return {
+                                                ...prev,
+                                                tallas: [...prev.tallas, {
+                                                  id_talla: talla.id_talla,
+                                                  nombre_talla: talla.nombre_talla,
+                                                  cantidad: newCantidad,
+                                                  precio: 0
+                                                }]
+                                              };
+                                            }
+                                          });
+                                        }}
+                                        className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
+                                        placeholder="0"
+                                      />
+                                    </td>
+                                  ))}
+                                </tr>
+                                {!uniquePrice && (
+                                  <tr>
+                                    {currentTallas.map((talla) => (
+                                      <td key={`precio-${talla.id_talla}`} className="p-2">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={talla.precio || 0}
+                                          onChange={(e) => {
+                                            const newPrecio = Number(e.target.value);
+                                            setSingleVariantData(prev => {
+                                              const existingTalla = prev.tallas.find(t => t.id_talla === talla.id_talla);
+                                              if (existingTalla) {
+                                                // Actualizar talla existente
+                                                return {
+                                                  ...prev,
+                                                  tallas: prev.tallas.map(t => 
+                                                    t.id_talla === talla.id_talla 
+                                                      ? {...t, precio: newPrecio}
+                                                      : t
+                                                  )
+                                                };
+                                              } else {
+                                                // Agregar nueva talla
+                                                return {
+                                                  ...prev,
+                                                  tallas: [...prev.tallas, {
+                                                    id_talla: talla.id_talla,
+                                                    nombre_talla: talla.nombre_talla,
+                                                    cantidad: 0,
+                                                    precio: newPrecio
+                                                  }]
+                                                };
+                                              }
+                                            });
+                                          }}
+                                          className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
+                                          placeholder="0.00"
+                                        />
+                                      </td>
+                                    ))}
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="text-gray-400 text-sm p-4 bg-black/20 rounded-lg text-center">
+                            {t('Selecciona un producto para ver las tallas disponibles')}
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
               </div>
