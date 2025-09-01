@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { flushSync } from 'react-dom';
 import { NextPage } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -2279,22 +2278,17 @@ const AdminPage: NextPage = () => {
                           }));
 
                           console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
-                          // Actualizar ambos estados en paralelo con flushSync para forzar actualización inmediata
+                          // Actualizar ambos estados en paralelo
                           console.log('🔍 [DEBUG] Updating states simultaneously...');
-                          
-                          flushSync(() => {
-                            setSelectedProductId(productId);
-                            setSingleVariantData(prev => {
-                              const newState = {
-                                ...prev,
-                                tallas: tallasDefault
-                              };
-                              console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
-                              return newState;
-                            });
+                          setSelectedProductId(productId);
+                          setSingleVariantData(prev => {
+                            const newState = {
+                              ...prev,
+                              tallas: tallasDefault
+                            };
+                            console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
+                            return newState;
                           });
-                          
-                          console.log('🔍 [DEBUG] flushSync completed, states should be updated');
                         } else {
                           console.log('🔍 [DEBUG] No system found for productId:', productId);
                           setSelectedProductId(productId);
@@ -2431,69 +2425,75 @@ const AdminPage: NextPage = () => {
                   });
                   return null;
                 })()}
-                {selectedProductId && singleVariantData.tallas.length > 0 && (
+                {selectedProductId && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-300 mb-2">{t('Tallas y Stock')}</h5>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-black/50">
-                            {singleVariantData.tallas.map((talla) => (
-                              <th key={talla.id_talla} className="p-2 text-white text-center">
-                                {talla.nombre_talla}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            {singleVariantData.tallas.map((talla) => (
-                              <td key={`cantidad-${talla.id_talla}`} className="p-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={talla.cantidad}
-                                  onChange={(e) => setSingleVariantData(prev => ({
-                                    ...prev,
-                                    tallas: prev.tallas.map(t => 
-                                      t.id_talla === talla.id_talla 
-                                        ? {...t, cantidad: Number(e.target.value)}
-                                        : t
-                                    )
-                                  }))}
-                                  className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
-                                  placeholder="0"
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                          {!uniquePrice && (
+                    {singleVariantData.tallas.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-black/50">
+                              {singleVariantData.tallas.map((talla) => (
+                                <th key={talla.id_talla} className="p-2 text-white text-center">
+                                  {talla.nombre_talla}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
                             <tr>
                               {singleVariantData.tallas.map((talla) => (
-                                <td key={`precio-${talla.id_talla}`} className="p-2">
+                                <td key={`cantidad-${talla.id_talla}`} className="p-2">
                                   <input
                                     type="number"
-                                    step="0.01"
                                     min="0"
-                                    value={talla.precio || 0}
+                                    value={talla.cantidad}
                                     onChange={(e) => setSingleVariantData(prev => ({
                                       ...prev,
                                       tallas: prev.tallas.map(t => 
                                         t.id_talla === talla.id_talla 
-                                          ? {...t, precio: Number(e.target.value)}
+                                          ? {...t, cantidad: Number(e.target.value)}
                                           : t
                                       )
                                     }))}
                                     className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
-                                    placeholder="0.00"
+                                    placeholder="0"
                                   />
                                 </td>
                               ))}
                             </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                            {!uniquePrice && (
+                              <tr>
+                                {singleVariantData.tallas.map((talla) => (
+                                  <td key={`precio-${talla.id_talla}`} className="p-2">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={talla.precio || 0}
+                                      onChange={(e) => setSingleVariantData(prev => ({
+                                        ...prev,
+                                        tallas: prev.tallas.map(t => 
+                                          t.id_talla === talla.id_talla 
+                                            ? {...t, precio: Number(e.target.value)}
+                                            : t
+                                        )
+                                      }))}
+                                      className="w-full p-1 bg-black/50 border border-white/20 rounded text-white text-center"
+                                      placeholder="0.00"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-gray-400 text-sm p-4 bg-black/20 rounded-lg text-center">
+                        {t('Selecciona un producto para ver las tallas disponibles')}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
