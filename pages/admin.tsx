@@ -1872,23 +1872,52 @@ const AdminPage: NextPage = () => {
           }
           
           // Validar y completar tallas con precios válidos
-          const currentTallas = getCurrentProductTallas();
-          console.log('🔍 [DEBUG] Current tallas before validation:', currentTallas);
+          console.log('🔍 [DEBUG] selectedProductId:', selectedProductId);
+          console.log('🔍 [DEBUG] uniquePrice:', uniquePrice);
+          console.log('🔍 [DEBUG] precio_referencia:', singleVariantData.precio_referencia);
+          console.log('🔍 [DEBUG] singleVariantData.tallas:', singleVariantData.tallas);
           
-          const validatedTallas = currentTallas.map(talla => {
-            const existingTalla = singleVariantData.tallas.find(t => t.id_talla === talla.id_talla);
-            return {
-              id_talla: talla.id_talla,
-              nombre_talla: talla.nombre_talla,
-              cantidad: existingTalla?.cantidad || 0,
-              precio: uniquePrice 
-                ? (singleVariantData.precio_referencia || 0)
-                : (existingTalla?.precio || 0) // Asegurar que nunca sea null
-            };
-          });
+          // Obtener el producto y su sistema de tallas directamente
+          const selectedProduct = products.find(p => p.id_producto === selectedProductId);
+          console.log('🔍 [DEBUG] selectedProduct:', selectedProduct);
           
-          console.log('🔍 [DEBUG] Validated tallas:', validatedTallas);
-          updatedVariantData.tallas = validatedTallas;
+          if (selectedProduct && selectedProduct.id_sistema_talla) {
+            const sizeSystem = sizeSystems.find(s => s.id_sistema_talla === selectedProduct.id_sistema_talla);
+            console.log('🔍 [DEBUG] sizeSystem:', sizeSystem);
+            
+            if (sizeSystem && sizeSystem.tallas) {
+              const validatedTallas = sizeSystem.tallas.map(talla => {
+                const existingTalla = singleVariantData.tallas.find(t => t.id_talla === talla.id_talla);
+                const finalTalla = {
+                  id_talla: talla.id_talla,
+                  nombre_talla: talla.nombre_talla,
+                  cantidad: existingTalla?.cantidad || 0,
+                  precio: uniquePrice 
+                    ? (singleVariantData.precio_referencia || 0)
+                    : (existingTalla?.precio || 0)
+                };
+                console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'Result:', finalTalla);
+                return finalTalla;
+              });
+              
+              console.log('🔍 [DEBUG] Final validated tallas:', validatedTallas);
+              updatedVariantData.tallas = validatedTallas;
+            } else {
+              console.log('🔍 [DEBUG] No size system found, using existing tallas');
+              // Fallback: asegurar que las tallas existentes tengan precios válidos
+              updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
+                ...talla,
+                precio: talla.precio || 0 // Asegurar que no sea null
+              }));
+            }
+          } else {
+            console.log('🔍 [DEBUG] No product or size system, using existing tallas');
+            // Fallback: asegurar que las tallas existentes tengan precios válidos
+            updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
+              ...talla,
+              precio: talla.precio || 0 // Asegurar que no sea null
+            }));
+          }
           
           // Modo creación - nueva variante
           const payload = {
