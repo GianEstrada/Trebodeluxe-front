@@ -1888,15 +1888,22 @@ const AdminPage: NextPage = () => {
             if (sizeSystem && sizeSystem.tallas) {
               const validatedTallas = sizeSystem.tallas.map(talla => {
                 const existingTalla = singleVariantData.tallas.find(t => t.id_talla === talla.id_talla);
+                
+                // Determinar el precio correcto basado en uniquePrice
+                let finalPrice;
+                if (uniquePrice) {
+                  finalPrice = singleVariantData.precio_referencia || 0;
+                } else {
+                  finalPrice = existingTalla?.precio || 0;
+                }
+                
                 const finalTalla = {
                   id_talla: talla.id_talla,
                   nombre_talla: talla.nombre_talla,
                   cantidad: existingTalla?.cantidad || 0,
-                  precio: uniquePrice 
-                    ? (singleVariantData.precio_referencia || 0)
-                    : (existingTalla?.precio || 0)
+                  precio: finalPrice
                 };
-                console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'Result:', finalTalla);
+                console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'uniquePrice:', uniquePrice, 'Result:', finalTalla);
                 return finalTalla;
               }).filter(talla => {
                 // Solo incluir tallas con cantidad > 0
@@ -1906,7 +1913,21 @@ const AdminPage: NextPage = () => {
               });
               
               console.log('🔍 [DEBUG] Final validated tallas (filtered):', validatedTallas);
+              
+              // Actualizar precio_unico basado en la realidad de los datos
               updatedVariantData.tallas = validatedTallas;
+              updatedVariantData.precio_unico = uniquePrice;
+              
+              // Si es precio único, asegurar que precio_referencia tenga un valor válido
+              if (uniquePrice && (!singleVariantData.precio_referencia || singleVariantData.precio_referencia === 0)) {
+                // Si no hay precio_referencia válido, usar el primer precio disponible
+                const firstValidPrice = validatedTallas.find(t => t.precio > 0)?.precio || 0;
+                updatedVariantData.precio_referencia = firstValidPrice;
+                console.log('🔍 [DEBUG] Fixed precio_referencia to:', firstValidPrice);
+              }
+              
+              console.log('🔍 [DEBUG] Updated precio_unico:', updatedVariantData.precio_unico);
+              console.log('🔍 [DEBUG] Updated precio_referencia:', updatedVariantData.precio_referencia);
             } else {
               console.log('🔍 [DEBUG] No size system found, using existing tallas');
               // Fallback: asegurar que las tallas existentes tengan precios válidos y filtrar cantidad 0
