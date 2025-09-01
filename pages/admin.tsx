@@ -2281,14 +2281,18 @@ const AdminPage: NextPage = () => {
                           // Actualizar ambos estados en paralelo
                           console.log('🔍 [DEBUG] Updating states simultaneously...');
                           setSelectedProductId(productId);
-                          setSingleVariantData(prev => {
-                            const newState = {
-                              ...prev,
-                              tallas: tallasDefault
-                            };
-                            console.log('🔍 [DEBUG] Setting new singleVariantData:', newState);
-                            return newState;
-                          });
+                          
+                          // Usar setTimeout para asegurar que React procese la actualización
+                          setTimeout(() => {
+                            setSingleVariantData(prev => {
+                              const newState = {
+                                ...prev,
+                                tallas: tallasDefault
+                              };
+                              console.log('🔍 [DEBUG] Setting new singleVariantData (delayed):', newState);
+                              return newState;
+                            });
+                          }, 50);
                         } else {
                           console.log('🔍 [DEBUG] No system found for productId:', productId);
                           setSelectedProductId(productId);
