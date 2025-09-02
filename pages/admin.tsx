@@ -1905,14 +1905,10 @@ const AdminPage: NextPage = () => {
                 };
                 console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'uniquePrice:', uniquePrice, 'Result:', finalTalla);
                 return finalTalla;
-              }).filter(talla => {
-                // Solo incluir tallas con cantidad > 0
-                const shouldInclude = talla.cantidad > 0;
-                console.log('🔍 [DEBUG] Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
-                return shouldInclude;
               });
+              // NO filtrar por cantidad - enviar todas las tallas como en nuevo producto
               
-              console.log('🔍 [DEBUG] Final validated tallas (filtered):', validatedTallas);
+              console.log('🔍 [DEBUG] Final validated tallas (ALL - no filter):', validatedTallas);
               
               // Actualizar precio_unico basado en la realidad de los datos
               updatedVariantData.tallas = validatedTallas;
@@ -1920,8 +1916,8 @@ const AdminPage: NextPage = () => {
               
               // Si es precio único, asegurar que precio_referencia tenga un valor válido
               if (uniquePrice && (!singleVariantData.precio_referencia || singleVariantData.precio_referencia === 0)) {
-                // Si no hay precio_referencia válido, usar el primer precio disponible
-                const firstValidPrice = validatedTallas.find(t => t.precio > 0)?.precio || 0;
+                // Si no hay precio_referencia válido, usar el primer precio disponible de las tallas con stock
+                const firstValidPrice = validatedTallas.find(t => t.cantidad > 0 && t.precio > 0)?.precio || 0;
                 updatedVariantData.precio_referencia = firstValidPrice;
                 console.log('🔍 [DEBUG] Fixed precio_referencia to:', firstValidPrice);
               }
@@ -1930,31 +1926,19 @@ const AdminPage: NextPage = () => {
               console.log('🔍 [DEBUG] Updated precio_referencia:', updatedVariantData.precio_referencia);
             } else {
               console.log('🔍 [DEBUG] No size system found, using existing tallas');
-              // Fallback: asegurar que las tallas existentes tengan precios válidos y filtrar cantidad 0
-              updatedVariantData.tallas = singleVariantData.tallas
-                .map(talla => ({
-                  ...talla,
-                  precio: talla.precio || 0 // Asegurar que no sea null
-                }))
-                .filter(talla => {
-                  const shouldInclude = talla.cantidad > 0;
-                  console.log('🔍 [DEBUG] Fallback - Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
-                  return shouldInclude;
-                });
+              // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
+              updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
+                ...talla,
+                precio: talla.precio || 0 // Asegurar que no sea null
+              }));
             }
           } else {
             console.log('🔍 [DEBUG] No product or size system, using existing tallas');
-            // Fallback: asegurar que las tallas existentes tengan precios válidos y filtrar cantidad 0
-            updatedVariantData.tallas = singleVariantData.tallas
-              .map(talla => ({
-                ...talla,
-                precio: talla.precio || 0 // Asegurar que no sea null
-              }))
-              .filter(talla => {
-                const shouldInclude = talla.cantidad > 0;
-                console.log('🔍 [DEBUG] Final fallback - Talla', talla.nombre_talla, 'cantidad:', talla.cantidad, 'incluir:', shouldInclude);
-                return shouldInclude;
-              });
+            // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
+            updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
+              ...talla,
+              precio: talla.precio || 0 // Asegurar que no sea null
+            }));
           }
           
           // Modo creación - nueva variante
