@@ -1659,7 +1659,7 @@ const AdminPage: NextPage = () => {
           id_talla: talla.id_talla,
           nombre_talla: talla.nombre_talla,
           cantidad: 0,
-          precio: uniquePrice ? uniquePriceValue : 0
+          precio: uniquePrice ? (uniquePriceValue > 0 ? uniquePriceValue : 1000) : 1000
         }));
 
         console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
@@ -1758,7 +1758,7 @@ const AdminPage: NextPage = () => {
         id_talla: talla.id_talla,
         nombre_talla: talla.nombre_talla,
         cantidad: 0,
-        precio: uniquePrice ? uniquePriceValue : 0
+        precio: uniquePrice ? (uniquePriceValue > 0 ? uniquePriceValue : 1000) : 1000
       })) : [];
 
       setProductFormData(prev => ({
@@ -1892,9 +1892,13 @@ const AdminPage: NextPage = () => {
                 // Determinar el precio correcto basado en uniquePrice
                 let finalPrice;
                 if (uniquePrice) {
-                  finalPrice = singleVariantData.precio_referencia || 0;
+                  // Para precio único, usar precio_referencia si existe y es > 0, sino usar uniquePriceValue, sino 1000
+                  finalPrice = (singleVariantData.precio_referencia && singleVariantData.precio_referencia > 0) 
+                    ? singleVariantData.precio_referencia 
+                    : (uniquePriceValue > 0 ? uniquePriceValue : 1000);
                 } else {
-                  finalPrice = existingTalla?.precio || 0;
+                  // Para precios individuales, usar el precio existente si es > 0, sino usar 1000
+                  finalPrice = (existingTalla?.precio && existingTalla.precio > 0) ? existingTalla.precio : 1000;
                 }
                 
                 const finalTalla = {
@@ -1903,7 +1907,7 @@ const AdminPage: NextPage = () => {
                   cantidad: existingTalla?.cantidad || 0,
                   precio: finalPrice
                 };
-                console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'uniquePrice:', uniquePrice, 'Result:', finalTalla);
+                console.log('🔍 [DEBUG] Processing talla:', talla.nombre_talla, 'uniquePrice:', uniquePrice, 'finalPrice:', finalPrice, 'Result:', finalTalla);
                 return finalTalla;
               });
               // NO filtrar por cantidad - enviar todas las tallas como en nuevo producto
@@ -1915,9 +1919,9 @@ const AdminPage: NextPage = () => {
               updatedVariantData.precio_unico = uniquePrice;
               
               // Si es precio único, asegurar que precio_referencia tenga un valor válido
-              if (uniquePrice && (!singleVariantData.precio_referencia || singleVariantData.precio_referencia === 0)) {
-                // Si no hay precio_referencia válido, usar el primer precio disponible de las tallas con stock
-                const firstValidPrice = validatedTallas.find(t => t.cantidad > 0 && t.precio > 0)?.precio || 0;
+              if (uniquePrice) {
+                // Usar el primer precio válido encontrado en las tallas
+                const firstValidPrice = validatedTallas.find(t => t.precio > 0)?.precio || 1000;
                 updatedVariantData.precio_referencia = firstValidPrice;
                 console.log('🔍 [DEBUG] Fixed precio_referencia to:', firstValidPrice);
               }
@@ -1929,7 +1933,7 @@ const AdminPage: NextPage = () => {
               // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
               updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
                 ...talla,
-                precio: talla.precio || 0 // Asegurar que no sea null
+                precio: (talla.precio && talla.precio > 0) ? talla.precio : 1000 // Asegurar que no sea null o 0
               }));
             }
           } else {
@@ -1937,7 +1941,7 @@ const AdminPage: NextPage = () => {
             // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
             updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
               ...talla,
-              precio: talla.precio || 0 // Asegurar que no sea null
+              precio: (talla.precio && talla.precio > 0) ? talla.precio : 1000 // Asegurar que no sea null o 0
             }));
           }
           
@@ -2364,7 +2368,7 @@ const AdminPage: NextPage = () => {
                             id_talla: talla.id_talla,
                             nombre_talla: talla.nombre_talla,
                             cantidad: 0,
-                            precio: uniquePrice ? uniquePriceValue : 0
+                            precio: uniquePrice ? (uniquePriceValue > 0 ? uniquePriceValue : 1000) : 1000
                           }));
 
                           console.log('🔍 [DEBUG] Generated tallasDefault:', tallasDefault);
@@ -2502,7 +2506,14 @@ const AdminPage: NextPage = () => {
                       type="number"
                       step="0.01"
                       value={singleVariantData.precio_referencia || 0}
-                      onChange={(e) => setSingleVariantData(prev => ({...prev, precio_referencia: Number(e.target.value)}))}
+                      onChange={(e) => {
+                        const price = Number(e.target.value);
+                        setSingleVariantData(prev => ({
+                          ...prev, 
+                          precio_referencia: price,
+                          tallas: prev.tallas.map(t => ({...t, precio: price}))
+                        }));
+                      }}
                       className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white"
                       required
                     />
