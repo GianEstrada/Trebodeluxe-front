@@ -1866,6 +1866,13 @@ const AdminPage: NextPage = () => {
           console.log('🔍 [DEBUG] Procesando nueva variante...');
           let updatedVariantData = { ...singleVariantData };
           
+          // Validación: asegurar que el nombre no esté vacío
+          if (!updatedVariantData.nombre || updatedVariantData.nombre.trim() === '') {
+            alert('Por favor ingresa un nombre para la variante');
+            setLoading(false);
+            return;
+          }
+          
           if (singleVariantData.imagenes && singleVariantData.imagenes.length > 0) {
             const uploadedImages = await uploadLocalImagesToCloudinary(singleVariantData.imagenes);
             updatedVariantData.imagenes = uploadedImages;
@@ -1892,13 +1899,13 @@ const AdminPage: NextPage = () => {
                 // Determinar el precio correcto basado en uniquePrice
                 let finalPrice;
                 if (uniquePrice) {
-                  // Para precio único, usar precio_referencia si existe y es > 0, sino usar uniquePriceValue, sino 1000
+                  // Para precio único, usar precio_referencia si existe y es > 0, sino usar uniquePriceValue, sino 0
                   finalPrice = (singleVariantData.precio_referencia && singleVariantData.precio_referencia > 0) 
                     ? singleVariantData.precio_referencia 
-                    : (uniquePriceValue > 0 ? uniquePriceValue : 1000);
+                    : (uniquePriceValue > 0 ? uniquePriceValue : 0);
                 } else {
-                  // Para precios individuales, usar el precio existente si es > 0, sino usar 1000
-                  finalPrice = (existingTalla?.precio && existingTalla.precio > 0) ? existingTalla.precio : 1000;
+                  // Para precios individuales, usar el precio existente si es > 0, sino usar 0
+                  finalPrice = (existingTalla?.precio && existingTalla.precio > 0) ? existingTalla.precio : 0;
                 }
                 
                 const finalTalla = {
@@ -1921,7 +1928,7 @@ const AdminPage: NextPage = () => {
               // Si es precio único, asegurar que precio_referencia tenga un valor válido
               if (uniquePrice) {
                 // Usar el primer precio válido encontrado en las tallas
-                const firstValidPrice = validatedTallas.find(t => t.precio > 0)?.precio || 1000;
+                const firstValidPrice = validatedTallas.find(t => t.precio > 0)?.precio || 0;
                 updatedVariantData.precio_referencia = firstValidPrice;
                 console.log('🔍 [DEBUG] Fixed precio_referencia to:', firstValidPrice);
               }
@@ -1933,7 +1940,7 @@ const AdminPage: NextPage = () => {
               // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
               updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
                 ...talla,
-                precio: (talla.precio && talla.precio > 0) ? talla.precio : 1000 // Asegurar que no sea null o 0
+                precio: (talla.precio && talla.precio > 0) ? talla.precio : 0 // Asegurar que no sea null
               }));
             }
           } else {
@@ -1941,14 +1948,14 @@ const AdminPage: NextPage = () => {
             // Fallback: asegurar que las tallas existentes tengan precios válidos - NO filtrar por cantidad
             updatedVariantData.tallas = singleVariantData.tallas.map(talla => ({
               ...talla,
-              precio: (talla.precio && talla.precio > 0) ? talla.precio : 1000 // Asegurar que no sea null o 0
+              precio: (talla.precio && talla.precio > 0) ? talla.precio : 0 // Asegurar que no sea null
             }));
           }
           
           // Modo creación - nueva variante
           const payload: any = {
             id_producto: selectedProductId,
-            nombre: updatedVariantData.nombre,
+            nombre_variante: updatedVariantData.nombre,
             precio_unico: updatedVariantData.precio_unico,
             imagenes: updatedVariantData.imagenes,
             tallas: updatedVariantData.tallas
