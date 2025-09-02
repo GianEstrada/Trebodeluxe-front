@@ -1946,10 +1946,18 @@ const AdminPage: NextPage = () => {
           }
           
           // Modo creación - nueva variante
-          const payload = {
+          const payload: any = {
             id_producto: selectedProductId,
-            ...updatedVariantData
+            nombre: updatedVariantData.nombre,
+            precio_unico: updatedVariantData.precio_unico,
+            imagenes: updatedVariantData.imagenes,
+            tallas: updatedVariantData.tallas
           };
+          
+          // Solo incluir precio_referencia si precio_unico es true y tiene un valor válido
+          if (updatedVariantData.precio_unico && updatedVariantData.precio_referencia && updatedVariantData.precio_referencia > 0) {
+            payload.precio_referencia = updatedVariantData.precio_referencia;
+          }
           
           console.log('🔍 [DEBUG] Final payload:', payload);
           
