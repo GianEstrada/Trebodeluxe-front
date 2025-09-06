@@ -23,7 +23,7 @@ interface ShippingQuote {
 const CarritoPage: NextPage = () => {
   const router = useRouter();
   const { user, logout, isAuthenticated } = useAuth();
-  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading } = useCart();
+  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading, cartId } = useCart();
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -146,15 +146,17 @@ const CarritoPage: NextPage = () => {
       return;
     }
 
-    // Obtener el ID del carrito del contexto o localStorage
-    const cartId = localStorage.getItem('cartId') || '1'; // Fallback temporal
-    
+    if (!cartId) {
+      setQuotesError('No hay carrito disponible para calcular envío');
+      return;
+    }
+
     setIsLoadingQuotes(true);
     setQuotesError('');
     setShippingQuotes([]);
 
     try {
-      console.log('🚚 Solicitando cotizaciones para CP:', postalCode);
+      console.log('🚚 Solicitando cotizaciones para CP:', postalCode, 'CartId:', cartId);
       
       const response = await fetch('https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote', {
         method: 'POST',
@@ -162,7 +164,7 @@ const CarritoPage: NextPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cartId: cartId,
+          cartId: cartId.toString(),
           postalCode: postalCode
         })
       });
@@ -1080,13 +1082,14 @@ const CarritoPage: NextPage = () => {
                   </div>
 
                   {/* Sección de Cotizaciones de Envío */}
-                  <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-6 mb-6">
-                    <h3 className="text-white font-bold text-lg mb-4 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                      {t('Calcular Envío')}
-                    </h3>
+                  {cartItems.length > 0 && cartId && (
+                    <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-6 mb-6">
+                      <h3 className="text-white font-bold text-lg mb-4 flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        {t('Calcular Envío')}
+                      </h3>
                     
                     <div className="space-y-4">
                       <div className="flex space-x-3">
@@ -1173,6 +1176,7 @@ const CarritoPage: NextPage = () => {
                       )}
                     </div>
                   </div>
+                  )}
 
                   <div className="space-y-6 w-full">
                     <Link
