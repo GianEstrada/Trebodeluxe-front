@@ -156,7 +156,7 @@ const CarritoPage: NextPage = () => {
     try {
       console.log('🚚 Solicitando cotizaciones para CP:', postalCode);
       
-      const response = await fetch('/api/skydropx/cart/quote', {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,6 +166,12 @@ const CarritoPage: NextPage = () => {
           postalCode: postalCode
         })
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error HTTP:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
 
       const data = await response.json();
 
