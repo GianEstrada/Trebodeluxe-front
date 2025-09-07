@@ -15,6 +15,7 @@ interface Categoria {
   ancho_cm: number;
   peso_kg: number;
   nivel_compresion: 'bajo' | 'medio' | 'alto';
+  hs_code?: string; // Código del Sistema Armonizado para envíos internacionales
 }
 
 interface FormData {
@@ -28,6 +29,7 @@ interface FormData {
   ancho_cm: number;
   peso_kg: number;
   nivel_compresion: 'bajo' | 'medio' | 'alto';
+  hs_code: string; // Código HS para clasificación arancelaria
 }
 
 const CategoriasAdmin: React.FC = () => {
@@ -46,7 +48,8 @@ const CategoriasAdmin: React.FC = () => {
     largo_cm: 0,
     ancho_cm: 0,
     peso_kg: 0,
-    nivel_compresion: 'medio'
+    nivel_compresion: 'medio',
+    hs_code: '' // Código HS por defecto vacío
   });
 
   // Configurar URL base del backend
@@ -166,7 +169,8 @@ const CategoriasAdmin: React.FC = () => {
       largo_cm: categoria.largo_cm || 0,
       ancho_cm: categoria.ancho_cm || 0,
       peso_kg: categoria.peso_kg || 0,
-      nivel_compresion: categoria.nivel_compresion || 'medio'
+      nivel_compresion: categoria.nivel_compresion || 'medio',
+      hs_code: categoria.hs_code || ''
     });
     setShowForm(true);
   };
@@ -212,7 +216,8 @@ const CategoriasAdmin: React.FC = () => {
       largo_cm: 0,
       ancho_cm: 0,
       peso_kg: 0,
-      nivel_compresion: 'medio'
+      nivel_compresion: 'medio',
+      hs_code: ''
     });
     setEditingCategoria(null);
   };
@@ -447,6 +452,33 @@ Volumen: ${(dimensiones.alto_total * dimensiones.largo_total * dimensiones.ancho
                   </select>
                   <p className="text-xs text-gray-500 mt-1">Qué tanto se puede comprimir el producto</p>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center">
+                      🏛️ Código HS (Sistema Armonizado)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.hs_code}
+                    onChange={(e) => setFormData({...formData, hs_code: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 6109.10.00"
+                    maxLength={20}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Código arancelario para envíos internacionales. 
+                    <a 
+                      href="https://www.codigosarancelarios.com/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 ml-1"
+                    >
+                      Consultar códigos HS ↗
+                    </a>
+                  </p>
+                </div>
               </div>
 
               <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
@@ -458,6 +490,7 @@ Volumen: ${(dimensiones.alto_total * dimensiones.largo_total * dimensiones.ancho
                       <li>• Estas dimensiones se usarán para calcular automáticamente el costo de envío</li>
                       <li>• SkyDropX agregará automáticamente el margen de empaque</li>
                       <li>• El nivel de compresión afecta el volumen final del paquete</li>
+                      <li>• El código HS es obligatorio para envíos internacionales fuera de México</li>
                     </ul>
                   </div>
                 </div>
@@ -515,6 +548,9 @@ Volumen: ${(dimensiones.alto_total * dimensiones.largo_total * dimensiones.ancho
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     🗜️ Compresión
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    🏛️ Código HS
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
@@ -576,6 +612,21 @@ Volumen: ${(dimensiones.alto_total * dimensiones.largo_total * dimensiones.ancho
                         {categoria.nivel_compresion === 'alto' ? '🔻 Alto' :
                          categoria.nivel_compresion === 'medio' ? '🔹 Medio' : '🔸 Bajo'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {categoria.hs_code ? (
+                          <div>
+                            <div className="font-mono font-medium">{categoria.hs_code}</div>
+                            <div className="text-xs text-gray-500">Configurado</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-gray-400 italic">Sin código</div>
+                            <div className="text-xs text-red-500">⚠️ Requerido para envíos internacionales</div>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
