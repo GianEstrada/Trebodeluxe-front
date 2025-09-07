@@ -1212,13 +1212,9 @@ const HomeScreen: NextPage = () => {
                             <span className="text-gray-300">{t('Subtotal:')}</span>
                             <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
                           </div>
-                          <div className="flex justify-between items-center mb-4">
+                          <div className="flex justify-between items-center mb-6">
                             <span className="text-gray-300">{t('Envío:')}</span>
-                            <span className="text-green-400 font-medium">{t('Gratis')}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-6 text-lg">
-                            <span className="text-white font-bold">{t('Total:')}</span>
-                            <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                            <span className="text-blue-400 font-medium">{t('Calculado al final')}</span>
                           </div>
                           
                           <div className="space-y-3">

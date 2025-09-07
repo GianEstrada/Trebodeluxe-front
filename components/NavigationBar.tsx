@@ -789,8 +789,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
               {cartItems.length > 0 && (
                 <div className="p-4 border-t border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-semibold text-gray-800">{t('Total:')}</span>
-                    <span className="text-xl font-bold text-gray-900">${totalPrice.toFixed(2)}</span>
+                    <span className="text-lg font-semibold text-gray-800">{t('Envío:')}</span>
+                    <span className="text-xl font-bold text-blue-600">{t('Calculado al final')}</span>
                   </div>
                   
                   <div className="space-y-2">
