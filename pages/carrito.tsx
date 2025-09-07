@@ -9,6 +9,7 @@ import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
+import { CountryPostalSelector } from '../components/CountryPostalSelector';
 
 // Interfaces para cotizaciones de envío
 interface ShippingQuote {
@@ -40,6 +41,7 @@ const CarritoPage: NextPage = () => {
 
   // Estados para cotizaciones de envío
   const [postalCode, setPostalCode] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('MX'); // País por defecto: México
   const [shippingQuotes, setShippingQuotes] = useState<ShippingQuote[]>([]);
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
   const [quotesError, setQuotesError] = useState('');
@@ -139,10 +141,10 @@ const CarritoPage: NextPage = () => {
     return totalPrice + calculateShipping();
   };
 
-  // Función para obtener cotizaciones de envío
+  // Función para obtener cotizaciones de envío híbridas
   const handleGetShippingQuotes = async () => {
-    if (!postalCode || postalCode.length !== 5) {
-      setQuotesError('Por favor ingresa un código postal válido de 5 dígitos');
+    if (!postalCode.trim()) {
+      setQuotesError('Por favor ingresa un código postal válido');
       return;
     }
 
@@ -156,16 +158,17 @@ const CarritoPage: NextPage = () => {
     setShippingQuotes([]);
 
     try {
-      console.log('🚚 Solicitando cotizaciones para CP:', postalCode, 'CartId:', cartId);
+      console.log('🚚 Solicitando cotizaciones híbridas para CP:', postalCode, 'País:', selectedCountry, 'CartId:', cartId);
       
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote', {
+      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           cartId: cartId.toString(),
-          postalCode: postalCode
+          postalCode: postalCode,
+          countryCode: selectedCountry !== 'MX' ? selectedCountry : undefined // Solo enviar país si no es México
         })
       });
 
@@ -180,14 +183,16 @@ const CarritoPage: NextPage = () => {
       if (data.success) {
         setShippingQuotes(data.quotations || []);
         setShowQuotes(true);
-        console.log('✅ Cotizaciones obtenidas:', data.quotations);
+        console.log('✅ Cotizaciones híbridas obtenidas:', data.quotations);
+        console.log('🌍 Es internacional:', data.isInternational);
+        console.log('🔄 Información de decisión:', data.decisionInfo);
       } else {
         setQuotesError(data.message || 'Error obteniendo cotizaciones');
-        console.error('❌ Error en cotizaciones:', data);
+        console.error('❌ Error en cotizaciones híbridas:', data);
       }
 
     } catch (error) {
-      console.error('❌ Error solicitando cotizaciones:', error);
+      console.error('❌ Error solicitando cotizaciones híbridas:', error);
       setQuotesError('Error de conexión. Inténtalo nuevamente.');
     } finally {
       setIsLoadingQuotes(false);
@@ -1092,45 +1097,19 @@ const CarritoPage: NextPage = () => {
                       </h3>
                     
                     <div className="space-y-4">
-                      <div className="flex space-x-3">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={postalCode}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                              setPostalCode(value);
-                              setQuotesError('');
-                            }}
-                            placeholder="Código postal (ej: 64000)"
-                            className="w-full bg-black/50 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none transition-colors"
-                            maxLength={5}
-                          />
-                        </div>
-                        <button
-                          onClick={handleGetShippingQuotes}
-                          disabled={isLoadingQuotes || postalCode.length !== 5}
-                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
-                        >
-                          {isLoadingQuotes ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              {t('Calculando...')}
-                            </>
-                          ) : (
-                            <>{t('Calcular')}</>
-                          )}
-                        </button>
-                      </div>
-
-                      {quotesError && (
-                        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-300 text-sm">
-                          {quotesError}
-                        </div>
-                      )}
+                      <CountryPostalSelector
+                        selectedCountry={selectedCountry}
+                        postalCode={postalCode}
+                        onCountryChange={setSelectedCountry}
+                        onPostalCodeChange={(code) => {
+                          setPostalCode(code);
+                          setQuotesError('');
+                        }}
+                        onCalculateShipping={handleGetShippingQuotes}
+                        isLoading={isLoadingQuotes}
+                        error={quotesError}
+                        disabled={!cartId}
+                      />
 
                       {showQuotes && shippingQuotes.length > 0 && (
                         <div className="space-y-3">
