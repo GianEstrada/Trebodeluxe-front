@@ -139,17 +139,17 @@ const CarritoPage: NextPage = () => {
   };
 
   // Funciones del carrito usando datos reales
-  const handleUpdateQuantity = async (variantId: number, tallaId: number, newQuantity: number) => {
+  const handleUpdateQuantity = async (productId: number, variantId: number, tallaId: number, newQuantity: number) => {
     try {
-      await updateQuantity(0, variantId, tallaId, newQuantity); // productId será calculado en el backend
+      await updateQuantity(productId, variantId, tallaId, newQuantity);
     } catch (error) {
       console.error('Error updating quantity:', error);
     }
   };
 
-  const handleRemoveItem = async (variantId: number, tallaId: number) => {
+  const handleRemoveItem = async (productId: number, variantId: number, tallaId: number) => {
     try {
-      await removeFromCart(0, variantId, tallaId); // productId será calculado en el backend
+      await removeFromCart(productId, variantId, tallaId);
     } catch (error) {
       console.error('Error removing item:', error);
     }
@@ -912,7 +912,7 @@ const CarritoPage: NextPage = () => {
                                   <span className="text-white font-bold">${item.price.toFixed(2)}</span>
                                   <div className="flex items-center gap-2">
                                     <button 
-                                      onClick={() => handleUpdateQuantity(item.variantId, item.tallaId, item.quantity - 1)}
+                                      onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity - 1)}
                                       className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors disabled:opacity-50"
                                       disabled={isLoading || item.quantity <= 1}
                                     >
@@ -920,7 +920,7 @@ const CarritoPage: NextPage = () => {
                                     </button>
                                     <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                     <button 
-                                      onClick={() => handleUpdateQuantity(item.variantId, item.tallaId, item.quantity + 1)}
+                                      onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
                                       className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors disabled:opacity-50"
                                       disabled={isLoading}
                                     >
@@ -930,7 +930,7 @@ const CarritoPage: NextPage = () => {
                                 </div>
                               </div>
                               <button 
-                                onClick={() => handleRemoveItem(item.variantId, item.tallaId)}
+                                onClick={() => handleRemoveItem(item.productId, item.variantId, item.tallaId)}
                                 className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
                                 disabled={isLoading}
                               >
@@ -948,6 +948,10 @@ const CarritoPage: NextPage = () => {
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-300">{t('Subtotal:')}</span>
                           <span className="text-white font-bold">${totalPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-gray-300">{t('Envío:')}</span>
+                          <span className="text-blue-400 font-medium">{t('Calculado al final')}</span>
                         </div>
                         
                         {/* Aviso sobre cálculo de envío */}
@@ -995,8 +999,9 @@ const CarritoPage: NextPage = () => {
               <h1 className="text-3xl font-bold text-white">{t('Tu Carrito')}</h1>
               {cartItems.length > 0 && (
                 <button
-                  onClick={clearCart}
-                  className="text-red-400 hover:text-red-300 transition-colors text-sm"
+                  onClick={handleClearCart}
+                  className="text-red-400 hover:text-red-300 transition-colors text-sm disabled:opacity-50"
+                  disabled={isLoading}
                 >
                   {t('Vaciar carrito')}
                 </button>
@@ -1061,7 +1066,7 @@ const CarritoPage: NextPage = () => {
                           <div className="flex items-center space-x-3">
                             <div className="flex items-center space-x-2">
                               <button
-                                onClick={() => handleUpdateQuantity(item.variantId, item.tallaId, item.quantity - 1)}
+                                onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity - 1)}
                                 className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white disabled:opacity-50"
                                 disabled={isLoading || item.quantity <= 1}
                               >
@@ -1071,7 +1076,7 @@ const CarritoPage: NextPage = () => {
                                 {item.quantity}
                               </span>
                               <button
-                                onClick={() => handleUpdateQuantity(item.variantId, item.tallaId, item.quantity + 1)}
+                                onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
                                 className="w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 rounded flex items-center justify-center hover:bg-black/70 transition-colors text-white disabled:opacity-50"
                                 disabled={isLoading}
                               >
@@ -1079,7 +1084,7 @@ const CarritoPage: NextPage = () => {
                               </button>
                             </div>
                             <button
-                              onClick={() => handleRemoveItem(item.variantId, item.tallaId)}
+                              onClick={() => handleRemoveItem(item.productId, item.variantId, item.tallaId)}
                               className="text-red-400 hover:text-red-300 transition-colors p-2 disabled:opacity-50"
                               disabled={isLoading}
                             >
