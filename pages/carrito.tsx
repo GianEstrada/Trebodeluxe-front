@@ -9,7 +9,6 @@ import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
-import { CountryPostalSelector } from '../components/CountryPostalSelector';
 
 // Interfaces para cotizaciones de envío
 interface ShippingQuote {
@@ -19,6 +18,15 @@ interface ShippingQuote {
   currency?: string;
   estimatedDays?: number;
   description?: string;
+}
+
+// Interface para países soportados
+interface Country {
+  code: string;
+  name: string;
+  flag: string;
+  postalCodeLength?: number;
+  postalCodeFormat?: string;
 }
 
 const CarritoPage: NextPage = () => {
@@ -41,11 +49,32 @@ const CarritoPage: NextPage = () => {
 
   // Estados para cotizaciones de envío
   const [postalCode, setPostalCode] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState('MX'); // País por defecto: México
+  const [selectedCountry, setSelectedCountry] = useState<Country>({ code: 'MX', name: 'México', flag: '🇲🇽' });
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [shippingQuotes, setShippingQuotes] = useState<ShippingQuote[]>([]);
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
   const [quotesError, setQuotesError] = useState('');
   const [showQuotes, setShowQuotes] = useState(false);
+
+  // Países soportados por el sistema de envío internacional
+  const supportedCountries: Country[] = [
+    { code: 'MX', name: 'México', flag: '🇲🇽', postalCodeLength: 5, postalCodeFormat: '64000' },
+    { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', postalCodeLength: 5, postalCodeFormat: '90210' },
+    { code: 'CA', name: 'Canadá', flag: '🇨🇦', postalCodeLength: 7, postalCodeFormat: 'M5V 3L9' },
+    { code: 'GB', name: 'Reino Unido', flag: '🇬🇧', postalCodeLength: 8, postalCodeFormat: 'SW1A 1AA' },
+    { code: 'DE', name: 'Alemania', flag: '🇩🇪', postalCodeLength: 5, postalCodeFormat: '10115' },
+    { code: 'FR', name: 'Francia', flag: '🇫🇷', postalCodeLength: 5, postalCodeFormat: '75001' },
+    { code: 'ES', name: 'España', flag: '🇪🇸', postalCodeLength: 5, postalCodeFormat: '28001' },
+    { code: 'IT', name: 'Italia', flag: '🇮🇹', postalCodeLength: 5, postalCodeFormat: '00118' },
+    { code: 'AU', name: 'Australia', flag: '🇦🇺', postalCodeLength: 4, postalCodeFormat: '2000' },
+    { code: 'JP', name: 'Japón', flag: '🇯🇵', postalCodeLength: 7, postalCodeFormat: '100-0001' },
+    { code: 'BR', name: 'Brasil', flag: '🇧🇷', postalCodeLength: 8, postalCodeFormat: '01310-100' },
+    { code: 'AR', name: 'Argentina', flag: '🇦🇷', postalCodeLength: 8, postalCodeFormat: 'C1426BWD' },
+    { code: 'CL', name: 'Chile', flag: '🇨🇱', postalCodeLength: 7, postalCodeFormat: '8320000' },
+    { code: 'CO', name: 'Colombia', flag: '🇨🇴', postalCodeLength: 6, postalCodeFormat: '110111' },
+    { code: 'PE', name: 'Perú', flag: '🇵🇪', postalCodeLength: 5, postalCodeFormat: '15001' },
+    { code: 'NL', name: 'Países Bajos', flag: '🇳🇱', postalCodeLength: 7, postalCodeFormat: '1012 JS' }
+  ];
 
   // Refs para los dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -54,6 +83,7 @@ const CarritoPage: NextPage = () => {
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const cartDropdownRef = useRef<HTMLDivElement>(null);
   const adminDropdownRef = useRef<HTMLDivElement>(null);
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   // Textos del carrusel promocional desde la base de datos
   const { headerSettings } = useSiteSettings();
@@ -141,10 +171,12 @@ const CarritoPage: NextPage = () => {
     return totalPrice + calculateShipping();
   };
 
-  // Función para obtener cotizaciones de envío híbridas
+  // Función para obtener cotizaciones de envío
   const handleGetShippingQuotes = async () => {
-    if (!postalCode.trim()) {
-      setQuotesError('Por favor ingresa un código postal válido');
+    // Validar código postal según el país seleccionado
+    const minLength = selectedCountry.postalCodeLength || 5;
+    if (!postalCode || postalCode.length < 3) {
+      setQuotesError(`Por favor ingresa un código postal válido para ${selectedCountry.name}`);
       return;
     }
 
@@ -158,18 +190,30 @@ const CarritoPage: NextPage = () => {
     setShippingQuotes([]);
 
     try {
-      console.log('🚚 Solicitando cotizaciones híbridas para CP:', postalCode, 'País:', selectedCountry, 'CartId:', cartId);
+      console.log('🚚 Solicitando cotizaciones híbridas para CP:', postalCode, 'País:', selectedCountry.code, 'CartId:', cartId);
       
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid', {
+      // Usar la nueva función híbrida que decide automáticamente entre nacional e internacional
+      const endpoint = selectedCountry.code === 'MX' 
+        ? 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid'
+        : 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-international';
+      
+      const requestBody = selectedCountry.code === 'MX' 
+        ? {
+            cartId: cartId.toString(),
+            postalCode: postalCode
+          }
+        : {
+            cartId: cartId.toString(),
+            postalCode: postalCode,
+            forceCountry: selectedCountry.code
+          };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          cartId: cartId.toString(),
-          postalCode: postalCode,
-          countryCode: selectedCountry !== 'MX' ? selectedCountry : undefined // Solo enviar país si no es México
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -183,16 +227,14 @@ const CarritoPage: NextPage = () => {
       if (data.success) {
         setShippingQuotes(data.quotations || []);
         setShowQuotes(true);
-        console.log('✅ Cotizaciones híbridas obtenidas:', data.quotations);
-        console.log('🌍 Es internacional:', data.isInternational);
-        console.log('🔄 Información de decisión:', data.decisionInfo);
+        console.log('✅ Cotizaciones obtenidas:', data.quotations);
       } else {
         setQuotesError(data.message || 'Error obteniendo cotizaciones');
-        console.error('❌ Error en cotizaciones híbridas:', data);
+        console.error('❌ Error en cotizaciones:', data);
       }
 
     } catch (error) {
-      console.error('❌ Error solicitando cotizaciones híbridas:', error);
+      console.error('❌ Error solicitando cotizaciones:', error);
       setQuotesError('Error de conexión. Inténtalo nuevamente.');
     } finally {
       setIsLoadingQuotes(false);
@@ -252,6 +294,9 @@ const CarritoPage: NextPage = () => {
       if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target as Node)) {
         setShowAdminDropdown(false);
       }
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(event.target as Node)) {
+        setShowCountryDropdown(false);
+      }
     };
 
     const handleScroll = () => {
@@ -261,6 +306,7 @@ const CarritoPage: NextPage = () => {
       setShowSearchDropdown(false);
       setShowCartDropdown(false);
       setShowAdminDropdown(false);
+      setShowCountryDropdown(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -1097,19 +1143,107 @@ const CarritoPage: NextPage = () => {
                       </h3>
                     
                     <div className="space-y-4">
-                      <CountryPostalSelector
-                        selectedCountry={selectedCountry}
-                        postalCode={postalCode}
-                        onCountryChange={setSelectedCountry}
-                        onPostalCodeChange={(code) => {
-                          setPostalCode(code);
-                          setQuotesError('');
-                        }}
-                        onCalculateShipping={handleGetShippingQuotes}
-                        isLoading={isLoadingQuotes}
-                        error={quotesError}
-                        disabled={!cartId}
-                      />
+                      {/* Selector de País */}
+                      <div className="relative" ref={countryDropdownRef}>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          {t('País de destino')}
+                        </label>
+                        <button
+                          onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                          className="w-full bg-black/50 border border-white/30 rounded-lg px-4 py-3 text-white flex items-center justify-between hover:border-blue-400 focus:border-blue-400 focus:outline-none transition-colors"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <span className="text-xl">{selectedCountry.flag}</span>
+                            <span>{selectedCountry.name}</span>
+                          </div>
+                          <svg className={`w-5 h-5 text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {showCountryDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-black/90 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                            {supportedCountries.map((country) => (
+                              <button
+                                key={country.code}
+                                onClick={() => {
+                                  setSelectedCountry(country);
+                                  setShowCountryDropdown(false);
+                                  setPostalCode(''); // Limpiar código postal al cambiar país
+                                  setQuotesError('');
+                                  setShippingQuotes([]);
+                                  setShowQuotes(false);
+                                }}
+                                className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors flex items-center space-x-3 first:rounded-t-lg last:rounded-b-lg"
+                              >
+                                <span className="text-xl">{country.flag}</span>
+                                <span className="text-white">{country.name}</span>
+                                {selectedCountry.code === country.code && (
+                                  <svg className="w-4 h-4 text-blue-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Input de Código Postal */}
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={postalCode}
+                            onChange={(e) => {
+                              let value = e.target.value;
+                              
+                              // Limpiar formato según el país
+                              if (selectedCountry.code === 'MX' || selectedCountry.code === 'US') {
+                                value = value.replace(/\D/g, '').slice(0, selectedCountry.postalCodeLength || 5);
+                              } else if (selectedCountry.code === 'CA') {
+                                // Para Canadá: formato K1A 0A6
+                                value = value.toUpperCase().replace(/[^A-Z0-9\s]/g, '').slice(0, 7);
+                              } else if (selectedCountry.code === 'GB') {
+                                // Para Reino Unido: formato SW1A 1AA
+                                value = value.toUpperCase().replace(/[^A-Z0-9\s]/g, '').slice(0, 8);
+                              } else {
+                                // Para otros países, permitir letras, números y espacios
+                                value = value.toUpperCase().replace(/[^A-Z0-9\s-]/g, '').slice(0, selectedCountry.postalCodeLength || 10);
+                              }
+                              
+                              setPostalCode(value);
+                              setQuotesError('');
+                            }}
+                            placeholder={`${t('Código postal')} (${t('ej')}: ${selectedCountry.postalCodeFormat})`}
+                            className="w-full bg-black/50 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none transition-colors"
+                            maxLength={selectedCountry.postalCodeLength || 10}
+                          />
+                        </div>
+                        <button
+                          onClick={handleGetShippingQuotes}
+                          disabled={isLoadingQuotes || postalCode.length < 3}
+                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
+                        >
+                          {isLoadingQuotes ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              {t('Calculando...')}
+                            </>
+                          ) : (
+                            <>{t('Calcular')}</>
+                          )}
+                        </button>
+                      </div>
+
+                      {quotesError && (
+                        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-300 text-sm">
+                          {quotesError}
+                        </div>
+                      )}
 
                       {showQuotes && shippingQuotes.length > 0 && (
                         <div className="space-y-3">
