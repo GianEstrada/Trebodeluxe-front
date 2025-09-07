@@ -1453,6 +1453,7 @@ const CheckoutPage: NextPage = () => {
               {paymentMethod === 'stripe' && (
                 <div className="mt-6">
                   <StripePayment
+                    key={`stripe-${calculateTotal()}-${currentCurrency}`} // Force re-mount when amount/currency changes
                     amount={calculateTotal()}
                     currency={currentCurrency.toLowerCase()}
                     metadata={{

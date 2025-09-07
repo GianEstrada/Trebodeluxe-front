@@ -7,6 +7,8 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 export class StripeService {
   static async createPaymentIntent(amount, currency = 'mxn', metadata = {}) {
     try {
+      console.log('🔄 Creating Payment Intent:', { amount, currency, metadata });
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stripe/create-payment-intent`, {
         method: 'POST',
         headers: {
@@ -19,14 +21,19 @@ export class StripeService {
         }),
       });
 
+      console.log('📥 Payment Intent Response Status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Error al crear el payment intent');
+        const errorText = await response.text();
+        console.error('❌ Payment Intent Error Response:', errorText);
+        throw new Error(`Error al crear el payment intent: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Payment Intent Created Successfully:', data);
       return data;
     } catch (error) {
-      console.error('Error en createPaymentIntent:', error);
+      console.error('💥 Error en createPaymentIntent:', error);
       throw error;
     }
   }

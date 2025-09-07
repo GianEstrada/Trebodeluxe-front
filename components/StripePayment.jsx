@@ -111,15 +111,18 @@ const StripePayment = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentIntentId, setPaymentIntentId] = useState('');
 
   useEffect(() => {
     const createPaymentIntent = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        setClientSecret(''); // Reset clientSecret
         
         const data = await StripeService.createPaymentIntent(amount, currency, metadata);
         setClientSecret(data.clientSecret);
+        setPaymentIntentId(data.paymentIntentId);
       } catch (error) {
         console.error('Error creando payment intent:', error);
         setError(t('Error al inicializar el pago. Por favor, intenta de nuevo.'));
@@ -131,7 +134,7 @@ const StripePayment = ({
     if (amount && amount > 0) {
       createPaymentIntent();
     }
-  }, [amount, currency, metadata, t]);
+  }, [amount, currency, JSON.stringify(metadata), t]);
 
   const appearance = {
     theme: 'night',
@@ -177,24 +180,26 @@ const StripePayment = ({
   }
 
   return (
-    <Elements 
-      stripe={stripePromise} 
-      options={{ 
-        clientSecret, 
-        appearance 
-      }}
-    >
-      <PaymentForm
-        amount={amount}
-        currency={currency}
-        metadata={metadata}
-        onPaymentSuccess={onPaymentSuccess}
-        onPaymentError={onPaymentError}
-        isProcessing={isProcessing}
-        setIsProcessing={setIsProcessing}
-        t={t}
-      />
-    </Elements>
+    <div key={clientSecret}> {/* Key force re-render when clientSecret changes */}
+      <Elements 
+        stripe={stripePromise} 
+        options={{ 
+          clientSecret, 
+          appearance 
+        }}
+      >
+        <PaymentForm
+          amount={amount}
+          currency={currency}
+          metadata={metadata}
+          onPaymentSuccess={onPaymentSuccess}
+          onPaymentError={onPaymentError}
+          isProcessing={isProcessing}
+          setIsProcessing={setIsProcessing}
+          t={t}
+        />
+      </Elements>
+    </div>
   );
 };
 
