@@ -58,7 +58,7 @@ const CheckoutPage: NextPage = () => {
   const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
 
   // Usar el carrito integrado con la base de datos
-  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading } = useCart();
+  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading, cartId } = useCart();
 
   // Información personal
   const [personalInfo, setPersonalInfo] = useState({
@@ -234,9 +234,6 @@ const CheckoutPage: NextPage = () => {
       return;
     }
 
-    // Obtener cartId del contexto
-    const { items: cartItems, cartId } = useCart();
-    
     if (!cartId) {
       setQuotesError('No hay carrito disponible para calcular envío');
       return;
@@ -266,6 +263,9 @@ const CheckoutPage: NextPage = () => {
                          shippingInfo.country === 'Canadá' ? 'CA' : 'MX'
           };
 
+      console.log('📡 Enviando request a:', endpoint);
+      console.log('📦 Request body:', requestBody);
+
       // Primera solicitud
       let response = await fetch(endpoint, {
         method: 'POST',
@@ -275,6 +275,9 @@ const CheckoutPage: NextPage = () => {
         body: JSON.stringify(requestBody)
       });
 
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Error HTTP:', response.status, errorText);
@@ -282,6 +285,7 @@ const CheckoutPage: NextPage = () => {
       }
 
       let data = await response.json();
+      console.log('📊 Respuesta recibida:', data);
 
       // Si la primera consulta no tiene cotizaciones exitosas, hacer reintento después de 3 segundos
       if (data.success && (!data.quotations || data.quotations.length === 0)) {
@@ -292,6 +296,7 @@ const CheckoutPage: NextPage = () => {
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         console.log('🔄 Realizando segunda consulta...');
+        console.log('📡 Reintentando request a:', endpoint);
         response = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -300,9 +305,10 @@ const CheckoutPage: NextPage = () => {
           body: JSON.stringify(requestBody)
         });
 
+        console.log('📊 Retry response status:', response.status);
         if (response.ok) {
           data = await response.json();
-          console.log('🔍 Segunda consulta completada');
+          console.log('🔍 Segunda consulta completada:', data);
         }
       }
 
