@@ -190,7 +190,13 @@ const CarritoPage: NextPage = () => {
     setShippingQuotes([]);
 
     try {
-      console.log('🚚 Solicitando cotizaciones híbridas para CP:', postalCode, 'País:', selectedCountry.code, 'CartId:', cartId);
+      console.log('🚚 ==========================================');
+      console.log('🚚 INICIANDO SOLICITUD DE COTIZACIONES');
+      console.log('🚚 ==========================================');
+      console.log('📍 Código postal:', postalCode);
+      console.log('🏳️  País seleccionado:', selectedCountry);
+      console.log('🛒 Cart ID:', cartId);
+      console.log('⏰ Timestamp:', new Date().toISOString());
       
       // Usar la nueva función híbrida que decide automáticamente entre nacional e internacional
       const endpoint = selectedCountry.code === 'MX' 
@@ -208,6 +214,15 @@ const CarritoPage: NextPage = () => {
             forceCountry: selectedCountry.code
           };
 
+      console.log('🔗 Endpoint seleccionado:', endpoint);
+      console.log('📤 ESTRUCTURA JSON ENVIADO:');
+      console.log('📤 ==========================================');
+      console.log(JSON.stringify(requestBody, null, 2));
+      console.log('📤 ==========================================');
+      console.log('📤 Headers enviados:', {
+        'Content-Type': 'application/json'
+      });
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -216,27 +231,74 @@ const CarritoPage: NextPage = () => {
         body: JSON.stringify(requestBody)
       });
 
+      console.log('📥 RESPUESTA RECIBIDA:');
+      console.log('📥 ==========================================');
+      console.log('📥 Status:', response.status);
+      console.log('📥 Status Text:', response.statusText);
+      console.log('📥 Headers respuesta:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Error HTTP:', response.status, errorText);
+        console.error('❌ ERROR HTTP COMPLETO:');
+        console.error('❌ ==========================================');
+        console.error('❌ Status:', response.status);
+        console.error('❌ Status Text:', response.statusText);
+        console.error('❌ Error Body:', errorText);
+        console.error('❌ ==========================================');
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
 
+      console.log('📥 ESTRUCTURA JSON RESPUESTA COMPLETA:');
+      console.log('📥 ==========================================');
+      console.log(JSON.stringify(data, null, 2));
+      console.log('📥 ==========================================');
+
       if (data.success) {
+        console.log('✅ COTIZACIONES EXITOSAS:');
+        console.log('✅ ==========================================');
+        console.log('✅ Número de cotizaciones:', data.quotations?.length || 0);
+        console.log('✅ Cotizaciones array:', data.quotations);
+        
+        if (data.quotations && Array.isArray(data.quotations)) {
+          data.quotations.forEach((quote: any, index: number) => {
+            console.log(`✅ Cotización ${index + 1}:`, quote);
+          });
+        }
+        
         setShippingQuotes(data.quotations || []);
         setShowQuotes(true);
-        console.log('✅ Cotizaciones obtenidas:', data.quotations);
+        console.log('✅ Estado actualizado - cotizaciones guardadas');
       } else {
+        console.error('❌ ERROR EN COTIZACIONES:');
+        console.error('❌ ==========================================');
+        console.error('❌ Success:', data.success);
+        console.error('❌ Message:', data.message);
+        console.error('❌ Error details:', data.error);
+        console.error('❌ Datos completos:', data);
+        console.error('❌ ==========================================');
+        
         setQuotesError(data.message || 'Error obteniendo cotizaciones');
-        console.error('❌ Error en cotizaciones:', data);
       }
 
-    } catch (error) {
-      console.error('❌ Error solicitando cotizaciones:', error);
+    } catch (error: any) {
+      console.error('❌ ERROR DE CONEXIÓN COMPLETO:');
+      console.error('❌ ==========================================');
+      console.error('❌ Error type:', error?.constructor?.name || 'Unknown');
+      console.error('❌ Error message:', error?.message || 'Sin mensaje');
+      console.error('❌ Error stack:', error?.stack || 'Sin stack trace');
+      console.error('❌ Error objeto completo:', error);
+      console.error('❌ ==========================================');
+      
       setQuotesError('Error de conexión. Inténtalo nuevamente.');
     } finally {
+      console.log('🏁 ==========================================');
+      console.log('🏁 FINALIZANDO PROCESO DE COTIZACIONES');
+      console.log('🏁 Loading estado:', false);
+      console.log('🏁 Timestamp final:', new Date().toISOString());
+      console.log('🏁 ==========================================');
+      
       setIsLoadingQuotes(false);
     }
   };
