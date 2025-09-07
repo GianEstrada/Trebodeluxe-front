@@ -1,0 +1,201 @@
+import React, { useState, useEffect } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements
+} from '@stripe/react-stripe-js';
+import { StripeService } from '../services/stripeService';
+
+// Cargar Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+
+// Componente del formulario de pago
+const PaymentForm = ({ 
+  amount, 
+  currency, 
+  metadata, 
+  onPaymentSuccess, 
+  onPaymentError,
+  isProcessing,
+  setIsProcessing,
+  t
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [message, setMessage] = useState(null);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setMessage(null);
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/checkout/complete`,
+      },
+      redirect: 'if_required'
+    });
+
+    if (error) {
+      if (error.type === 'card_error' || error.type === 'validation_error') {
+        setMessage(error.message);
+        onPaymentError?.(error);
+      } else {
+        setMessage(t('Ocurrió un error inesperado.'));
+        onPaymentError?.(error);
+      }
+    } else {
+      // Pago exitoso
+      onPaymentSuccess?.();
+    }
+
+    setIsProcessing(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-black/40 border border-white/20 rounded-lg p-4">
+        <PaymentElement 
+          options={{
+            layout: "accordion",
+            wallets: {
+              applePay: 'auto',
+              googlePay: 'auto'
+            }
+          }}
+        />
+      </div>
+      
+      {message && (
+        <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4 text-red-300 text-sm">
+          {message}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isProcessing || !stripe || !elements}
+        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-4 px-6 rounded-lg font-medium transition-all duration-300 text-lg"
+      >
+        {isProcessing ? (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>{t('Procesando...')}</span>
+          </div>
+        ) : (
+          `${t('Pagar con Stripe')} ${amount ? `$${amount.toFixed(2)} ${currency.toUpperCase()}` : ''}`
+        )}
+      </button>
+    </form>
+  );
+};
+
+// Componente principal de pago con Stripe
+const StripePayment = ({ 
+  amount, 
+  currency = 'mxn', 
+  metadata = {},
+  onPaymentSuccess, 
+  onPaymentError,
+  t
+}) => {
+  const [clientSecret, setClientSecret] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const createPaymentIntent = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const data = await StripeService.createPaymentIntent(amount, currency, metadata);
+        setClientSecret(data.clientSecret);
+      } catch (error) {
+        console.error('Error creando payment intent:', error);
+        setError(t('Error al inicializar el pago. Por favor, intenta de nuevo.'));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (amount && amount > 0) {
+      createPaymentIntent();
+    }
+  }, [amount, currency, metadata, t]);
+
+  const appearance = {
+    theme: 'night',
+    variables: {
+      colorPrimary: '#10b981',
+      colorBackground: 'rgba(0, 0, 0, 0.4)',
+      colorText: '#ffffff',
+      colorDanger: '#ef4444',
+      borderRadius: '8px',
+    },
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-black/40 border border-white/20 rounded-lg p-6">
+        <div className="flex items-center justify-center space-x-3">
+          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          <span className="text-white">{t('Inicializando método de pago...')}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-6">
+        <div className="flex items-center space-x-3">
+          <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-red-300">{error}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return (
+      <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-lg p-6">
+        <span className="text-yellow-300">{t('Error al configurar el pago')}</span>
+      </div>
+    );
+  }
+
+  return (
+    <Elements 
+      stripe={stripePromise} 
+      options={{ 
+        clientSecret, 
+        appearance 
+      }}
+    >
+      <PaymentForm
+        amount={amount}
+        currency={currency}
+        metadata={metadata}
+        onPaymentSuccess={onPaymentSuccess}
+        onPaymentError={onPaymentError}
+        isProcessing={isProcessing}
+        setIsProcessing={setIsProcessing}
+        t={t}
+      />
+    </Elements>
+  );
+};
+
+export default StripePayment;
