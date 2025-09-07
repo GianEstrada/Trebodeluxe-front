@@ -192,7 +192,6 @@ const CarritoPage: NextPage = () => {
     try {
       console.log('🚚 Solicitando cotizaciones híbridas para CP:', postalCode, 'País:', selectedCountry.code, 'CartId:', cartId);
       
-      // Usar la nueva función híbrida que decide automáticamente entre nacional e internacional
       const endpoint = selectedCountry.code === 'MX' 
         ? 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid'
         : 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-international';
@@ -208,7 +207,8 @@ const CarritoPage: NextPage = () => {
             forceCountry: selectedCountry.code
           };
 
-      const response = await fetch(endpoint, {
+      // Primera solicitud
+      let response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,11 +222,35 @@ const CarritoPage: NextPage = () => {
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // Si la primera consulta no tiene cotizaciones exitosas, hacer reintento después de 3 segundos
+      if (data.success && (!data.quotations || data.quotations.length === 0)) {
+        console.log('⏳ Primera consulta sin cotizaciones exitosas. Reintentando en 3 segundos...');
+        setQuotesError('Obteniendo cotizaciones de carriers... Por favor espera.');
+        
+        // Esperar 3 segundos y hacer segunda consulta
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        console.log('🔄 Realizando segunda consulta...');
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          console.log('🔍 Segunda consulta completada');
+        }
+      }
 
       if (data.success) {
         setShippingQuotes(data.quotations || []);
         setShowQuotes(true);
+        setQuotesError(''); // Limpiar mensaje de espera
         console.log('✅ Cotizaciones obtenidas:', data.quotations);
       } else {
         setQuotesError(data.message || 'Error obteniendo cotizaciones');
@@ -1222,7 +1246,7 @@ const CarritoPage: NextPage = () => {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              {t('Calculando...')}
+                              {quotesError.includes('espera') ? t('Reintentando...') : t('Calculando...')}
                             </>
                           ) : (
                             <>{t('Calcular')}</>
@@ -1274,8 +1298,18 @@ const CarritoPage: NextPage = () => {
                       )}
 
                       {showQuotes && shippingQuotes.length === 0 && !isLoadingQuotes && !quotesError && (
-                        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 text-yellow-300 text-sm">
-                          {t('No se encontraron opciones de envío disponibles para este código postal.')}
+                        <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 text-blue-300 text-sm">
+                          <div className="flex items-start space-x-2">
+                            <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                              <p className="font-medium mb-1">{t('Las cotizaciones están procesándose')}</p>
+                              <p className="text-xs text-blue-200">
+                                {t('Los carriers pueden tardar unos segundos en calcular precios. Por favor vuelve a intentar en un momento.')}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
