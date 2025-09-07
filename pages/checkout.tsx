@@ -9,6 +9,7 @@ import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
+import StripePayment from '../components/StripePayment';
 
 interface ShippingMethod {
   id: string;
@@ -105,6 +106,7 @@ const CheckoutPage: NextPage = () => {
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
   const [acceptPromotions, setAcceptPromotions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'traditional'>('stripe');
 
   // Estados para cotizaciones dinámicas de envío
   const [shippingQuotes, setShippingQuotes] = useState<any[]>([]);
@@ -185,8 +187,8 @@ const CheckoutPage: NextPage = () => {
     return calculateSubtotal() + calculateShipping() + calculateTax();
   };
 
-  // Función para procesar el pago
-  const handlePayment = async () => {
+  // Función para procesar el pago tradicional (fallback)
+  const handleTraditionalPayment = async () => {
     setIsProcessing(true);
     
     // Simulación de procesamiento de pago
@@ -195,6 +197,18 @@ const CheckoutPage: NextPage = () => {
       alert(t('¡Pago procesado exitosamente! Pronto recibirás una confirmación por email.'));
       router.push('/');
     }, 3000);
+  };
+
+  // Función para manejar el éxito del pago con Stripe
+  const handleStripePaymentSuccess = () => {
+    alert(t('¡Pago procesado exitosamente con Stripe! Pronto recibirás una confirmación por email.'));
+    router.push('/');
+  };
+
+  // Función para manejar errores de pago con Stripe
+  const handleStripePaymentError = (error: any) => {
+    console.error('Error en el pago con Stripe:', error);
+    setIsProcessing(false);
   };
 
   // Validación del formulario
@@ -1385,23 +1399,83 @@ const CheckoutPage: NextPage = () => {
             {/* Método de Pago */}
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-6">{t('Método de Pago')}</h2>
-              <div className="bg-black/40 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-4">
-                  <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M1 4c0-1.1.9-2 2-2h18c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4zm2 0v16h18V4H3z"/>
-                    <path d="M5 6h14c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
-                    <path d="M5 10h6c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
-                  </svg>
-                  <div>
-                    <h3 className="text-white font-medium">{t('Stripe - Pago Seguro')}</h3>
-                    <p className="text-gray-400 text-sm">{t('Tarjeta de crédito/débito segura')}</p>
-                  </div>
+              
+              {/* Selector de método de pago */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="flex items-center space-x-3 cursor-pointer p-4 bg-black/40 border border-white/20 rounded-lg hover:bg-black/60 transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="stripe"
+                      checked={paymentMethod === 'stripe'}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'stripe' | 'traditional')}
+                      className="w-4 h-4 text-green-400 bg-black/50 border-white/20 focus:ring-green-400"
+                    />
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M1 4c0-1.1.9-2 2-2h18c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4zm2 0v16h18V4H3z"/>
+                        <path d="M5 6h14c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
+                        <path d="M5 10h6c.55 0 1 .45 1 1s-.45 1-1 1H5c-.55 0-1-.45-1-1s.45-1 1-1z"/>
+                      </svg>
+                      <div>
+                        <h3 className="text-white font-medium">{t('Stripe - Pago Seguro')}</h3>
+                        <p className="text-gray-400 text-sm">{t('Tarjeta de crédito/débito, Apple Pay, Google Pay')}</p>
+                      </div>
+                    </div>
+                  </label>
                 </div>
-                <div className="bg-black/30 border border-white/10 rounded p-3 text-center text-gray-400">
-                  <p>{t('🔒 Procesamiento seguro con Stripe')}</p>
-                  <p className="text-xs mt-1">{t('Placeholder - Integración de Stripe próximamente')}</p>
+                
+                <div>
+                  <label className="flex items-center space-x-3 cursor-pointer p-4 bg-black/40 border border-white/20 rounded-lg hover:bg-black/60 transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="traditional"
+                      checked={paymentMethod === 'traditional'}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'stripe' | 'traditional')}
+                      className="w-4 h-4 text-green-400 bg-black/50 border-white/20 focus:ring-green-400"
+                    />
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      <div>
+                        <h3 className="text-white font-medium">{t('Método Tradicional')}</h3>
+                        <p className="text-gray-400 text-sm">{t('Transferencia bancaria o pago en tienda')}</p>
+                      </div>
+                    </div>
+                  </label>
                 </div>
               </div>
+
+              {/* Componente de pago según el método seleccionado */}
+              {paymentMethod === 'stripe' && (
+                <div className="mt-6">
+                  <StripePayment
+                    amount={calculateTotal()}
+                    currency={currentCurrency.toLowerCase()}
+                    metadata={{
+                      customer_email: personalInfo.email,
+                      customer_name: `${personalInfo.firstName} ${personalInfo.lastName}`,
+                      shipping_method: selectedShippingMethod,
+                      order_items: cartItems.length.toString()
+                    }}
+                    onPaymentSuccess={handleStripePaymentSuccess}
+                    onPaymentError={handleStripePaymentError}
+                    t={t}
+                  />
+                </div>
+              )}
+
+              {paymentMethod === 'traditional' && (
+                <div className="mt-6">
+                  <div className="bg-black/30 border border-white/10 rounded-lg p-4 text-center text-gray-400">
+                    <p className="mb-2">{t('🏦 Información para pago tradicional')}</p>
+                    <p className="text-sm">{t('Se enviará la información de pago por email después de confirmar el pedido')}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Checkbox de promociones */}
@@ -1484,20 +1558,23 @@ const CheckoutPage: NextPage = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handlePayment}
-                disabled={!isFormValid() || isProcessing}
-                className="w-full bg-black/60 backdrop-blur-md border border-green-400/40 disabled:bg-black/30 disabled:border-white/20 disabled:cursor-not-allowed text-white disabled:text-gray-500 py-4 px-6 rounded-lg font-medium transition-all duration-300 text-lg hover:bg-black/80 hover:border-green-400/60 hover:text-green-300"
-              >
-                {isProcessing ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>{t('Procesando...')}</span>
-                  </div>
-                ) : (
-                  `${t('Pagar')} ${formatPrice(calculateTotal(), currentCurrency, 'MXN')}`
-                )}
-              </button>
+              {/* Botón de pago solo para método tradicional */}
+              {paymentMethod === 'traditional' && (
+                <button
+                  onClick={handleTraditionalPayment}
+                  disabled={!isFormValid() || isProcessing}
+                  className="w-full bg-black/60 backdrop-blur-md border border-green-400/40 disabled:bg-black/30 disabled:border-white/20 disabled:cursor-not-allowed text-white disabled:text-gray-500 py-4 px-6 rounded-lg font-medium transition-all duration-300 text-lg hover:bg-black/80 hover:border-green-400/60 hover:text-green-300"
+                >
+                  {isProcessing ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>{t('Procesando...')}</span>
+                    </div>
+                  ) : (
+                    `${t('Confirmar Pedido')} ${formatPrice(calculateTotal(), currentCurrency, 'MXN')}`
+                  )}
+                </button>
+              )}
 
               {/* Información de seguridad */}
               <div className="mt-6 pt-6 border-t border-white/20 text-xs text-gray-400 space-y-2">
