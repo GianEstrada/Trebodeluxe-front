@@ -106,6 +106,12 @@ const CheckoutPage: NextPage = () => {
   const [acceptPromotions, setAcceptPromotions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Estados para cotizaciones dinámicas de envío
+  const [shippingQuotes, setShippingQuotes] = useState<any[]>([]);
+  const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
+  const [quotesError, setQuotesError] = useState('');
+  const [formsCompleted, setFormsCompleted] = useState(false);
+
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
     setCurrentLanguage(newLanguage);
@@ -152,6 +158,20 @@ const CheckoutPage: NextPage = () => {
 
   const calculateShipping = () => {
     const subtotal = calculateSubtotal();
+    
+    // Si hay cotizaciones dinámicas disponibles y una está seleccionada
+    if (shippingQuotes.length > 0) {
+      const selectedQuote = shippingQuotes.find((quote, index) => {
+        const quoteId = `${quote.carrier}_${quote.service?.replace(/\s+/g, '_')}_${index}`;
+        return quoteId === selectedShippingMethod;
+      });
+      
+      if (selectedQuote) {
+        return parseFloat(selectedQuote.price.toString()) || 0;
+      }
+    }
+    
+    // Fallback a los métodos estáticos si no hay cotizaciones dinámicas
     if (subtotal >= 500) return 0; // Envío gratis
     const selectedMethod = shippingMethods.find(method => method.id === selectedShippingMethod);
     return selectedMethod ? selectedMethod.price : 0;
@@ -192,6 +212,131 @@ const CheckoutPage: NextPage = () => {
     );
   };
 
+  // Función para verificar si los formularios están completos
+  const areFormsCompleted = () => {
+    return (
+      personalInfo.firstName.trim() &&
+      personalInfo.lastName.trim() &&
+      personalInfo.email.trim() &&
+      personalInfo.phone.trim() &&
+      shippingInfo.address.trim() &&
+      shippingInfo.city.trim() &&
+      shippingInfo.state.trim() &&
+      shippingInfo.zipCode.trim() &&
+      shippingInfo.country.trim()
+    );
+  };
+
+  // Función para solicitar cotizaciones de envío
+  const handleGetShippingQuotes = async () => {
+    if (!areFormsCompleted()) {
+      console.log('📋 Formularios incompletos, no se pueden solicitar cotizaciones');
+      return;
+    }
+
+    // Obtener cartId del contexto
+    const { items: cartItems, cartId } = useCart();
+    
+    if (!cartId) {
+      setQuotesError('No hay carrito disponible para calcular envío');
+      return;
+    }
+
+    setIsLoadingQuotes(true);
+    setQuotesError('');
+    setShippingQuotes([]);
+
+    try {
+      console.log('🚚 Solicitando cotizaciones para checkout - CP:', shippingInfo.zipCode, 'CartId:', cartId);
+      
+      // Determinar endpoint según el país
+      const endpoint = shippingInfo.country === 'México' 
+        ? 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid'
+        : 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-international';
+      
+      const requestBody = shippingInfo.country === 'México' 
+        ? {
+            cartId: cartId.toString(),
+            postalCode: shippingInfo.zipCode
+          }
+        : {
+            cartId: cartId.toString(),
+            postalCode: shippingInfo.zipCode,
+            forceCountry: shippingInfo.country === 'Estados Unidos' ? 'US' : 
+                         shippingInfo.country === 'Canadá' ? 'CA' : 'MX'
+          };
+
+      // Primera solicitud
+      let response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error HTTP:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      let data = await response.json();
+
+      // Si la primera consulta no tiene cotizaciones exitosas, hacer reintento después de 3 segundos
+      if (data.success && (!data.quotations || data.quotations.length === 0)) {
+        console.log('⏳ Primera consulta sin cotizaciones exitosas. Reintentando en 3 segundos...');
+        setQuotesError('Obteniendo cotizaciones de carriers... Por favor espera.');
+        
+        // Esperar 3 segundos y hacer segunda consulta
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        console.log('🔄 Realizando segunda consulta...');
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          console.log('🔍 Segunda consulta completada');
+        }
+      }
+
+      if (data.success) {
+        setShippingQuotes(data.quotations || []);
+        setQuotesError(''); // Limpiar mensaje de espera
+        console.log('✅ Cotizaciones obtenidas para checkout:', data.quotations);
+        
+        // Seleccionar automáticamente la primera cotización si no hay ninguna seleccionada
+        if (data.quotations && data.quotations.length > 0 && !selectedShippingMethod) {
+          setSelectedShippingMethod(data.quotations[0].carrier + '_' + data.quotations[0].service?.replace(/\s+/g, '_'));
+        }
+      } else {
+        setQuotesError(data.message || 'Error obteniendo cotizaciones');
+        console.error('❌ Error en cotizaciones:', data);
+      }
+
+    } catch (error) {
+      console.error('❌ Error solicitando cotizaciones:', error);
+      setQuotesError('Error de conexión. Inténtalo nuevamente.');
+    } finally {
+      setIsLoadingQuotes(false);
+    }
+  };
+
+  // Función para formatear precio de cotización
+  const formatQuotePrice = (price: string | number, currency: string = 'MXN') => {
+    const numPrice = parseFloat(price.toString()) || 0;
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: currency
+    }).format(numPrice);
+  };
+
   // Cargar preferencias guardadas
   useEffect(() => {
     const savedLanguage = localStorage.getItem('preferred-language');
@@ -214,6 +359,22 @@ const CheckoutPage: NextPage = () => {
 
     return () => clearInterval(interval);
   }, [promoTexts.length]);
+
+  // Efecto para detectar formularios completos y solicitar cotizaciones automáticamente
+  useEffect(() => {
+    const formsAreCompleted = areFormsCompleted();
+    
+    if (formsAreCompleted && !formsCompleted) {
+      console.log('📋 Formularios completados, solicitando cotizaciones automáticamente...');
+      setFormsCompleted(true);
+      handleGetShippingQuotes();
+    } else if (!formsAreCompleted && formsCompleted) {
+      console.log('📋 Formularios incompletos, reseteando cotizaciones...');
+      setFormsCompleted(false);
+      setShippingQuotes([]);
+      setQuotesError('');
+    }
+  }, [personalInfo, shippingInfo, formsCompleted]);
 
   // Event listeners para cerrar dropdowns
   useEffect(() => {
@@ -1075,42 +1236,143 @@ const CheckoutPage: NextPage = () => {
             {/* Método de Envío */}
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-6">{t('Método de Envío')}</h2>
+              
+              {!formsCompleted && (
+                <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4 text-blue-300 text-sm mb-4">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-medium">{t('Completa la información para ver métodos de envío')}</p>
+                      <p className="text-xs text-blue-200 mt-1">
+                        {t('Llena todos los campos de información personal y dirección de envío para calcular opciones de envío automáticamente.')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isLoadingQuotes && (
+                <div className="bg-black/40 border border-white/20 rounded-lg p-4 text-center">
+                  <div className="flex items-center justify-center space-x-3">
+                    <svg className="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-white">
+                      {quotesError.includes('espera') ? t('Reintentando...') : t('Calculando opciones de envío...')}
+                    </span>
+                  </div>
+                  {quotesError && (
+                    <p className="text-blue-300 text-sm mt-2">{quotesError}</p>
+                  )}
+                </div>
+              )}
+
+              {quotesError && !isLoadingQuotes && (
+                <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4 text-red-300 text-sm mb-4">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-medium">{t('Error al calcular envío')}</p>
+                      <p className="text-xs text-red-200 mt-1">{quotesError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {shippingMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all duration-300 ${
-                      selectedShippingMethod === method.id
-                        ? 'bg-black/60 border-green-400 shadow-lg shadow-green-400/20'
-                        : 'bg-black/40 border-white/20 hover:bg-black/60 hover:border-green-400/50'
-                    }`}
-                    onClick={() => setSelectedShippingMethod(method.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          selectedShippingMethod === method.id
-                            ? 'border-green-400 bg-green-400'
-                            : 'border-white/50'
-                        }`}>
-                          {selectedShippingMethod === method.id && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-white font-medium">{t(method.name)}</h3>
-                          <p className="text-gray-400 text-sm">{t(method.description)}</p>
+                {shippingQuotes.length > 0 ? (
+                  // Mostrar cotizaciones dinámicas
+                  shippingQuotes.map((quote, index) => {
+                    const quoteId = `${quote.carrier}_${quote.service?.replace(/\s+/g, '_')}_${index}`;
+                    return (
+                      <div
+                        key={quoteId}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all duration-300 ${
+                          selectedShippingMethod === quoteId
+                            ? 'bg-black/60 border-green-400 shadow-lg shadow-green-400/20'
+                            : 'bg-black/40 border-white/20 hover:bg-black/60 hover:border-green-400/50'
+                        }`}
+                        onClick={() => setSelectedShippingMethod(quoteId)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                              selectedShippingMethod === quoteId
+                                ? 'border-green-400 bg-green-400'
+                                : 'border-white/50'
+                            }`}>
+                              {selectedShippingMethod === quoteId && (
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="text-white font-medium">
+                                {quote.carrier} - {quote.service || 'Servicio Estándar'}
+                              </h3>
+                              <p className="text-gray-400 text-sm">
+                                {quote.description || `Envío por ${quote.carrier}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-bold">
+                              {formatQuotePrice(quote.price, quote.currency)}
+                            </div>
+                            {quote.estimatedDays && (
+                              <div className="text-gray-400 text-sm">
+                                {quote.estimatedDays} {t('días hábiles')}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-white font-bold">
-                          {method.price === 0 ? t('Gratis') : formatPrice(method.price, currentCurrency, 'MXN')}
-                        </div>
-                        <div className="text-gray-400 text-sm">{method.deliveryTime}</div>
+                    );
+                  })
+                ) : formsCompleted && !isLoadingQuotes && !quotesError ? (
+                  // Mostrar mensaje cuando no hay cotizaciones disponibles
+                  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 text-yellow-300 text-sm">
+                    <div className="flex items-start space-x-2">
+                      <svg className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="font-medium">{t('No hay opciones de envío disponibles')}</p>
+                        <p className="text-xs text-yellow-200 mt-1">
+                          {t('No se encontraron opciones de envío para la dirección especificada. Verifica el código postal.')}
+                        </p>
                       </div>
                     </div>
                   </div>
-                ))}
+                ) : !formsCompleted ? (
+                  // Mostrar métodos de envío por defecto cuando los formularios no están completos
+                  shippingMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      className="p-4 rounded-lg border bg-black/20 border-white/10 opacity-50 cursor-not-allowed"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-4 h-4 rounded-full border-2 border-white/30"></div>
+                          <div>
+                            <h3 className="text-white font-medium">{t(method.name)}</h3>
+                            <p className="text-gray-400 text-sm">{t(method.description)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-bold">
+                            {method.price === 0 ? t('Gratis') : formatPrice(method.price, currentCurrency, 'MXN')}
+                          </div>
+                          <div className="text-gray-400 text-sm">{method.deliveryTime}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : null}
               </div>
             </div>
 
