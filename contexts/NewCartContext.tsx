@@ -278,16 +278,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   // Migrar carrito cuando el usuario se autentica
   const migrateCart = useCallback(async () => {
-    if (isAuthenticated && state.totalItems > 0) {
+    if (isAuthenticated) {
       try {
-        const response = await newCartApi.migrateCart();
-        dispatch({ type: 'SET_CART', payload: response });
+        console.log('🔄 [NEWCART] Usuario autenticado detectado, recargando carrito...');
+        // En lugar de migrar, simplemente recargar el carrito del usuario
+        await refreshCart();
       } catch (error: any) {
-        console.warn('Error migrating cart:', error);
-        // No es crítico si falla la migración
+        console.warn('Error refreshing cart after login:', error);
+        // No es crítico si falla la recarga
       }
     }
-  }, [isAuthenticated, state.totalItems]);
+  }, [isAuthenticated, refreshCart]);
 
   // Efectos
   useEffect(() => {
