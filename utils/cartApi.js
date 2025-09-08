@@ -135,13 +135,23 @@ export const addToCart = async (productData) => {
       precio_unitario
     });
     
+    // Obtener headers de autenticación
     const headers = getAuthHeaders();
     const url = `${API_BASE_URL}/api/cart/add`;
     
     console.log('🔍 [CARTAPI] Making request to:', url);
     console.log('🔍 [CARTAPI] Request headers:', headers);
     
-    const response = await fetch(url, {
+    // Verificar específicamente si Authorization header está presente
+    if (headers['Authorization']) {
+      console.log('✅ [CARTAPI] Authorization header CONFIRMADO presente');
+    } else if (headers['X-Session-Token']) {
+      console.log('✅ [CARTAPI] Session-Token header presente');
+    } else {
+      console.warn('⚠️ [CARTAPI] NINGÚN header de autenticación presente');
+    }
+    
+    const requestOptions = {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -151,7 +161,16 @@ export const addToCart = async (productData) => {
         cantidad,
         precio_unitario
       }),
+    };
+    
+    console.log('🔍 [CARTAPI] Opciones de request completas:', {
+      method: requestOptions.method,
+      url: url,
+      hasBody: !!requestOptions.body,
+      headerKeys: Object.keys(requestOptions.headers)
     });
+    
+    const response = await fetch(url, requestOptions);
 
     console.log('🔍 [CARTAPI] Response status:', response.status);
     
