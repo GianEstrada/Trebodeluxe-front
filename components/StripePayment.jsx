@@ -118,6 +118,8 @@ const StripePayment = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentIntentId, setPaymentIntentId] = useState('');
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false); // Prevenir múltiples llamadas
 
   // Debug: Validar la configuración de Stripe
   console.log('🔍 StripePayment Debug:', {
@@ -126,32 +128,46 @@ const StripePayment = ({
     keyPrefix: stripePublishableKey?.substring(0, 20) || 'No disponible',
     stripePromiseExists: !!stripePromise,
     amount,
-    currency
+    currency,
+    hasClientSecret: !!clientSecret,
+    isCreatingPayment
   });
-  const [paymentIntentId, setPaymentIntentId] = useState('');
 
   useEffect(() => {
     const createPaymentIntent = async () => {
+      // Prevenir múltiples llamadas simultáneas
+      if (isCreatingPayment) {
+        console.log('⏸️ Ya se está creando un Payment Intent, saltando...');
+        return;
+      }
+
       try {
+        setIsCreatingPayment(true);
         setIsLoading(true);
         setError(null);
-        setClientSecret(''); // Reset clientSecret
         
+        console.log('🔄 Creating new Payment Intent for amount:', amount);
         const data = await StripeService.createPaymentIntent(amount, currency, metadata);
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
+        console.log('✅ Payment Intent created:', data.paymentIntentId);
       } catch (error) {
-        console.error('Error creando payment intent:', error);
+        console.error('❌ Error creando payment intent:', error);
         setError(t('Error al inicializar el pago. Por favor, intenta de nuevo.'));
       } finally {
         setIsLoading(false);
+        setIsCreatingPayment(false);
       }
     };
 
-    if (amount && amount > 0) {
+    // Solo crear Payment Intent si:
+    // 1. Hay un amount válido
+    // 2. No hay un clientSecret existente
+    // 3. No se está creando ya uno
+    if (amount && amount > 0 && !clientSecret && !isCreatingPayment) {
       createPaymentIntent();
     }
-  }, [amount, currency, JSON.stringify(metadata), t]);
+  }, [amount, currency, clientSecret, isCreatingPayment]);
 
   const appearance = {
     theme: 'night',
