@@ -65,9 +65,12 @@ const getAuthHeaders = () => {
   
   if (userLoggedIn) {
     const token = getAuthToken();
+    console.log('🔍 [CARTAPI] Token obtenido:', token ? 'PRESENTE' : 'AUSENTE');
+    
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      console.log('✅ [CARTAPI] Usando Authorization header para usuario logueado');
+      console.log('✅ [CARTAPI] Authorization header agregado correctamente');
+      console.log('🔍 [CARTAPI] Header Authorization:', headers['Authorization'] ? 'SET' : 'NOT SET');
     } else {
       console.warn('⚠️ [CARTAPI] Usuario detectado pero sin token válido');
     }
@@ -76,6 +79,9 @@ const getAuthHeaders = () => {
     headers['X-Session-Token'] = sessionToken;
     console.log('✅ [CARTAPI] Usando Session-Token para usuario anónimo');
   }
+  
+  // Debug final de headers
+  console.log('🔍 [CARTAPI] Headers finales que se enviarán:', Object.keys(headers));
   
   return headers;
 };

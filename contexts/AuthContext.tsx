@@ -247,12 +247,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
-      // Siempre limpiar la sesión local, independientemente del resultado del backend
-      setUser(null);
-      setIsAuthenticated(false);
+      // LIMPIEZA COMPLETA DEL LOCALSTORAGE
+      console.log('🧹 Limpiando localStorage completamente...');
+      
+      // Limpiar datos de usuario
       localStorage.removeItem('user');
       localStorage.removeItem('adminToken');
+      
+      // Limpiar session token para forzar nuevo carrito anónimo
+      localStorage.removeItem('session-token');
+      
+      // Limpiar cualquier otro dato relacionado
+      localStorage.removeItem('treboluxe-cart'); // Por si queda algo del sistema anterior
+      
+      // Actualizar estado de React
+      setUser(null);
+      setIsAuthenticated(false);
       setLoading(false);
+      
+      console.log('✅ localStorage limpiado completamente');
+      console.log('🔄 Usuario ahora en estado anónimo');
     }
   };
 
