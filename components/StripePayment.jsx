@@ -8,8 +8,15 @@ import {
 } from '@stripe/react-stripe-js';
 import { StripeService } from '../services/stripeService';
 
-// Cargar Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// Validar variable de entorno y cargar Stripe
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  console.error('❌ STRIPE ERROR: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no está definida en las variables de entorno');
+  console.log('🔧 Solución: Configurar NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY en Render');
+}
+
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 // Componente del formulario de pago
 const PaymentForm = ({ 
@@ -111,6 +118,16 @@ const StripePayment = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Debug: Validar la configuración de Stripe
+  console.log('🔍 StripePayment Debug:', {
+    keyExists: !!stripePublishableKey,
+    keyLength: stripePublishableKey?.length || 0,
+    keyPrefix: stripePublishableKey?.substring(0, 20) || 'No disponible',
+    stripePromiseExists: !!stripePromise,
+    amount,
+    currency
+  });
   const [paymentIntentId, setPaymentIntentId] = useState('');
 
   useEffect(() => {
@@ -153,6 +170,26 @@ const StripePayment = ({
         <div className="flex items-center justify-center space-x-3">
           <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
           <span className="text-white">{t('Inicializando método de pago...')}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Validar configuración de Stripe
+  if (!stripePublishableKey) {
+    return (
+      <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-6">
+        <div className="flex items-center space-x-3">
+          <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <div className="text-red-300 font-semibold">Error de configuración de Stripe</div>
+            <div className="text-red-400 text-sm mt-1">
+              La clave pública de Stripe no está configurada. 
+              Contacta al administrador para configurar NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+            </div>
+          </div>
         </div>
       </div>
     );
