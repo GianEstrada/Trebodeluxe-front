@@ -2,36 +2,35 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://trebodeluxe-backend.onrender.com';
 
-// Obtener token de autenticación
+// Verificar si el usuario está logueado
+const isUserLoggedIn = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        return !!(userData.token && userData.id_usuario);
+      }
+    } catch (error) {
+      console.error('❌ [CARTAPI] Error verificando usuario logueado:', error);
+    }
+  }
+  return false;
+};
+
+// Obtener token de autenticación (simplificado)
 const getAuthToken = () => {
   if (typeof window !== 'undefined') {
     try {
       const savedUser = localStorage.getItem('user');
-      console.log('🔍 [CARTAPI] Verificando localStorage para usuario:', savedUser ? 'ENCONTRADO' : 'NO ENCONTRADO');
-      
       if (savedUser) {
         const userData = JSON.parse(savedUser);
-        console.log('🔍 [CARTAPI] Datos del usuario:', {
-          hasToken: !!userData.token,
-          tokenLength: userData.token ? userData.token.length : 0,
-          userId: userData.id_usuario,
-          userRole: userData.rol
-        });
-        
-        // Verificar que el token existe y no está vacío
-        if (userData.token && userData.token.length > 0) {
-          console.log('✅ [CARTAPI] Token válido encontrado para usuario logueado');
-          return userData.token;
-        } else {
-          console.warn('⚠️ [CARTAPI] Usuario encontrado pero sin token válido');
-        }
+        return userData.token || null;
       }
     } catch (error) {
-      console.error('❌ [CARTAPI] Error al obtener token de autenticación:', error);
+      console.error('❌ [CARTAPI] Error obteniendo token:', error);
     }
   }
-  
-  console.log('🔍 [CARTAPI] No hay token de autenticación disponible');
   return null;
 };
 
@@ -51,40 +50,32 @@ export const getOrCreateSessionToken = () => {
   return null;
 };
 
-// Headers con autenticación y token de sesión
+// Headers con autenticación simplificada
 const getAuthHeaders = () => {
-  const token = getAuthToken();
-  const sessionToken = getOrCreateSessionToken();
-  
-  console.log('🔍 [CARTAPI] getAuthHeaders - verificando autenticación:', {
-    hasAuthToken: !!token,
-    hasSessionToken: !!sessionToken,
-    authTokenPreview: token ? token.substring(0, 10) + '...' : 'none',
-    sessionTokenPreview: sessionToken ? sessionToken.substring(0, 10) + '...' : 'none'
-  });
-  
   const headers = {
     'Content-Type': 'application/json',
   };
   
-  // LÓGICA DE PRIORIZACIÓN:
-  // 1. Si hay token de autenticación (usuario logueado) -> usar Authorization header
-  // 2. Si NO hay token de autenticación -> usar session token
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-    console.log('✅ [CARTAPI] Usuario LOGUEADO - usando Authorization header');
-    console.log('🔍 [CARTAPI] Authorization header configurado correctamente');
-  } else {
-    headers['X-Session-Token'] = sessionToken;
-    console.log('✅ [CARTAPI] Usuario ANÓNIMO - usando Session-Token header');
-  }
+  // LÓGICA SIMPLIFICADA:
+  // 1. Si hay usuario en localStorage -> Usar Authorization header
+  // 2. Si NO hay usuario -> Usar session token
   
-  // Debug: mostrar headers finales (sin el token completo por seguridad)
-  const debugHeaders = { ...headers };
-  if (debugHeaders['Authorization']) {
-    debugHeaders['Authorization'] = 'Bearer [TOKEN_PRESENTE]';
+  const userLoggedIn = isUserLoggedIn();
+  console.log('🔍 [CARTAPI] Estado de autenticación:', userLoggedIn ? 'USUARIO LOGUEADO' : 'USUARIO ANÓNIMO');
+  
+  if (userLoggedIn) {
+    const token = getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('✅ [CARTAPI] Usando Authorization header para usuario logueado');
+    } else {
+      console.warn('⚠️ [CARTAPI] Usuario detectado pero sin token válido');
+    }
+  } else {
+    const sessionToken = getOrCreateSessionToken();
+    headers['X-Session-Token'] = sessionToken;
+    console.log('✅ [CARTAPI] Usando Session-Token para usuario anónimo');
   }
-  console.log('🔍 [CARTAPI] Headers finales:', debugHeaders);
   
   return headers;
 };
