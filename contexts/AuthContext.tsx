@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLoading } from './LoadingContext';
+import { migrateCartToSession, getOrCreateSessionToken } from '../utils/cartApi';
 
 interface User {
   id_usuario: string;
@@ -215,10 +216,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      // Si hay un usuario logueado, notificar al backend
+      // Si hay un usuario logueado, migrar su carrito a token de sesión
       if (user?.token) {
         setLoading(true);
+        
         try {
+          // Generar un token de sesión antes de migrar
+          const sessionToken = getOrCreateSessionToken();
+          
+          if (sessionToken) {
+            // Intentar migrar el carrito antes del logout
+            await migrateCartToSession(sessionToken);
+            console.log('✅ Carrito migrado a sesión antes del logout');
+          }
+          
+          // Notificar logout al backend
           await fetch(`${API_URL}/api/auth/logout`, {
             method: 'POST',
             headers: {
@@ -228,8 +240,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             signal: AbortSignal.timeout(5000)
           });
         } catch (error) {
-          // Ignorar errores del backend para logout
-          console.warn('Error al notificar logout al backend:', error);
+          // Ignorar errores del backend para logout, pero loggear para debugging
+          console.warn('Error durante logout:', error);
         }
       }
     } catch (error) {
@@ -239,6 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('user');
+      localStorage.removeItem('adminToken');
       setLoading(false);
     }
   };

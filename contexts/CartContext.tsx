@@ -57,6 +57,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     refreshCart();
   }, [isAuthenticated, user]);
 
+  // Detectar cambios de autenticación y refrescar carrito cuando sea necesario
+  useEffect(() => {
+    // Si el usuario cambió o se deslogueó, refrescar inmediatamente
+    if (isAuthenticated === false) {
+      // Usuario se deslogueó, refrescar carrito con token de sesión
+      setTimeout(() => {
+        refreshCart();
+      }, 100); // Pequeño delay para asegurar que el AuthContext termine
+    }
+  }, [isAuthenticated]);
+
   // Migrar datos de localStorage a la base de datos si es necesario
   useEffect(() => {
     const migrateFromLocalStorage = async () => {

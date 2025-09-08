@@ -19,7 +19,7 @@ const getAuthToken = () => {
 };
 
 // Obtener o generar token de sesión para usuarios no autenticados
-const getOrCreateSessionToken = () => {
+export const getOrCreateSessionToken = () => {
   if (typeof window !== 'undefined') {
     let sessionToken = localStorage.getItem('session-token');
     
@@ -177,6 +177,30 @@ export const clearCart = async () => {
     return data;
   } catch (error) {
     console.error('Error clearing cart:', error);
+    throw error;
+  }
+};
+
+// Migrar carrito de usuario a token de sesión (para logout)
+export const migrateCartToSession = async (sessionToken) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/cart/migrate-to-session`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        sessionToken
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al migrar el carrito');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error migrating cart to session:', error);
     throw error;
   }
 };
