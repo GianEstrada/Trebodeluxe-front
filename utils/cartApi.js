@@ -7,20 +7,31 @@ const getAuthToken = () => {
   if (typeof window !== 'undefined') {
     try {
       const savedUser = localStorage.getItem('user');
-      console.log('🔍 [CARTAPI] Checking localStorage for user:', savedUser ? 'Found' : 'Not found');
+      console.log('🔍 [CARTAPI] Verificando localStorage para usuario:', savedUser ? 'ENCONTRADO' : 'NO ENCONTRADO');
+      
       if (savedUser) {
         const userData = JSON.parse(savedUser);
-        console.log('🔍 [CARTAPI] User data:', {
+        console.log('🔍 [CARTAPI] Datos del usuario:', {
           hasToken: !!userData.token,
           tokenLength: userData.token ? userData.token.length : 0,
-          userId: userData.id_usuario
+          userId: userData.id_usuario,
+          userRole: userData.rol
         });
-        return userData.token;
+        
+        // Verificar que el token existe y no está vacío
+        if (userData.token && userData.token.length > 0) {
+          console.log('✅ [CARTAPI] Token válido encontrado para usuario logueado');
+          return userData.token;
+        } else {
+          console.warn('⚠️ [CARTAPI] Usuario encontrado pero sin token válido');
+        }
       }
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      console.error('❌ [CARTAPI] Error al obtener token de autenticación:', error);
     }
   }
+  
+  console.log('🔍 [CARTAPI] No hay token de autenticación disponible');
   return null;
 };
 
@@ -45,28 +56,35 @@ const getAuthHeaders = () => {
   const token = getAuthToken();
   const sessionToken = getOrCreateSessionToken();
   
-  console.log('🔍 DEBUG getAuthHeaders:', {
-    hasToken: !!token,
+  console.log('🔍 [CARTAPI] getAuthHeaders - verificando autenticación:', {
+    hasAuthToken: !!token,
     hasSessionToken: !!sessionToken,
-    tokenStart: token ? token.substring(0, 10) + '...' : 'none',
-    sessionTokenStart: sessionToken ? sessionToken.substring(0, 10) + '...' : 'none'
+    authTokenPreview: token ? token.substring(0, 10) + '...' : 'none',
+    sessionTokenPreview: sessionToken ? sessionToken.substring(0, 10) + '...' : 'none'
   });
   
   const headers = {
     'Content-Type': 'application/json',
   };
   
-  // PRIORIZAR TOKEN DE AUTENTICACIÓN SOBRE SESSION TOKEN
+  // LÓGICA DE PRIORIZACIÓN:
+  // 1. Si hay token de autenticación (usuario logueado) -> usar Authorization header
+  // 2. Si NO hay token de autenticación -> usar session token
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
-    console.log('✅ Usando token de autenticación para usuario logueado');
-    console.log('🔍 Auth header set:', headers['Authorization'] ? 'YES' : 'NO');
-  } else if (sessionToken) {
-    headers['X-Session-Token'] = sessionToken;
-    console.log('✅ Usando token de sesión para usuario anónimo');
+    console.log('✅ [CARTAPI] Usuario LOGUEADO - usando Authorization header');
+    console.log('🔍 [CARTAPI] Authorization header configurado correctamente');
   } else {
-    console.warn('⚠️ No hay tokens disponibles');
+    headers['X-Session-Token'] = sessionToken;
+    console.log('✅ [CARTAPI] Usuario ANÓNIMO - usando Session-Token header');
   }
+  
+  // Debug: mostrar headers finales (sin el token completo por seguridad)
+  const debugHeaders = { ...headers };
+  if (debugHeaders['Authorization']) {
+    debugHeaders['Authorization'] = 'Bearer [TOKEN_PRESENTE]';
+  }
+  console.log('🔍 [CARTAPI] Headers finales:', debugHeaders);
   
   return headers;
 };
