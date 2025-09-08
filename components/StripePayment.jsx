@@ -146,11 +146,11 @@ const StripePayment = ({
         setIsLoading(true);
         setError(null);
         
-        console.log('🔄 Creating new Payment Intent for amount:', amount);
+        console.log('🔄 Creating new Payment Intent for amount:', amount, 'currency:', currency);
         const data = await StripeService.createPaymentIntent(amount, currency, metadata);
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
-        console.log('✅ Payment Intent created:', data.paymentIntentId);
+        console.log('✅ Payment Intent created:', data.paymentIntentId, 'for amount:', amount);
       } catch (error) {
         console.error('❌ Error creando payment intent:', error);
         setError(t('Error al inicializar el pago. Por favor, intenta de nuevo.'));
@@ -162,12 +162,18 @@ const StripePayment = ({
 
     // Solo crear Payment Intent si:
     // 1. Hay un amount válido
-    // 2. No hay un clientSecret existente
+    // 2. No hay un clientSecret existente para este amount
     // 3. No se está creando ya uno
-    if (amount && amount > 0 && !clientSecret && !isCreatingPayment) {
+    if (amount && amount > 0 && !isCreatingPayment) {
+      // Resetear clientSecret si el amount cambió para forzar nueva creación
+      if (clientSecret) {
+        console.log('💱 Amount changed, resetting Payment Intent');
+        setClientSecret('');
+        setPaymentIntentId('');
+      }
       createPaymentIntent();
     }
-  }, [amount, currency, clientSecret, isCreatingPayment]);
+  }, [amount, currency]);
 
   const appearance = {
     theme: 'night',

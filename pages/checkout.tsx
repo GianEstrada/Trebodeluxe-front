@@ -103,7 +103,7 @@ const CheckoutPage: NextPage = () => {
     }
   ];
 
-  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('');
   const [acceptPromotions, setAcceptPromotions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'traditional'>('stripe');
@@ -160,6 +160,11 @@ const CheckoutPage: NextPage = () => {
 
   const calculateShipping = () => {
     const subtotal = calculateSubtotal();
+    
+    // Si no hay método de envío seleccionado, retornar 0
+    if (!selectedShippingMethod) {
+      return 0;
+    }
     
     // Si hay cotizaciones dinámicas disponibles y una está seleccionada
     if (shippingQuotes.length > 0) {
@@ -331,9 +336,9 @@ const CheckoutPage: NextPage = () => {
         setQuotesError(''); // Limpiar mensaje de espera
         console.log('✅ Cotizaciones obtenidas para checkout:', data.quotations);
         
-        // Seleccionar automáticamente la primera cotización si no hay ninguna seleccionada
-        if (data.quotations && data.quotations.length > 0 && !selectedShippingMethod) {
-          setSelectedShippingMethod(data.quotations[0].carrier + '_' + data.quotations[0].service?.replace(/\s+/g, '_'));
+        // No auto-seleccionar ninguna cotización para que el usuario elija
+        if (data.quotations && data.quotations.length > 0) {
+          console.log('📦 Cotizaciones disponibles, esperando selección del usuario');
         }
       } else {
         setQuotesError(data.message || 'Error obteniendo cotizaciones');
@@ -1452,19 +1457,36 @@ const CheckoutPage: NextPage = () => {
               {/* Componente de pago según el método seleccionado */}
               {paymentMethod === 'stripe' && (
                 <div className="mt-6">
-                  <StripePayment
-                    amount={calculateTotal()}
-                    currency={currentCurrency.toLowerCase()}
-                    metadata={{
-                      customer_email: personalInfo.email,
-                      customer_name: `${personalInfo.firstName} ${personalInfo.lastName}`,
-                      shipping_method: selectedShippingMethod,
-                      order_items: cartItems.length.toString()
-                    }}
-                    onPaymentSuccess={handleStripePaymentSuccess}
-                    onPaymentError={handleStripePaymentError}
-                    t={t}
-                  />
+                  {!selectedShippingMethod ? (
+                    <div className="bg-orange-500/20 border border-orange-400/30 rounded-lg p-6">
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <div className="text-orange-300 font-semibold">{t('Método de envío requerido')}</div>
+                          <div className="text-orange-400 text-sm mt-1">
+                            {t('Por favor selecciona un método de envío para continuar con el pago.')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <StripePayment
+                      amount={calculateTotal()}
+                      currency={currentCurrency.toLowerCase()}
+                      metadata={{
+                        customer_email: personalInfo.email,
+                        customer_name: `${personalInfo.firstName} ${personalInfo.lastName}`,
+                        shipping_method: selectedShippingMethod,
+                        order_items: cartItems.length.toString(),
+                        shipping_cost: calculateShipping().toString()
+                      }}
+                      onPaymentSuccess={handleStripePaymentSuccess}
+                      onPaymentError={handleStripePaymentError}
+                      t={t}
+                    />
+                  )}
                 </div>
               )}
 
@@ -1540,8 +1562,16 @@ const CheckoutPage: NextPage = () => {
                 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-300">{t('Envío')}</span>
-                  <span className={`font-medium ${calculateShipping() === 0 ? 'text-green-400' : 'text-white'}`}>
-                    {calculateShipping() === 0 ? t('Gratis') : formatPrice(calculateShipping(), currentCurrency, 'MXN')}
+                  <span className={`font-medium ${
+                    !selectedShippingMethod ? 'text-orange-400' :
+                    calculateShipping() === 0 ? 'text-green-400' : 'text-white'
+                  }`}>
+                    {!selectedShippingMethod 
+                      ? t('Seleccione un método de envío')
+                      : calculateShipping() === 0 
+                        ? t('Gratis') 
+                        : formatPrice(calculateShipping(), currentCurrency, 'MXN')
+                    }
                   </span>
                 </div>
                 
