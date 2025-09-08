@@ -18,13 +18,38 @@ const getAuthToken = () => {
   return null;
 };
 
-// Headers con autenticación
+// Obtener o generar token de sesión para usuarios no autenticados
+const getOrCreateSessionToken = () => {
+  if (typeof window !== 'undefined') {
+    let sessionToken = localStorage.getItem('session-token');
+    
+    if (!sessionToken) {
+      // Generar nuevo token de sesión
+      sessionToken = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem('session-token', sessionToken);
+    }
+    
+    return sessionToken;
+  }
+  return null;
+};
+
+// Headers con autenticación y token de sesión
 const getAuthHeaders = () => {
   const token = getAuthToken();
-  return {
+  const sessionToken = getOrCreateSessionToken();
+  
+  const headers = {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
   };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (sessionToken) {
+    headers['X-Session-Token'] = sessionToken;
+  }
+  
+  return headers;
 };
 
 // Obtener carrito activo
@@ -57,9 +82,9 @@ export const addToCart = async (productData) => {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        id_producto,
-        id_variante,
-        id_talla,
+        productId: id_producto,
+        variantId: id_variante,
+        tallaId: id_talla,
         cantidad,
         precio_unitario
       }),
@@ -79,13 +104,17 @@ export const addToCart = async (productData) => {
 };
 
 // Actualizar cantidad de un item en el carrito
-export const updateCartItem = async (id_detalle, cantidad) => {
+export const updateCartItem = async (updateData) => {
   try {
+    const { productId, variantId, tallaId, cantidad } = updateData;
+    
     const response = await fetch(`${API_BASE_URL}/api/cart/update`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        id_detalle,
+        productId,
+        variantId,
+        tallaId,
         cantidad
       }),
     });
@@ -104,11 +133,18 @@ export const updateCartItem = async (id_detalle, cantidad) => {
 };
 
 // Eliminar item del carrito
-export const removeFromCart = async (id_detalle) => {
+export const removeFromCart = async (removeData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/cart/remove/${id_detalle}`, {
+    const { productId, variantId, tallaId } = removeData;
+    
+    const response = await fetch(`${API_BASE_URL}/api/cart/remove`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
+      body: JSON.stringify({
+        productId,
+        variantId,
+        tallaId
+      }),
     });
 
     const data = await response.json();

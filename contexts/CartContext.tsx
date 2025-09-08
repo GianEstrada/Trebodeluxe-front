@@ -52,20 +52,58 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
-  // Cargar carrito cuando el usuario se autentica
+  // Cargar carrito al inicializar el contexto
   useEffect(() => {
-    if (isAuthenticated && user) {
-      refreshCart();
-    } else {
-      // Si no está autenticado, usar localStorage como fallback
-      loadFromLocalStorage();
-    }
+    refreshCart();
   }, [isAuthenticated, user]);
 
-  // Función para cargar carrito desde la base de datos
+  // Migrar datos de localStorage a la base de datos si es necesario
+  useEffect(() => {
+    const migrateFromLocalStorage = async () => {
+      const savedCart = localStorage.getItem('treboluxe-cart');
+      
+      if (savedCart && !isAuthenticated) {
+        try {
+          const parsedCart = JSON.parse(savedCart);
+          
+          if (parsedCart.length > 0) {
+            // Migrar cada item del localStorage a la base de datos
+            for (const item of parsedCart) {
+              try {
+                await apiAddToCart({
+                  id_producto: item.id_producto,
+                  id_variante: item.id_variante,
+                  id_talla: item.id_talla,
+                  cantidad: item.cantidad,
+                  precio_unitario: item.precio
+                });
+              } catch (error) {
+                console.error('Error migrating item from localStorage:', error);
+              }
+            }
+            
+            // Limpiar localStorage después de la migración
+            localStorage.removeItem('treboluxe-cart');
+            
+            // Refrescar carrito desde la base de datos
+            await refreshCart();
+            
+            console.log('✅ Carrito migrado de localStorage a base de datos');
+          }
+        } catch (error) {
+          console.error('Error during localStorage migration:', error);
+        }
+      }
+    };
+
+    // Solo migrar si no está autenticado (para evitar conflictos)
+    if (!isAuthenticated) {
+      migrateFromLocalStorage();
+    }
+  }, [isAuthenticated]);
+
+  // Función para cargar carrito desde la base de datos (para todos los usuarios)
   const refreshCart = async () => {
-    if (!isAuthenticated) return;
-    
     try {
       setIsLoading(true);
       const response = await getActiveCart();
@@ -91,30 +129,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error loading cart from database:', error);
-      // En caso de error, usar localStorage como fallback
-      loadFromLocalStorage();
+      // En caso de error severo, inicializar carrito vacío
+      setItems([]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Cargar desde localStorage (para usuarios no autenticados)
-  const loadFromLocalStorage = () => {
-    const savedCart = localStorage.getItem('treboluxe-cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        setItems(parsedCart);
-      } catch (error) {
-        console.error('Error loading cart from localStorage:', error);
-      }
-    }
-  };
-
-  // Guardar en localStorage para usuarios no autenticados
-  const saveToLocalStorage = (cartItems: CartItem[]) => {
-    if (!isAuthenticated) {
-      localStorage.setItem('treboluxe-cart', JSON.stringify(cartItems));
     }
   };
 
@@ -130,37 +148,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (isAuthenticated) {
-        // Usuario autenticado: usar API
-        await apiAddToCart({
-          id_producto: validatedItem.id_producto,
-          id_variante: validatedItem.id_variante,
-          id_talla: validatedItem.id_talla,
-          cantidad,
-          precio_unitario: validatedItem.precio
-        });
-        
-        // Refrescar carrito desde la base de datos
-        await refreshCart();
-      } else {
-        // Usuario no autenticado: usar localStorage
-        setItems(currentItems => {
-          const existingItemIndex = currentItems.findIndex(
-            item => item.id_variante === validatedItem.id_variante && item.id_talla === validatedItem.id_talla
-          );
-
-          let updatedItems;
-          if (existingItemIndex >= 0) {
-            updatedItems = [...currentItems];
-            updatedItems[existingItemIndex].cantidad += cantidad;
-          } else {
-            updatedItems = [...currentItems, { ...validatedItem, cantidad }];
-          }
-          
-          saveToLocalStorage(updatedItems);
-          return updatedItems;
-        });
-      }
+      // Siempre usar la API (tanto para usuarios autenticados como no autenticados)
+      await apiAddToCart({
+        id_producto: validatedItem.id_producto,
+        id_variante: validatedItem.id_variante,
+        id_talla: validatedItem.id_talla,
+        cantidad,
+        precio_unitario: validatedItem.precio
+      });
+      
+      // Refrescar carrito desde la base de datos
+      await refreshCart();
     } catch (error) {
       console.error('Error adding item to cart:', error);
       throw error;
@@ -173,25 +171,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (isAuthenticated) {
-        // Usuario autenticado: usar API
-        const item = items.find(item => 
-          item.id_variante === id_variante && item.id_talla === id_talla
-        );
-        
-        if (item && item.id_detalle) {
-          await apiRemoveFromCart(item.id_detalle);
-          await refreshCart();
-        }
-      } else {
-        // Usuario no autenticado: usar localStorage
-        setItems(currentItems => {
-          const updatedItems = currentItems.filter(item => 
-            !(item.id_variante === id_variante && item.id_talla === id_talla)
-          );
-          saveToLocalStorage(updatedItems);
-          return updatedItems;
+      // Buscar el item en el carrito actual
+      const item = items.find(item => 
+        item.id_variante === id_variante && item.id_talla === id_talla
+      );
+      
+      if (item) {
+        // Usar la nueva API que acepta productId, variantId y tallaId
+        await apiRemoveFromCart({
+          productId: item.id_producto,
+          variantId: item.id_variante,
+          tallaId: item.id_talla
         });
+        
+        await refreshCart();
       }
     } catch (error) {
       console.error('Error removing item from cart:', error);
@@ -210,27 +203,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (isAuthenticated) {
-        // Usuario autenticado: usar API
-        const item = items.find(item => 
-          item.id_variante === id_variante && item.id_talla === id_talla
-        );
-        
-        if (item && item.id_detalle) {
-          await updateCartItem(item.id_detalle, cantidad);
-          await refreshCart();
-        }
-      } else {
-        // Usuario no autenticado: usar localStorage
-        setItems(currentItems => {
-          const updatedItems = currentItems.map(item => 
-            item.id_variante === id_variante && item.id_talla === id_talla
-              ? { ...item, cantidad }
-              : item
-          );
-          saveToLocalStorage(updatedItems);
-          return updatedItems;
+      // Buscar el item en el carrito actual
+      const item = items.find(item => 
+        item.id_variante === id_variante && item.id_talla === id_talla
+      );
+      
+      if (item) {
+        await updateCartItem({
+          productId: item.id_producto,
+          variantId: item.id_variante,
+          tallaId: item.id_talla,
+          cantidad
         });
+        
+        await refreshCart();
       }
     } catch (error) {
       console.error('Error updating item quantity:', error);
@@ -244,15 +230,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (isAuthenticated) {
-        // Usuario autenticado: usar API
-        await apiClearCart();
-        await refreshCart();
-      } else {
-        // Usuario no autenticado: limpiar localStorage
-        setItems([]);
-        localStorage.removeItem('treboluxe-cart');
-      }
+      // Siempre usar la API para limpiar el carrito
+      await apiClearCart();
+      await refreshCart();
     } catch (error) {
       console.error('Error clearing cart:', error);
       throw error;
