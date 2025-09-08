@@ -65,23 +65,24 @@ const getAuthHeaders = () => {
   
   if (userLoggedIn) {
     const token = getAuthToken();
-    console.log('🔍 [CARTAPI] Token obtenido:', token ? 'PRESENTE' : 'AUSENTE');
+    console.log('🔍 [CARTAPI] Token obtenido:', token ? `PRESENTE (${token.substring(0, 20)}...)` : 'AUSENTE');
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
       console.log('✅ [CARTAPI] Authorization header agregado correctamente');
-      console.log('🔍 [CARTAPI] Header Authorization:', headers['Authorization'] ? 'SET' : 'NOT SET');
+      console.log('🔍 [CARTAPI] Header Authorization completo:', headers['Authorization'].substring(0, 30) + '...');
     } else {
       console.warn('⚠️ [CARTAPI] Usuario detectado pero sin token válido');
     }
   } else {
     const sessionToken = getOrCreateSessionToken();
     headers['X-Session-Token'] = sessionToken;
-    console.log('✅ [CARTAPI] Usando Session-Token para usuario anónimo');
+    console.log('✅ [CARTAPI] Usando Session-Token para usuario anónimo:', sessionToken.substring(0, 20) + '...');
   }
   
   // Debug final de headers
   console.log('🔍 [CARTAPI] Headers finales que se enviarán:', Object.keys(headers));
+  console.log('🔍 [CARTAPI] Headers completos:', headers);
   
   return headers;
 };
@@ -265,16 +266,37 @@ export const clearCart = async () => {
 };
 
 // Cargar carrito del usuario autenticado (sin migrar carrito anónimo)
-export const migrateCartToUser = async () => {
+export const migrateCartToUser = async (userToken = null) => {
   try {
     console.log('🔄 [CARTAPI] Cargando carrito del usuario autenticado...');
     
-    // Simplemente obtener el carrito del usuario desde BD
-    // El backend filtra automáticamente por usuario autenticado
-    const response = await getActiveCart();
-    
-    console.log('✅ [CARTAPI] Carrito del usuario cargado (sustituye carrito anónimo):', response);
-    return response;
+    // Si se proporciona token, usarlo directamente
+    if (userToken) {
+      console.log('🔍 [CARTAPI] Usando token proporcionado para cargar carrito');
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      };
+      
+      const response = await fetch(`${API_BASE_URL}/api/cart`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [CARTAPI] Carrito del usuario cargado con token directo:', result);
+      return result;
+    } else {
+      // Usar método normal con localStorage
+      const response = await getActiveCart();
+      console.log('✅ [CARTAPI] Carrito del usuario cargado (sustituye carrito anónimo):', response);
+      return response;
+    }
   } catch (error) {
     console.error('❌ [CARTAPI] Error cargando carrito del usuario:', error);
     throw error;

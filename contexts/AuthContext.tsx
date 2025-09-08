@@ -148,6 +148,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('adminToken', result.token); // Para el nuevo sistema de tokens
+        
+        // Cargar carrito del usuario autenticado (sustituye carrito anónimo)
+        // Pasar token directamente para evitar problemas de timing
+        try {
+          await migrateCartToUser(result.token);
+          console.log('✅ Carrito del usuario cargado exitosamente');
+        } catch (cartError) {
+          console.warn('⚠️ Error cargando carrito del usuario (no crítico):', cartError);
+        }
       } else {
         throw new Error(result.message || 'Error al iniciar sesión');
       }
