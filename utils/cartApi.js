@@ -56,12 +56,16 @@ const getAuthHeaders = () => {
     'Content-Type': 'application/json',
   };
   
+  // PRIORIZAR TOKEN DE AUTENTICACIÓN SOBRE SESSION TOKEN
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
     console.log('✅ Usando token de autenticación para usuario logueado');
+    console.log('🔍 Auth header set:', headers['Authorization'] ? 'YES' : 'NO');
   } else if (sessionToken) {
     headers['X-Session-Token'] = sessionToken;
     console.log('✅ Usando token de sesión para usuario anónimo');
+  } else {
+    console.warn('⚠️ No hay tokens disponibles');
   }
   
   return headers;
