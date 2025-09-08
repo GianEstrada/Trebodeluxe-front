@@ -7,8 +7,14 @@ const getAuthToken = () => {
   if (typeof window !== 'undefined') {
     try {
       const savedUser = localStorage.getItem('user');
+      console.log('🔍 [CARTAPI] Checking localStorage for user:', savedUser ? 'Found' : 'Not found');
       if (savedUser) {
         const userData = JSON.parse(savedUser);
+        console.log('🔍 [CARTAPI] User data:', {
+          hasToken: !!userData.token,
+          tokenLength: userData.token ? userData.token.length : 0,
+          userId: userData.id_usuario
+        });
         return userData.token;
       }
     } catch (error) {
@@ -39,14 +45,23 @@ const getAuthHeaders = () => {
   const token = getAuthToken();
   const sessionToken = getOrCreateSessionToken();
   
+  console.log('🔍 DEBUG getAuthHeaders:', {
+    hasToken: !!token,
+    hasSessionToken: !!sessionToken,
+    tokenStart: token ? token.substring(0, 10) + '...' : 'none',
+    sessionTokenStart: sessionToken ? sessionToken.substring(0, 10) + '...' : 'none'
+  });
+  
   const headers = {
     'Content-Type': 'application/json',
   };
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('✅ Usando token de autenticación para usuario logueado');
   } else if (sessionToken) {
     headers['X-Session-Token'] = sessionToken;
+    console.log('✅ Usando token de sesión para usuario anónimo');
   }
   
   return headers;
@@ -55,20 +70,32 @@ const getAuthHeaders = () => {
 // Obtener carrito activo
 export const getActiveCart = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+    console.log('🛒 [CARTAPI] getActiveCart called');
+    
+    const headers = getAuthHeaders();
+    const url = `${API_BASE_URL}/api/cart`;
+    
+    console.log('🔍 [CARTAPI] Making request to:', url);
+    console.log('🔍 [CARTAPI] Request headers:', headers);
+    
+    const response = await fetch(url, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers,
     });
 
+    console.log('🔍 [CARTAPI] Response status:', response.status);
+    
     const data = await response.json();
     
+    console.log('🔍 [CARTAPI] Response data:', data);
+
     if (!response.ok) {
       throw new Error(data.message || 'Error al obtener el carrito');
     }
 
     return data;
   } catch (error) {
-    console.error('Error getting active cart:', error);
+    console.error('❌ [CARTAPI] Error getting active cart:', error);
     throw error;
   }
 };
@@ -78,9 +105,23 @@ export const addToCart = async (productData) => {
   try {
     const { id_producto, id_variante, id_talla, cantidad, precio_unitario } = productData;
     
-    const response = await fetch(`${API_BASE_URL}/api/cart/add`, {
+    console.log('🛒 [CARTAPI] addToCart called with:', {
+      id_producto,
+      id_variante,
+      id_talla,
+      cantidad,
+      precio_unitario
+    });
+    
+    const headers = getAuthHeaders();
+    const url = `${API_BASE_URL}/api/cart/add`;
+    
+    console.log('🔍 [CARTAPI] Making request to:', url);
+    console.log('🔍 [CARTAPI] Request headers:', headers);
+    
+    const response = await fetch(url, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify({
         productId: id_producto,
         variantId: id_variante,
@@ -90,7 +131,11 @@ export const addToCart = async (productData) => {
       }),
     });
 
+    console.log('🔍 [CARTAPI] Response status:', response.status);
+    
     const data = await response.json();
+    
+    console.log('🔍 [CARTAPI] Response data:', data);
     
     if (!response.ok) {
       throw new Error(data.message || 'Error al agregar al carrito');
@@ -98,7 +143,7 @@ export const addToCart = async (productData) => {
 
     return data;
   } catch (error) {
-    console.error('Error adding to cart:', error);
+    console.error('❌ [CARTAPI] Error adding to cart:', error);
     throw error;
   }
 };
