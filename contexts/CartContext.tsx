@@ -52,19 +52,29 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
-  // Cargar carrito al inicializar el contexto
+  // Cargar carrito al inicializar el contexto y cuando cambie la autenticación
   useEffect(() => {
-    refreshCart();
+    if (isAuthenticated === true && user) {
+      // Usuario acaba de iniciar sesión: cargar su carrito personal desde BD
+      console.log('🔄 [CART] Usuario autenticado detectado, cargando carrito personal...');
+      refreshCart();
+    } else if (isAuthenticated === false) {
+      // Usuario no autenticado: usar carrito con session-token
+      console.log('🔄 [CART] Usuario anónimo detectado, cargando carrito con session-token...');
+      refreshCart();
+    }
   }, [isAuthenticated, user]);
 
-  // Detectar cambios de autenticación y refrescar carrito cuando sea necesario
+  // Detectar logout y limpiar carrito en frontend
   useEffect(() => {
-    // Si el usuario cambió o se deslogueó, refrescar inmediatamente
-    if (isAuthenticated === false) {
-      // Usuario se deslogueó, refrescar carrito con token de sesión
+    if (isAuthenticated === false && items.length > 0) {
+      // Usuario se deslogueó, limpiar carrito en frontend
+      console.log('🧹 [CART] Logout detectado, limpiando carrito en frontend...');
+      setItems([]);
+      // Luego cargar carrito anónimo
       setTimeout(() => {
         refreshCart();
-      }, 100); // Pequeño delay para asegurar que el AuthContext termine
+      }, 100);
     }
   }, [isAuthenticated]);
 

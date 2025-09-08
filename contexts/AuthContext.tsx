@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLoading } from './LoadingContext';
-import { migrateCartToSession, migrateCartToUser, getOrCreateSessionToken } from '../utils/cartApi';
+import { clearCartOnLogout, migrateCartToUser, getOrCreateSessionToken } from '../utils/cartApi';
 
 interface User {
   id_usuario: string;
@@ -221,15 +221,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(true);
         
         try {
-          // Generar un token de sesión antes de migrar
-          const sessionToken = getOrCreateSessionToken();
-          
-          if (sessionToken) {
-            // Intentar migrar el carrito antes del logout
-            await migrateCartToSession(sessionToken);
-            console.log('✅ Carrito migrado a sesión antes del logout');
-          }
-          
           // Notificar logout al backend
           await fetch(`${API_URL}/api/auth/logout`, {
             method: 'POST',
@@ -239,6 +230,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             },
             signal: AbortSignal.timeout(5000)
           });
+          
+          // Limpiar carrito en frontend (carrito permanece en BD para el usuario)
+          await clearCartOnLogout();
+          console.log('✅ Carrito limpiado en frontend, permanece en BD');
+          
         } catch (error) {
           // Ignorar errores del backend para logout, pero loggear para debugging
           console.warn('Error durante logout:', error);

@@ -264,16 +264,16 @@ export const clearCart = async () => {
   }
 };
 
-// Cargar carrito del usuario (sin migrar carrito anónimo)
+// Cargar carrito del usuario autenticado (sin migrar carrito anónimo)
 export const migrateCartToUser = async () => {
   try {
-    console.log('🔄 [CARTAPI] Cargando carrito del usuario logueado...');
+    console.log('🔄 [CARTAPI] Cargando carrito del usuario autenticado...');
     
     // Simplemente obtener el carrito del usuario desde BD
-    // El backend ya se encarga de filtrar por usuario autenticado
+    // El backend filtra automáticamente por usuario autenticado
     const response = await getActiveCart();
     
-    console.log('✅ [CARTAPI] Carrito del usuario cargado:', response);
+    console.log('✅ [CARTAPI] Carrito del usuario cargado (sustituye carrito anónimo):', response);
     return response;
   } catch (error) {
     console.error('❌ [CARTAPI] Error cargando carrito del usuario:', error);
@@ -281,26 +281,10 @@ export const migrateCartToUser = async () => {
   }
 };
 
-// Migrar carrito de usuario a token de sesión (para logout)
-export const migrateCartToSession = async (sessionToken) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/cart/migrate-to-session`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        sessionToken
-      }),
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Error al migrar el carrito');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error migrating cart to session:', error);
-    throw error;
-  }
+// Función para limpiar carrito en frontend (logout)
+export const clearCartOnLogout = () => {
+  console.log('🧹 [CARTAPI] Limpiando carrito en frontend (logout)');
+  // No hacemos nada con BD, solo notificamos que se debe limpiar el frontend
+  // El carrito del usuario permanece en BD para futuras sesiones
+  return Promise.resolve();
 };
