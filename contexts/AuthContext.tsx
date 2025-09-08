@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLoading } from './LoadingContext';
-import { migrateCartToSession, getOrCreateSessionToken } from '../utils/cartApi';
+import { migrateCartToSession, migrateCartToUser, getOrCreateSessionToken } from '../utils/cartApi';
 
 interface User {
   id_usuario: string;

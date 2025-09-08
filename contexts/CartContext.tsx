@@ -68,51 +68,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  // Migrar datos de localStorage a la base de datos si es necesario
-  useEffect(() => {
-    const migrateFromLocalStorage = async () => {
-      const savedCart = localStorage.getItem('treboluxe-cart');
-      
-      if (savedCart && !isAuthenticated) {
-        try {
-          const parsedCart = JSON.parse(savedCart);
-          
-          if (parsedCart.length > 0) {
-            // Migrar cada item del localStorage a la base de datos
-            for (const item of parsedCart) {
-              try {
-                await apiAddToCart({
-                  id_producto: item.id_producto,
-                  id_variante: item.id_variante,
-                  id_talla: item.id_talla,
-                  cantidad: item.cantidad,
-                  precio_unitario: item.precio
-                });
-              } catch (error) {
-                console.error('Error migrating item from localStorage:', error);
-              }
-            }
-            
-            // Limpiar localStorage después de la migración
-            localStorage.removeItem('treboluxe-cart');
-            
-            // Refrescar carrito desde la base de datos
-            await refreshCart();
-            
-            console.log('✅ Carrito migrado de localStorage a base de datos');
-          }
-        } catch (error) {
-          console.error('Error during localStorage migration:', error);
-        }
-      }
-    };
-
-    // Solo migrar si no está autenticado (para evitar conflictos)
-    if (!isAuthenticated) {
-      migrateFromLocalStorage();
-    }
-  }, [isAuthenticated]);
-
   // Función para cargar carrito desde la base de datos (para todos los usuarios)
   const refreshCart = async () => {
     try {

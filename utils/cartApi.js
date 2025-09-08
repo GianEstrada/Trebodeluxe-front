@@ -264,6 +264,23 @@ export const clearCart = async () => {
   }
 };
 
+// Cargar carrito del usuario (sin migrar carrito anónimo)
+export const migrateCartToUser = async () => {
+  try {
+    console.log('🔄 [CARTAPI] Cargando carrito del usuario logueado...');
+    
+    // Simplemente obtener el carrito del usuario desde BD
+    // El backend ya se encarga de filtrar por usuario autenticado
+    const response = await getActiveCart();
+    
+    console.log('✅ [CARTAPI] Carrito del usuario cargado:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ [CARTAPI] Error cargando carrito del usuario:', error);
+    throw error;
+  }
+};
+
 // Migrar carrito de usuario a token de sesión (para logout)
 export const migrateCartToSession = async (sessionToken) => {
   try {
