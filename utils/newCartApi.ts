@@ -133,20 +133,41 @@ const getAuthHeaders = () => {
   };
 
   // Agregar token de autenticación si está disponible
-  const authToken = typeof window !== 'undefined' 
-    ? localStorage.getItem('authToken') 
-    : null;
+  let authToken = null;
+  
+  if (typeof window !== 'undefined') {
+    // Buscar en el objeto user (como lo hace nuestro AuthContext)
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        authToken = userData.token;
+        console.log('🔍 [NEWCARTAPI] Token encontrado en user object:', authToken ? 'PRESENTE' : 'AUSENTE');
+      }
+    } catch (error) {
+      console.error('❌ [NEWCARTAPI] Error obteniendo token del user object:', error);
+    }
+    
+    // Fallback: buscar en authToken directo
+    if (!authToken) {
+      authToken = localStorage.getItem('authToken');
+      console.log('🔍 [NEWCARTAPI] Token fallback desde authToken:', authToken ? 'PRESENTE' : 'AUSENTE');
+    }
+  }
   
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`;
+    console.log('✅ [NEWCARTAPI] Authorization header agregado');
   } else {
     // Si no hay usuario autenticado, usar token de sesión
     const currentSessionToken = getSessionToken();
     if (currentSessionToken) {
       headers['X-Session-Token'] = currentSessionToken;
+      console.log('✅ [NEWCARTAPI] Session-Token header agregado');
     }
   }
 
+  console.log('🔍 [NEWCARTAPI] Headers finales:', Object.keys(headers));
   return headers;
 };
 

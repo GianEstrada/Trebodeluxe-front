@@ -297,9 +297,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   }, [refreshCart]);
 
   useEffect(() => {
-    // Migrar carrito cuando el usuario se autentica
-    migrateCart();
-  }, [migrateCart]);
+    // Solo migrar si el usuario acaba de autenticarse
+    if (isAuthenticated) {
+      console.log('🔄 [NEWCART] Usuario autenticado detectado, ejecutando migración...');
+      migrateCart();
+    }
+  }, [isAuthenticated, migrateCart]);
 
   // Valor del contexto
   const contextValue: CartContextType = {
