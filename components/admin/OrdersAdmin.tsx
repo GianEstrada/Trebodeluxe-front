@@ -68,11 +68,11 @@ interface Order {
 
 interface OrderStats {
   total_pedidos: number;
-  no_revisado: number;
-  en_proceso: number;
+  procesando: number;
   preparado: number;
   enviado: number;
-  listo: number;
+  completado: number;
+  cancelado: number;
   ingresos_totales: number;
   ticket_promedio: number;
   pedidos_hoy: number;
@@ -80,11 +80,11 @@ interface OrderStats {
 }
 
 const ESTADOS_PEDIDO = [
-  { value: 'no_revisado', label: 'No Revisado', color: 'bg-gray-100 text-gray-800' },
-  { value: 'en_proceso', label: 'En Proceso', color: 'bg-blue-100 text-blue-800' },
+  { value: 'procesando', label: 'Procesando', color: 'bg-blue-100 text-blue-800' },
   { value: 'preparado', label: 'Preparado', color: 'bg-yellow-100 text-yellow-800' },
   { value: 'enviado', label: 'Enviado', color: 'bg-purple-100 text-purple-800' },
-  { value: 'listo', label: 'Listo', color: 'bg-green-100 text-green-800' }
+  { value: 'completado', label: 'Completado', color: 'bg-green-100 text-green-800' },
+  { value: 'cancelado', label: 'Cancelado', color: 'bg-red-100 text-red-800' }
 ];
 
 const OrdersAdmin: React.FC = () => {
@@ -290,30 +290,26 @@ const OrdersAdmin: React.FC = () => {
       {/* Estadísticas */}
       {stats && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-blue-600">Total Pedidos</h3>
               <p className="text-2xl font-bold text-blue-900">{stats.total_pedidos}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">No Revisado</h3>
-              <p className="text-2xl font-bold text-gray-900">{stats.no_revisado}</p>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-600">En Proceso</h3>
-              <p className="text-2xl font-bold text-blue-900">{stats.en_proceso}</p>
+              <h3 className="text-sm font-medium text-gray-600">Procesando</h3>
+              <p className="text-2xl font-bold text-gray-900">{stats.procesando || 0}</p>
             </div>
             <div className="bg-yellow-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-yellow-600">Preparado</h3>
-              <p className="text-2xl font-bold text-yellow-900">{stats.preparado}</p>
+              <p className="text-2xl font-bold text-yellow-900">{stats.preparado || 0}</p>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-purple-600">Enviado</h3>
-              <p className="text-2xl font-bold text-purple-900">{stats.enviado}</p>
+              <p className="text-2xl font-bold text-purple-900">{stats.enviado || 0}</p>
             </div>
             <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-green-600">Listo</h3>
-              <p className="text-2xl font-bold text-green-900">{stats.listo}</p>
+              <h3 className="text-sm font-medium text-green-600">Completado</h3>
+              <p className="text-2xl font-bold text-green-900">{stats.completado || 0}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
