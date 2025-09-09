@@ -301,8 +301,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     if (isAuthenticated) {
       console.log('🔄 [NEWCART] Usuario autenticado detectado, ejecutando migración...');
       migrateCart();
+    } else {
+      // Usuario hizo logout - limpiar carrito del frontend y cargar carrito anónimo
+      console.log('🚪 [NEWCART] Usuario desautenticado detectado, limpiando carrito...');
+      dispatch({ type: 'CLEAR_CART' });
+      // Recargar carrito para obtener el carrito anónimo
+      refreshCart();
     }
-  }, [isAuthenticated, migrateCart]);
+  }, [isAuthenticated, migrateCart, refreshCart]);
 
   // Valor del contexto
   const contextValue: CartContextType = {
