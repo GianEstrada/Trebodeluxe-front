@@ -3756,7 +3756,14 @@ const AdminPage: NextPage = () => {
     </div>
   );
 
-  const renderOrders = () => <OrdersAdmin />;
+  const renderOrders = () => (
+    <div className="space-y-6 -mx-8 px-4">
+      <h2 className="text-3xl font-bold text-white mb-6 px-4">{t('Gestión de Pedidos')}</h2>
+      <div className="px-4">
+        <OrdersAdmin />
+      </div>
+    </div>
+  );
 
   const renderNotes = () => <NotesAdmin />;
 

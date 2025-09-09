@@ -434,32 +434,32 @@ const OrdersAdmin: React.FC = () => {
       {/* Tabla de pedidos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed"
-                 style={{ width: '100%' }}>
+          <table className="w-full divide-y divide-gray-200"
+                 style={{ minWidth: '1200px' }}>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '60px' }}>
                   Ver
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '180px' }}>
                   Pedido & IDs
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '280px' }}>
                   Cliente & Contacto
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '180px' }}>
                   Estado & Fecha
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '120px' }}>
                   Total & Items
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '180px' }}>
                   Envío & Seguro
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '120px' }}>
                   Pago & Métodos
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '100px' }}>
                   Acciones
                 </th>
               </tr>
@@ -481,7 +481,7 @@ const OrdersAdmin: React.FC = () => {
                 orders.map((order) => (
                   <React.Fragment key={order.id_pedido}>
                     <tr className="hover:bg-gray-50">
-                      <td className="px-2 py-3 whitespace-nowrap">
+                      <td className="px-3 py-4">
                         <button
                           onClick={() => toggleOrderExpansion(order.id_pedido)}
                           className="text-blue-600 hover:text-blue-800 focus:outline-none text-lg"
@@ -490,23 +490,23 @@ const OrdersAdmin: React.FC = () => {
                           {expandedOrders.has(order.id_pedido) ? '🔽' : '▶️'}
                         </button>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
-                          <div className="text-xs text-blue-600 truncate">SKY: {order.numero_referencia || 'N/A'}</div>
-                          <div className="text-xs text-purple-600 truncate">STR: {order.stripe_payment_intent_id || 'N/A'}</div>
+                          <div className="text-xs text-blue-600">SKY: {order.numero_referencia || 'N/A'}</div>
+                          <div className="text-xs text-purple-600">STR: {order.stripe_payment_intent_id || 'N/A'}</div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
-                          <div className="text-sm font-medium text-gray-900 truncate">
+                          <div className="text-sm font-medium text-gray-900">
                             {order.cliente_nombres} {order.cliente_apellidos}
                           </div>
-                          <div className="text-xs text-gray-500 truncate">{order.cliente_correo}</div>
+                          <div className="text-xs text-gray-500 break-words">{order.cliente_correo}</div>
                           <div className="text-xs text-gray-500">{order.direccion_telefono || 'N/A'}</div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="flex items-center space-x-1 mb-1">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
@@ -523,13 +523,13 @@ const OrdersAdmin: React.FC = () => {
                           <div className="text-xs text-gray-500">{formatDate(order.fecha_creacion)}</div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
                           <div className="text-xs text-gray-500">{order.total_items} items</div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{formatCurrency(order.costo_envio || 0)}</div>
                           <div className="text-xs text-gray-600">{order.metodo_envio_nombre}</div>
@@ -542,13 +542,13 @@ const OrdersAdmin: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="text-sm text-gray-900">{order.metodo_pago_nombre}</div>
                           <div className="text-xs text-gray-500">Pago online</div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-4">
                         <button
                           onClick={() => fetchOrderDetails(order.id_pedido)}
                           className="text-blue-600 hover:text-blue-900 text-sm font-medium"
