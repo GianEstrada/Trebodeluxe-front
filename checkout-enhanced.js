@@ -295,13 +295,92 @@ class CheckoutManager {
                 const userData = JSON.parse(savedUser);
                 console.log('👤 Usuario logueado detectado:', userData.nombres);
                 
-                // Si hay información de envío, cargarla
-                if (userData.shippingInfo) {
-                    this.fillShippingForm(userData.shippingInfo);
-                }
+                // Mostrar banner de usuario
+                this.showUserBanner(userData);
+                
+                // Cargar información de envío del backend
+                await this.loadUserShippingInfo(userData);
+                
             } catch (error) {
                 console.warn('Error cargando info del usuario:', error);
             }
+        } else {
+            // Usuario no logueado - mostrar checkbox para guardar info
+            this.showUpdateCheckbox(true);
+            this.showFormStatus('info', '👤 Usuario anónimo - La información será guardada temporalmente');
+        }
+    }
+
+    showUserBanner(userData) {
+        const banner = document.getElementById('user-info-banner');
+        const message = document.getElementById('user-welcome-message');
+        
+        message.textContent = `Bienvenido ${userData.nombres} ${userData.apellidos}`;
+        banner.classList.add('show');
+    }
+
+    async loadUserShippingInfo(userData) {
+        try {
+            console.log('📦 Cargando información de envío del usuario...');
+            
+            const authHeaders = this.getAuthHeaders();
+            const response = await fetch(`${this.API_BASE}/api/shipping`, {
+                headers: authHeaders
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.success && data.shippingInfo) {
+                    // Llenar formulario con datos existentes
+                    this.fillShippingForm(data.shippingInfo);
+                    this.showFormStatus('info', '✅ Información de envío cargada desde su perfil');
+                    this.showUpdateCheckbox(true, 'Actualizar mi información de envío guardada');
+                    
+                    console.log('✅ Información de envío cargada:', data.shippingInfo);
+                } else {
+                    // Usuario no tiene información de envío guardada
+                    this.showFormStatus('warning', 'ℹ️ No tiene información de envío guardada');
+                    this.showUpdateCheckbox(true, 'Guardar esta información para futuras compras');
+                }
+            } else {
+                console.warn('⚠️ No se pudo cargar información de envío');
+                this.showUpdateCheckbox(true, 'Guardar esta información para futuras compras');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error cargando información de envío:', error);
+            this.showUpdateCheckbox(true, 'Guardar esta información para futuras compras');
+        }
+    }
+
+    showFormStatus(type, message) {
+        const statusDiv = document.getElementById('form-status');
+        const messageSpan = document.getElementById('form-status-message');
+        
+        statusDiv.className = `form-status ${type}`;
+        messageSpan.textContent = message;
+        statusDiv.style.display = 'block';
+        
+        // Auto-hide info messages after 5 seconds
+        if (type === 'info') {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    showUpdateCheckbox(show, customText = null) {
+        const container = document.getElementById('update-shipping-container');
+        const label = container.querySelector('label');
+        
+        if (show) {
+            container.style.display = 'flex';
+            if (customText) {
+                label.innerHTML = `💾 ${customText}`;
+            }
+        } else {
+            container.style.display = 'none';
         }
     }
 
@@ -315,8 +394,29 @@ class CheckoutManager {
             const element = document.getElementById(field);
             if (element && shippingInfo[field]) {
                 element.value = shippingInfo[field];
+                // Agregar clase visual para indicar que fue pre-llenado
+                element.style.background = '#e8f5e8';
+                element.style.borderColor = '#28a745';
             }
         });
+        
+        // Llenar correo desde userData si no está en shippingInfo
+        const correoElement = document.getElementById('correo');
+        if (correoElement && !shippingInfo.correo) {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+                try {
+                    const userData = JSON.parse(savedUser);
+                    if (userData.correo) {
+                        correoElement.value = userData.correo;
+                        correoElement.style.background = '#e8f5e8';
+                        correoElement.style.borderColor = '#28a745';
+                    }
+                } catch (e) {
+                    console.warn('Error obteniendo correo del usuario');
+                }
+            }
+        }
     }
 
     async initializeStripe() {
@@ -449,13 +549,21 @@ class CheckoutManager {
         try {
             console.log('📝 Creando orden en el sistema...');
 
-            // Preparar datos de la orden
+            // 1. Actualizar información de envío si el usuario lo solicitó
+            const shouldUpdateShipping = document.getElementById('update_shipping_info')?.checked;
+            const currentUserId = this.getCurrentUserId();
+            
+            if (shouldUpdateShipping && currentUserId) {
+                await this.updateUserShippingInfo(formData);
+            }
+
+            // 2. Preparar datos de la orden
             const orderData = {
                 // Items del carrito
                 cartItems: this.cartItems,
                 
                 // Usuario (si está logueado)
-                userId: this.getCurrentUserId(),
+                userId: currentUserId,
                 
                 // Información de envío
                 shippingInfo: {
@@ -487,7 +595,7 @@ class CheckoutManager {
 
             console.log('📋 Datos de orden preparados:', orderData);
 
-            // Enviar al backend
+            // 3. Enviar al backend
             const response = await fetch(`${this.API_BASE}/api/orders/create`, {
                 method: 'POST',
                 headers: {
@@ -515,6 +623,46 @@ class CheckoutManager {
             this.showError('Error creando la orden. Por favor, contacte soporte con el ID de pago: ' + paymentIntent.id);
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    async updateUserShippingInfo(formData) {
+        try {
+            console.log('📝 Actualizando información de envío del usuario...');
+            
+            const authHeaders = this.getAuthHeaders();
+            const shippingData = {
+                nombre_completo: formData.nombre_completo,
+                telefono: formData.telefono,
+                direccion: formData.direccion,
+                ciudad: formData.ciudad,
+                estado: formData.estado,
+                codigo_postal: formData.codigo_postal,
+                pais: formData.pais
+            };
+
+            const response = await fetch(`${this.API_BASE}/api/shipping`, {
+                method: 'POST',
+                headers: {
+                    ...authHeaders,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(shippingData)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('✅ Información de envío actualizada exitosamente');
+                this.showFormStatus('info', '✅ Información de envío guardada en su perfil');
+            } else {
+                console.warn('⚠️ No se pudo actualizar la información de envío:', result.message);
+                // No fallar la orden por esto
+            }
+
+        } catch (error) {
+            console.warn('⚠️ Error actualizando información de envío:', error);
+            // No fallar la orden por esto, solo mostrar advertencia
         }
     }
 

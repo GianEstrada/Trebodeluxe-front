@@ -270,6 +270,72 @@
             border: 1px solid #f5c6cb;
         }
         
+        .user-info-banner {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .user-info-banner.show {
+            display: block;
+        }
+        
+        .user-info-banner h4 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }
+        
+        .user-info-banner p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            font-weight: 500;
+            color: #495057;
+            cursor: pointer;
+        }
+        
+        .form-status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .form-status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .form-status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
         @media (max-width: 768px) {
             .checkout-grid {
                 grid-template-columns: 1fr;
@@ -307,6 +373,18 @@
                 <!-- Información de Envío -->
                 <div class="form-section">
                     <h3>📦 Información de Envío</h3>
+                    
+                    <!-- Banner de usuario logueado -->
+                    <div class="user-info-banner" id="user-info-banner">
+                        <h4>👤 Usuario Logueado</h4>
+                        <p id="user-welcome-message">Cargando información...</p>
+                    </div>
+                    
+                    <!-- Estado del formulario -->
+                    <div class="form-status" id="form-status">
+                        <span id="form-status-message"></span>
+                    </div>
+                    
                     <form id="checkout-form">
                         <div class="form-group">
                             <label for="nombre_completo">Nombre Completo *</label>
@@ -356,6 +434,14 @@
                                     <option value="BZ">Belice</option>
                                 </select>
                             </div>
+                        </div>
+                        
+                        <!-- Checkbox para actualizar información de envío -->
+                        <div class="checkbox-group" id="update-shipping-container" style="display: none;">
+                            <input type="checkbox" id="update_shipping_info" name="update_shipping_info">
+                            <label for="update_shipping_info">
+                                💾 Guardar esta información de envío para futuras compras
+                            </label>
                         </div>
                     </form>
                 </div>
