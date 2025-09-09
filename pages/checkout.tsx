@@ -1631,7 +1631,7 @@ const CheckoutPage: NextPage = () => {
                     </div>
                   ) : (
                     <StripePayment
-                      amount={calculateTotal()}
+                      amount={Math.round(calculateTotal() * 100)} // Convertir a centavos
                       currency={currentCurrency.toLowerCase()}
                       metadata={{
                         customer_email: personalInfo.email,
