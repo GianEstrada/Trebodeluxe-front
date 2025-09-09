@@ -75,7 +75,9 @@ const CheckoutPage: NextPage = () => {
     city: '',
     state: '',
     zipCode: '',
-    country: 'México'
+    country: 'México',
+    colonia: '',
+    referencias: ''
   });
 
   // Estados para auto-llenado de información de envío
@@ -128,6 +130,11 @@ const CheckoutPage: NextPage = () => {
            normalized === 'mx' ||
            normalized === 'mex';
   };
+
+  // Estados para manejo de colonias dinámicas
+  const [colonias, setColonias] = useState<Array<{nombre: string, tipo: string}>>([]);
+  const [loadingColonias, setLoadingColonias] = useState(false);
+  const [cpError, setCpError] = useState('');
 
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
@@ -255,6 +262,8 @@ const CheckoutPage: NextPage = () => {
           ciudad: shippingInfo.city,
           estado: shippingInfo.state,
           codigo_postal: shippingInfo.zipCode,
+          colonia: shippingInfo.colonia,
+          referencias: shippingInfo.referencias,
           pais: isMexico(shippingInfo.country) ? 'MX' : 
                 shippingInfo.country === 'Estados Unidos' ? 'US' : 
                 shippingInfo.country === 'Canadá' ? 'CA' : 'MX',
@@ -340,6 +349,7 @@ Pronto recibirás una confirmación por email.`));
       shippingInfo.city &&
       shippingInfo.state &&
       shippingInfo.zipCode &&
+      shippingInfo.colonia &&
       selectedShippingMethod
     );
   };
@@ -355,7 +365,8 @@ Pronto recibirás una confirmación por email.`));
       shippingInfo.city.trim() &&
       shippingInfo.state.trim() &&
       shippingInfo.zipCode.trim() &&
-      shippingInfo.country.trim()
+      shippingInfo.country.trim() &&
+      shippingInfo.colonia.trim()
     );
   };
 
@@ -471,6 +482,67 @@ Pronto recibirás una confirmación por email.`));
     }
   };
 
+  // Función para cargar colonias por código postal
+  const loadColoniasByCP = async (codigoPostal: string) => {
+    if (!codigoPostal || codigoPostal.length < 5) {
+      setColonias([]);
+      setCpError('');
+      return;
+    }
+
+    setLoadingColonias(true);
+    setCpError('');
+
+    try {
+      console.log('🔍 [COLONIAS] Buscando colonias para CP:', codigoPostal);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/postal-codes/colonias/${codigoPostal}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ [COLONIAS] Colonias encontradas:', data.colonias?.length || 0);
+        setColonias(data.colonias || []);
+        
+        // Auto-llenar ubicación si está disponible
+        if (data.success && data.estado && data.ciudad) {
+          setShippingInfo(prev => ({
+            ...prev,
+            state: data.estado || prev.state,
+            city: data.ciudad || prev.city
+          }));
+        }
+      } else {
+        const errorData = await response.json();
+        console.log('❌ [COLONIAS] CP no encontrado:', errorData.error);
+        setColonias([]);
+        setCpError(errorData.error || 'Código postal no encontrado');
+      }
+    } catch (error) {
+      console.error('❌ [COLONIAS] Error:', error);
+      setColonias([]);
+      setCpError('Error al buscar colonias');
+    } finally {
+      setLoadingColonias(false);
+    }
+  };
+
+  // Handler para cambio de código postal
+  const handleZipCodeChange = (value: string) => {
+    setShippingInfo(prev => ({
+      ...prev,
+      zipCode: value,
+      colonia: '' // Limpiar colonia al cambiar CP
+    }));
+    
+    // Cargar colonias si el CP tiene 5 dígitos
+    if (value.length === 5) {
+      loadColoniasByCP(value);
+    } else {
+      setColonias([]);
+      setCpError('');
+    }
+  };
+
   // Función para cargar información de envío del usuario logueado
   const loadUserShippingInfo = async () => {
     if (!user) {
@@ -533,8 +605,15 @@ Pronto recibirás una confirmación por email.`));
           city: shipping.ciudad || '',
           state: shipping.estado || '',
           zipCode: shipping.codigo_postal || '',
-          country: shipping.pais || 'México'
+          country: shipping.pais || 'México',
+          colonia: shipping.colonia || '',
+          referencias: shipping.referencias || ''
         });
+
+        // Cargar colonias si hay código postal
+        if (shipping.codigo_postal) {
+          loadColoniasByCP(shipping.codigo_postal);
+        }
 
         setUserShippingLoaded(true);
         setShippingUpdateAvailable(true);
@@ -567,8 +646,9 @@ Pronto recibirás una confirmación por email.`));
         ciudad: shippingInfo.city,
         estado: shippingInfo.state,
         codigo_postal: shippingInfo.zipCode,
+        colonia: shippingInfo.colonia,
         pais: shippingInfo.country,
-        referencias: '' // Puede ser vacío o agregarse después
+        referencias: shippingInfo.referencias || ''
       };
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipping`, {
@@ -1505,11 +1585,15 @@ Pronto recibirás una confirmación por email.`));
                     <input
                       type="text"
                       value={shippingInfo.zipCode}
-                      onChange={(e) => setShippingInfo({...shippingInfo, zipCode: e.target.value})}
+                      onChange={(e) => handleZipCodeChange(e.target.value)}
                       className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
                       placeholder={t('12345')}
+                      maxLength={5}
                       required
                     />
+                    {cpError && (
+                      <p className="text-red-400 text-sm mt-1">{cpError}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-white mb-3">
@@ -1524,6 +1608,59 @@ Pronto recibirás una confirmación por email.`));
                       <option value="Estados Unidos">{t('Estados Unidos')}</option>
                       <option value="Canadá">{t('Canadá')}</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Segunda fila: Colonia y Referencias */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-3">
+                      {t('Colonia')} *
+                    </label>
+                    {loadingColonias ? (
+                      <div className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-gray-400 flex items-center">
+                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Cargando colonias...
+                      </div>
+                    ) : colonias.length > 0 ? (
+                      <select
+                        value={shippingInfo.colonia}
+                        onChange={(e) => setShippingInfo({...shippingInfo, colonia: e.target.value})}
+                        className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400/50 transition-colors"
+                        required
+                      >
+                        <option value="">{t('Selecciona una colonia')}</option>
+                        {colonias.map((colonia, index) => (
+                          <option key={index} value={colonia.nombre}>
+                            {colonia.nombre} ({colonia.tipo})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={shippingInfo.colonia}
+                        onChange={(e) => setShippingInfo({...shippingInfo, colonia: e.target.value})}
+                        className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                        placeholder={t('Ingresa la colonia manualmente')}
+                        required
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-3">
+                      {t('Referencias del domicilio')}
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingInfo.referencias}
+                      onChange={(e) => setShippingInfo({...shippingInfo, referencias: e.target.value})}
+                      className="w-11/12 bg-black/50 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 transition-colors"
+                      placeholder={t('Ej: Entre calle A y B, edificio azul')}
+                    />
                   </div>
                 </div>
               </div>

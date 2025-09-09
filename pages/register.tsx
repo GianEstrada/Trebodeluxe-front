@@ -28,13 +28,19 @@ const RegisterScreen: NextPage = () => {
     ciudad: '',
     estado: '',
     codigo_postal: '',
-    pais: ''
+    pais: '',
+    colonia: '',
+    referencias: ''
   });
   
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Estados para códigos postales y colonias
+  const [colonias, setColonias] = useState<Array<{nombre: string, tipo: string}>>([]);
+  const [loadingColonias, setLoadingColonias] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,12 +50,42 @@ const RegisterScreen: NextPage = () => {
     }));
   };
   
-  const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setShippingData(prev => ({
       ...prev,
       [name]: value
     }));
+    
+    // Si es el código postal, cargar colonias
+    if (name === 'codigo_postal' && value.length === 5) {
+      loadColoniasByCP(value);
+    }
+  };
+  
+  // Función para cargar colonias por código postal
+  const loadColoniasByCP = async (cp: string) => {
+    if (!cp || cp.length !== 5) {
+      setColonias([]);
+      return;
+    }
+    
+    setLoadingColonias(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/postal-codes/colonias/${cp}`);
+      const data = await response.json();
+      
+      if (data.success && data.data && data.data.length > 0) {
+        setColonias(data.data);
+      } else {
+        setColonias([]);
+      }
+    } catch (error) {
+      console.error('Error cargando colonias:', error);
+      setColonias([]);
+    } finally {
+      setLoadingColonias(false);
+    }
   };
   
   const handleSubmit = async (e: FormEvent) => {
@@ -75,7 +111,8 @@ const RegisterScreen: NextPage = () => {
     // Validar datos de envío si están habilitados
     if (showShippingForm) {
       if (!shippingData.nombre_completo || !shippingData.telefono || !shippingData.direccion || 
-          !shippingData.ciudad || !shippingData.estado || !shippingData.codigo_postal || !shippingData.pais) {
+          !shippingData.ciudad || !shippingData.estado || !shippingData.codigo_postal || 
+          !shippingData.pais || !shippingData.colonia) {
         setError(t('Todos los campos de envío son obligatorios'));
         return;
       }
@@ -411,7 +448,7 @@ const RegisterScreen: NextPage = () => {
 
                         <div className="flex flex-col mb-4">
                           <label htmlFor="codigo_postal" className="block text-white font-medium mb-2 text-left">
-                            {t('Código postal')}
+                            {t('Código postal')} *
                           </label>
                           <input
                             type="text"
@@ -421,13 +458,75 @@ const RegisterScreen: NextPage = () => {
                             onChange={handleShippingChange}
                             className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Código postal')}
+                            maxLength={5}
+                            disabled={isLoading}
+                            required
+                          />
+                        </div>
+
+                        <div className="flex flex-col mb-4">
+                          <label htmlFor="colonia" className="block text-white font-medium mb-2 text-left">
+                            {t('Colonia')} *
+                          </label>
+                          {loadingColonias ? (
+                            <div className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-lg text-gray-400 flex items-center">
+                              <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                              </svg>
+                              {t('Cargando colonias...')}
+                            </div>
+                          ) : colonias.length > 0 ? (
+                            <select
+                              id="colonia"
+                              name="colonia"
+                              value={shippingData.colonia}
+                              onChange={handleShippingChange}
+                              className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                              disabled={isLoading}
+                              required
+                            >
+                              <option value="">{t('Selecciona una colonia')}</option>
+                              {colonias.map((colonia, index) => (
+                                <option key={index} value={colonia.nombre} className="text-black">
+                                  {colonia.nombre} ({colonia.tipo})
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              id="colonia"
+                              name="colonia"
+                              value={shippingData.colonia}
+                              onChange={handleShippingChange}
+                              className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                              placeholder={t('Ingresa la colonia manualmente')}
+                              disabled={isLoading}
+                              required
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex flex-col mb-4">
+                          <label htmlFor="referencias" className="block text-white font-medium mb-2 text-left">
+                            {t('Referencias del domicilio')}
+                          </label>
+                          <input
+                            type="text"
+                            id="referencias"
+                            name="referencias"
+                            value={shippingData.referencias}
+                            onChange={handleShippingChange}
+                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            placeholder={t('Ej: Entre calle A y B, edificio azul')}
                             disabled={isLoading}
                           />
                         </div>
 
                         <div className="flex flex-col mb-4">
                           <label htmlFor="pais" className="block text-white font-medium mb-2 text-left">
-                            {t('País')}
+                            {t('País')} *
                           </label>
                           <input
                             type="text"
@@ -438,6 +537,7 @@ const RegisterScreen: NextPage = () => {
                             className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('País')}
                             disabled={isLoading}
+                            required
                           />
                         </div>
                       </div>
