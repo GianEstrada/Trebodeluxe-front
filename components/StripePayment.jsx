@@ -43,7 +43,7 @@ const PaymentForm = ({
     setIsProcessing(true);
     setMessage(null);
 
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/checkout/complete`,
@@ -60,8 +60,9 @@ const PaymentForm = ({
         onPaymentError?.(error);
       }
     } else {
-      // Pago exitoso
-      onPaymentSuccess?.();
+      // Pago exitoso - pasar el payment intent ID al callback
+      console.log('✅ [STRIPE] Pago confirmado exitosamente:', paymentIntent.id);
+      onPaymentSuccess?.(paymentIntent.id);
     }
 
     setIsProcessing(false);

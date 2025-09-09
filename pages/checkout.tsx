@@ -210,14 +210,106 @@ const CheckoutPage: NextPage = () => {
   };
 
   // Función para manejar el éxito del pago con Stripe
-  const handleStripePaymentSuccess = async () => {
-    // Guardar información de envío si el usuario lo solicita
-    if (user && updateShippingInfo) {
-      await saveUserShippingInfo();
-    }
+  const handleStripePaymentSuccess = async (paymentIntentId: string) => {
+    console.log('✅ [CHECKOUT] Pago exitoso con Stripe, creando orden...', paymentIntentId);
     
-    alert(t('¡Pago procesado exitosamente con Stripe! Pronto recibirás una confirmación por email.'));
-    router.push('/');
+    try {
+      // 1. Guardar información de envío si el usuario lo solicita
+      if (user && updateShippingInfo) {
+        await saveUserShippingInfo();
+      }
+
+      // 2. Preparar datos para crear la orden
+      const orderData = {
+        // Datos del carrito
+        cartItems: cartItems.map(item => ({
+          id_producto: item.productId,
+          id_variante: item.variantId,
+          id_talla: item.tallaId,
+          cantidad: item.quantity,
+          precio_unitario: item.price,
+          producto_nombre: item.name,
+          categoria: 'general', // Por defecto, se puede obtener de la BD después
+          peso_gramos: 100 // Peso por defecto, se puede obtener de la BD después
+        })),
+        
+        // Datos del usuario
+        userId: user?.id_usuario || null,
+        
+        // Datos de envío
+        shippingInfo: {
+          nombre_completo: `${personalInfo.firstName} ${personalInfo.lastName}`,
+          telefono: personalInfo.phone,
+          direccion: shippingInfo.address,
+          ciudad: shippingInfo.city,
+          estado: shippingInfo.state,
+          codigo_postal: shippingInfo.zipCode,
+          pais: shippingInfo.country === 'México' ? 'MX' : 
+                shippingInfo.country === 'Estados Unidos' ? 'US' : 
+                shippingInfo.country === 'Canadá' ? 'CA' : 'MX',
+          correo: personalInfo.email
+        },
+        
+        // Datos del pago
+        paymentIntentId: paymentIntentId,
+        paymentStatus: 'succeeded',
+        
+        // Datos de costos
+        subtotal: calculateSubtotal(),
+        iva: calculateTax(),
+        total: calculateTotal(),
+        moneda: currentCurrency.toUpperCase(),
+        tasaCambio: exchangeRates[currentCurrency] || 1.0,
+        
+        // Datos de envío
+        metodoEnvio: selectedShippingMethod,
+        costoEnvio: calculateShipping()
+      };
+
+      console.log('📦 [CHECKOUT] Datos de la orden preparados:', orderData);
+
+      // 3. Crear la orden en el backend
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ [CHECKOUT] Orden creada exitosamente:', result.order);
+        
+        // 4. Mostrar mensaje de éxito con información de la orden
+        alert(t(`¡Pago procesado exitosamente! 
+        
+Número de orden: ${result.order.numero_referencia}
+Total: $${result.order.total} ${result.order.moneda}
+
+${result.order.skydropx_created ? 
+  'Tu orden ha sido enviada automáticamente a nuestro sistema de envíos.' : 
+  'Tu orden está siendo procesada.'
+}
+
+Pronto recibirás una confirmación por email.`));
+        
+        // 5. Limpiar carrito y redirigir
+        // clearCart(); // Si tienes esta función en el contexto del carrito
+        router.push('/');
+        
+      } else {
+        console.error('❌ [CHECKOUT] Error creando orden:', result.message);
+        alert(t('El pago fue exitoso, pero ocurrió un error procesando tu orden. Por favor contacta soporte con tu referencia de pago.'));
+      }
+
+    } catch (error) {
+      console.error('❌ [CHECKOUT] Error en post-pago:', error);
+      alert(t('El pago fue exitoso, pero ocurrió un error procesando tu orden. Por favor contacta soporte.'));
+    }
   };
 
   // Función para manejar errores de pago con Stripe
