@@ -119,6 +119,16 @@ const CheckoutPage: NextPage = () => {
   const [quotesError, setQuotesError] = useState('');
   const [formsCompleted, setFormsCompleted] = useState(false);
 
+  // Helper function para detectar país México de forma robusta
+  const isMexico = (country: string) => {
+    if (!country) return true; // Default a México si no hay país
+    const normalized = country.toLowerCase().trim();
+    return normalized === 'méxico' || 
+           normalized === 'mexico' || 
+           normalized === 'mx' ||
+           normalized === 'mex';
+  };
+
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
     setCurrentLanguage(newLanguage);
@@ -245,7 +255,7 @@ const CheckoutPage: NextPage = () => {
           ciudad: shippingInfo.city,
           estado: shippingInfo.state,
           codigo_postal: shippingInfo.zipCode,
-          pais: shippingInfo.country === 'México' ? 'MX' : 
+          pais: isMexico(shippingInfo.country) ? 'MX' : 
                 shippingInfo.country === 'Estados Unidos' ? 'US' : 
                 shippingInfo.country === 'Canadá' ? 'CA' : 'MX',
           correo: personalInfo.email
@@ -367,13 +377,18 @@ Pronto recibirás una confirmación por email.`));
 
     try {
       console.log('🚚 Solicitando cotizaciones para checkout - CP:', shippingInfo.zipCode, 'CartId:', cartId);
+      console.log('🔍 [DEBUG] shippingInfo.country valor exacto:', JSON.stringify(shippingInfo.country));
+      console.log('🔍 [DEBUG] Comparación con México:', isMexico(shippingInfo.country));
+      console.log('🔍 [DEBUG] Tipo de dato:', typeof shippingInfo.country);
       
-      // Determinar endpoint según el país
-      const endpoint = shippingInfo.country === 'México' 
+      // Determinar endpoint según el país - versión robusta
+      const endpoint = isMexico(shippingInfo.country)
         ? 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-hybrid'
         : 'https://trebodeluxe-backend.onrender.com/api/skydropx/cart/quote-international';
       
-      const requestBody = shippingInfo.country === 'México' 
+      console.log('🔍 [DEBUG] Endpoint seleccionado:', endpoint.includes('hybrid') ? 'NACIONAL (hybrid)' : 'INTERNACIONAL');
+      
+      const requestBody = isMexico(shippingInfo.country) 
         ? {
             cartId: cartId.toString(),
             postalCode: shippingInfo.zipCode
