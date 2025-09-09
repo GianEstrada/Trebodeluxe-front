@@ -493,7 +493,7 @@ const OrdersAdmin: React.FC = () => {
                       <td className="px-3 py-3">
                         <div>
                           <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
-                          <div className="text-xs text-blue-600 truncate">SKY: {order.skydropx_order_id || 'N/A'}</div>
+                          <div className="text-xs text-blue-600 truncate">SKY: {order.numero_referencia || 'N/A'}</div>
                           <div className="text-xs text-purple-600 truncate">STR: {order.stripe_payment_intent_id || 'N/A'}</div>
                         </div>
                       </td>
@@ -602,12 +602,12 @@ const OrdersAdmin: React.FC = () => {
                                 <p className="text-sm"><strong>Email:</strong> {order.cliente_correo}</p>
                                 <p className="text-sm"><strong>Fecha:</strong> {formatDate(order.fecha_creacion)}</p>
                                 <p className="text-sm"><strong>SkyDropX ID:</strong> 
-                                  <span className="text-blue-600 ml-1">{order.skydropx_order_id || 'N/A'}</span>
+                                  <span className="text-blue-600 ml-1">{order.numero_referencia || 'N/A'}</span>
                                 </p>
                                 <p className="text-sm"><strong>Stripe ID:</strong> 
                                   <span className="text-purple-600 ml-1">{order.stripe_payment_intent_id || 'N/A'}</span>
                                 </p>
-                                <p className="text-sm"><strong>Ref. Núm.:</strong> {order.numero_referencia || 'N/A'}</p>
+                                <p className="text-sm"><strong>SkyDropX Order:</strong> {order.skydropx_order_id || 'N/A'}</p>
                                 <p className="text-sm"><strong>Notas:</strong> {order.notas || 'Sin notas'}</p>
                               </div>
                             </div>
