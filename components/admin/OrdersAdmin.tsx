@@ -93,6 +93,7 @@ const OrdersAdmin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   
   // Estados para filtros y búsqueda
   const [filters, setFilters] = useState({
@@ -283,6 +284,52 @@ const OrdersAdmin: React.FC = () => {
     return new Date(dateString).toLocaleString('es-MX');
   };
 
+  // Función para alternar expansión de orden
+  const toggleOrderExpansion = async (orderId: number) => {
+    const newExpandedOrders = new Set(expandedOrders);
+    
+    if (expandedOrders.has(orderId)) {
+      newExpandedOrders.delete(orderId);
+    } else {
+      newExpandedOrders.add(orderId);
+      // Si no tiene detalles cargados, cargarlos
+      const order = orders.find(o => o.id_pedido === orderId);
+      if (order && !order.detalles) {
+        await loadOrderDetails(orderId);
+      }
+    }
+    
+    setExpandedOrders(newExpandedOrders);
+  };
+
+  // Función para cargar detalles de orden sin modal
+  const loadOrderDetails = async (orderId: number) => {
+    try {
+      const token = getAdminToken();
+      if (!token) return;
+
+      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Actualizar la orden con los detalles cargados
+        setOrders(orders.map(order => 
+          order.id_pedido === orderId 
+            ? { ...order, detalles: data.data.detalles }
+            : order
+        ));
+      }
+    } catch (error) {
+      console.error('Error loading order details:', error);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Gestión de Pedidos</h1>
@@ -381,6 +428,9 @@ const OrdersAdmin: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ver
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ID / Fecha
                 </th>
@@ -404,69 +454,148 @@ const OrdersAdmin: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center">
+                  <td colSpan={7} className="px-6 py-4 text-center">
                     Cargando pedidos...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No se encontraron pedidos
                   </td>
                 </tr>
               ) : (
                 orders.map((order) => (
-                  <tr key={order.id_pedido} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
-                        <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {order.cliente_nombres} {order.cliente_apellidos}
+                  <React.Fragment key={order.id_pedido}>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => toggleOrderExpansion(order.id_pedido)}
+                          className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                          title="Ver detalles"
+                        >
+                          {expandedOrders.has(order.id_pedido) ? '🔽' : '▶️'}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
+                          <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
                         </div>
-                        <div className="text-sm text-gray-500">{order.cliente_correo}</div>
-                        <div className="text-sm text-gray-500">{order.direccion_ciudad}, {order.direccion_estado}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
-                          {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
-                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {order.cliente_nombres} {order.cliente_apellidos}
+                          </div>
+                          <div className="text-sm text-gray-500">{order.cliente_correo}</div>
+                          <div className="text-sm text-gray-500">{order.direccion_ciudad}, {order.direccion_estado}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
+                            {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
+                          </span>
+                          <button
+                            onClick={() => fetchOrderDetails(order.id_pedido)}
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                            title="Cambiar estado"
+                          >
+                            📝
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
+                          <div className="text-sm text-gray-500">{order.total_items} items</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
+                          <div className="text-sm text-gray-500">{order.metodo_pago_nombre}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => fetchOrderDetails(order.id_pedido)}
-                          className="text-blue-600 hover:text-blue-800 text-xs"
-                          title="Cambiar estado"
+                          className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                         >
-                          📝
+                          Gestionar
                         </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
-                        <div className="text-sm text-gray-500">{order.total_items} items</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
-                        <div className="text-sm text-gray-500">{order.metodo_pago_nombre}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => fetchOrderDetails(order.id_pedido)}
-                        className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                      >
-                        Gestionar
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    
+                    {/* Fila expandida con detalles */}
+                    {expandedOrders.has(order.id_pedido) && (
+                      <tr className="bg-gray-50">
+                        <td colSpan={7} className="px-6 py-4">
+                          <div className="space-y-4">
+                            {/* Información de la orden */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <h4 className="font-semibold text-gray-700 mb-2">📦 Información de Envío</h4>
+                                <p className="text-sm"><strong>Dirección:</strong> {order.direccion_nombre}</p>
+                                <p className="text-sm"><strong>Teléfono:</strong> {order.direccion_telefono}</p>
+                                <p className="text-sm"><strong>Método:</strong> {order.metodo_envio_nombre}</p>
+                              </div>
+                              
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <h4 className="font-semibold text-gray-700 mb-2">💳 Información de Pago</h4>
+                                <p className="text-sm"><strong>Método:</strong> {order.metodo_pago_nombre}</p>
+                                <p className="text-sm"><strong>Total:</strong> {formatCurrency(order.total)}</p>
+                                <p className="text-sm"><strong>Estado:</strong> {order.estado}</p>
+                              </div>
+                              
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <h4 className="font-semibold text-gray-700 mb-2">📝 Notas</h4>
+                                <p className="text-sm">{order.notas || 'Sin notas'}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Detalles de productos */}
+                            {order.detalles && order.detalles.length > 0 ? (
+                              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                                <h4 className="font-semibold text-gray-700 p-3 bg-gray-100">🛍️ Productos del Pedido</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                      <tr>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Variante</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Talla</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Precio Unit.</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                      {order.detalles.map((detalle) => (
+                                        <tr key={detalle.id_detalle}>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{detalle.producto_nombre}</td>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{detalle.variante_nombre}</td>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{detalle.nombre_talla}</td>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{detalle.cantidad}</td>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(detalle.precio_unitario)}</td>
+                                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(detalle.precio_unitario * detalle.cantidad)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-white p-4 rounded-lg shadow-sm text-center text-gray-500">
+                                {expandedOrders.has(order.id_pedido) ? 'Cargando detalles...' : 'Haz clic en el botón expandir para ver los detalles'}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
