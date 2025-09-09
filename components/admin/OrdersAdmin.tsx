@@ -434,49 +434,32 @@ const OrdersAdmin: React.FC = () => {
       {/* Tabla de pedidos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1600px' }}>
+          <table className="min-w-full divide-y divide-gray-200 table-fixed"
+                 style={{ width: '100%' }}>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                   Ver
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID / SkyDropX / Stripe
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Pedido & IDs
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                  Cliente & Contacto
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cliente
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Estado & Fecha
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  Total & Items
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Teléfono
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Envío & Seguro
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  Pago & Métodos
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Items
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Costo Envío
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Seguro
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Método Envío
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pago
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                   Acciones
                 </th>
               </tr>
@@ -484,13 +467,13 @@ const OrdersAdmin: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={14} className="px-6 py-4 text-center">
+                  <td colSpan={8} className="px-6 py-4 text-center">
                     Cargando pedidos...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No se encontraron pedidos
                   </td>
                 </tr>
@@ -498,75 +481,74 @@ const OrdersAdmin: React.FC = () => {
                 orders.map((order) => (
                   <React.Fragment key={order.id_pedido}>
                     <tr className="hover:bg-gray-50">
-                      <td className="px-3 py-4 whitespace-nowrap">
+                      <td className="px-2 py-3 whitespace-nowrap">
                         <button
                           onClick={() => toggleOrderExpansion(order.id_pedido)}
-                          className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                          className="text-blue-600 hover:text-blue-800 focus:outline-none text-lg"
                           title="Ver detalles"
                         >
                           {expandedOrders.has(order.id_pedido) ? '🔽' : '▶️'}
                         </button>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3">
                         <div>
                           <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
-                          <div className="text-xs text-blue-600">SKY: {order.skydropx_order_id || 'N/A'}</div>
-                          <div className="text-xs text-purple-600">STR: {order.stripe_payment_intent_id || 'N/A'}</div>
+                          <div className="text-xs text-blue-600 truncate">SKY: {order.skydropx_order_id || 'N/A'}</div>
+                          <div className="text-xs text-purple-600 truncate">STR: {order.stripe_payment_intent_id || 'N/A'}</div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {order.cliente_nombres} {order.cliente_apellidos}
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {order.cliente_nombres} {order.cliente_apellidos}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">{order.cliente_correo}</div>
+                          <div className="text-xs text-gray-500">{order.direccion_telefono || 'N/A'}</div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm text-gray-500 break-all">{order.cliente_correo}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{order.direccion_telefono || 'N/A'}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
-                            {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
-                          </span>
-                          <button
-                            onClick={() => fetchOrderDetails(order.id_pedido)}
-                            className="text-blue-600 hover:text-blue-800 text-xs"
-                            title="Cambiar estado"
-                          >
-                            📝
-                          </button>
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="flex items-center space-x-1 mb-1">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
+                              {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
+                            </span>
+                            <button
+                              onClick={() => fetchOrderDetails(order.id_pedido)}
+                              className="text-blue-600 hover:text-blue-800 text-xs"
+                              title="Cambiar estado"
+                            >
+                              📝
+                            </button>
+                          </div>
+                          <div className="text-xs text-gray-500">{formatDate(order.fecha_creacion)}</div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{order.total_items} items</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{formatCurrency(order.costo_envio || 0)}</div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {order.seguro_envio ? (
-                            <span className="text-green-600 text-sm font-medium">✅ Sí</span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">❌ No</span>
-                          )}
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
+                          <div className="text-xs text-gray-500">{order.total_items} items</div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{formatCurrency(order.costo_envio || 0)}</div>
+                          <div className="text-xs text-gray-600">{order.metodo_envio_nombre}</div>
+                          <div className="flex items-center mt-1">
+                            {order.seguro_envio ? (
+                              <span className="text-green-600 text-xs">✅ Seguro</span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">❌ Sin seguro</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{order.metodo_pago_nombre}</div>
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="text-sm text-gray-900">{order.metodo_pago_nombre}</div>
+                          <div className="text-xs text-gray-500">Pago online</div>
+                        </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3">
                         <button
                           onClick={() => fetchOrderDetails(order.id_pedido)}
                           className="text-blue-600 hover:text-blue-900 text-sm font-medium"
@@ -579,7 +561,7 @@ const OrdersAdmin: React.FC = () => {
                     {/* Fila expandida con detalles */}
                     {expandedOrders.has(order.id_pedido) && (
                       <tr className="bg-gray-50">
-                        <td colSpan={14} className="px-6 py-4">
+                        <td colSpan={8} className="px-6 py-4">
                           <div className="space-y-4">
                             {/* Información de la orden */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
