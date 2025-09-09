@@ -114,6 +114,9 @@ const CheckoutPage: NextPage = () => {
   const [acceptPromotions, setAcceptPromotions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'traditional'>('stripe');
+  
+  // Estado para seguro del paquete
+  const [packageInsurance, setPackageInsurance] = useState(false);
 
   // Estados para cotizaciones dinámicas de envío
   const [shippingQuotes, setShippingQuotes] = useState<any[]>([]);
@@ -211,8 +214,13 @@ const CheckoutPage: NextPage = () => {
     return calculateSubtotal() * 0.16; // 16% IVA
   };
 
+  const calculateInsurance = () => {
+    if (!packageInsurance) return 0;
+    return calculateSubtotal() * 0.10; // 10% del valor declarado
+  };
+
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax();
+    return calculateSubtotal() + calculateShipping() + calculateTax() + calculateInsurance();
   };
 
   // Función para procesar el pago tradicional (fallback)
@@ -283,7 +291,11 @@ const CheckoutPage: NextPage = () => {
         
         // Datos de envío
         metodoEnvio: selectedShippingMethod,
-        costoEnvio: calculateShipping()
+        costoEnvio: calculateShipping(),
+        
+        // Datos de seguro del paquete
+        seguroPaquete: packageInsurance,
+        costoSeguro: calculateInsurance()
       };
 
       console.log('📦 [CHECKOUT] Datos de la orden preparados:', orderData);
@@ -1935,6 +1947,29 @@ Pronto recibirás una confirmación por email.`));
               )}
             </div>
 
+            {/* Checkbox de seguro del paquete */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={packageInsurance}
+                  onChange={(e) => setPackageInsurance(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-blue-400 bg-black/50 border-white/20 rounded focus:ring-blue-400 focus:ring-2"
+                />
+                <div>
+                  <span className="text-white font-medium">
+                    {t('Protección del paquete')} 
+                    <span className="text-blue-400 ml-2">
+                      (+{formatPrice(calculateInsurance(), currentCurrency, 'MXN')})
+                    </span>
+                  </span>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {t('Protege tu paquete contra pérdidas o daños durante el envío. Costo: 10% del valor declarado.')}
+                  </p>
+                </div>
+              </label>
+            </div>
+
             {/* Checkbox de promociones */}
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
               <label className="flex items-start space-x-3 cursor-pointer">
@@ -2014,6 +2049,13 @@ Pronto recibirás una confirmación por email.`));
                   <span className="text-gray-300">{t('IVA (16%)')}</span>
                   <span className="text-white font-medium">{formatPrice(calculateTax(), currentCurrency, 'MXN')}</span>
                 </div>
+                
+                {packageInsurance && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">{t('Seguro del paquete (10%)')}</span>
+                    <span className="text-white font-medium">{formatPrice(calculateInsurance(), currentCurrency, 'MXN')}</span>
+                  </div>
+                )}
                 
                 <div className="border-t border-white/20 pt-3">
                   <div className="flex justify-between items-center text-lg">
