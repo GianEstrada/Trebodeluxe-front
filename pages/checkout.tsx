@@ -365,12 +365,35 @@ const CheckoutPage: NextPage = () => {
 
   // Función para cargar información de envío del usuario logueado
   const loadUserShippingInfo = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ [CHECKOUT] No hay usuario logueado');
+      return;
+    }
 
     try {
       console.log('📦 [CHECKOUT] Cargando información de envío para usuario:', user.nombres);
       
       const token = localStorage.getItem('token');
+      console.log('🔍 [CHECKOUT] Token encontrado:', token ? `Sí (${token.length} caracteres)` : 'No');
+      
+      if (!token) {
+        console.error('❌ [CHECKOUT] No se encontró token en localStorage');
+        return;
+      }
+
+      // Verificar formato del token
+      const tokenParts = token.split('.');
+      console.log('🔍 [CHECKOUT] Token tiene', tokenParts.length, 'partes (debe ser 3 para JWT)');
+      
+      if (tokenParts.length !== 3) {
+        console.error('❌ [CHECKOUT] Token tiene formato incorrecto, no es un JWT válido');
+        console.log('🔍 [CHECKOUT] Token:', token.substring(0, 50) + '...');
+        return;
+      }
+
+      console.log('📡 [CHECKOUT] Enviando request a:', `${process.env.NEXT_PUBLIC_API_URL}/api/shipping`);
+      console.log('🔑 [CHECKOUT] Usando token:', token.substring(0, 20) + '...');
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipping`, {
         method: 'GET',
         headers: {
@@ -380,6 +403,9 @@ const CheckoutPage: NextPage = () => {
       });
 
       const data = await response.json();
+      
+      console.log('📊 [CHECKOUT] Response status:', response.status);
+      console.log('📊 [CHECKOUT] Response data:', data);
       
       if (data.success && data.shippingInfo) {
         const shipping = data.shippingInfo;

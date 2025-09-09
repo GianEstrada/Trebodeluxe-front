@@ -147,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', result.token); // Token principal para el sistema
         localStorage.setItem('adminToken', result.token); // Para el nuevo sistema de tokens
         
         // Cargar carrito del usuario autenticado (sustituye carrito anónimo)
@@ -212,6 +213,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', result.token); // Token principal para el sistema
+        localStorage.setItem('adminToken', result.token); // Para el nuevo sistema de tokens
       } else {
         throw new Error(result.message || 'Error en el registro');
       }
@@ -257,6 +260,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Limpiar datos de usuario
       localStorage.removeItem('user');
+      localStorage.removeItem('token'); // Token principal del sistema
       localStorage.removeItem('adminToken');
       
       // Limpiar session token para forzar nuevo carrito anónimo
