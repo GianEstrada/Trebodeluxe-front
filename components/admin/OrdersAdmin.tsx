@@ -49,9 +49,13 @@ interface OrderDetail {
 
 interface Order {
   id_pedido: number;
+  numero_referencia: string;
+  stripe_payment_intent_id: string;
   fecha_creacion: string;
   estado: string;
   total: number;
+  costo_envio: number;
+  seguro_envio: boolean;
   notas: string;
   cliente_nombres: string;
   cliente_apellidos: string;
@@ -429,14 +433,14 @@ const OrdersAdmin: React.FC = () => {
       {/* Tabla de pedidos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1400px' }}>
+          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1600px' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ver
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID Pedido
+                  ID / Stripe
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fecha
@@ -451,9 +455,6 @@ const OrdersAdmin: React.FC = () => {
                   Teléfono
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ciudad/Estado
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -463,7 +464,13 @@ const OrdersAdmin: React.FC = () => {
                   Items
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Envío
+                  Costo Envío
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Seguro
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Método Envío
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Pago
@@ -476,13 +483,13 @@ const OrdersAdmin: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="px-6 py-4 text-center">
+                  <td colSpan={14} className="px-6 py-4 text-center">
                     Cargando pedidos...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={14} className="px-6 py-4 text-center text-gray-500">
                     No se encontraron pedidos
                   </td>
                 </tr>
@@ -500,7 +507,10 @@ const OrdersAdmin: React.FC = () => {
                         </button>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
+                          <div className="text-xs text-gray-500">{order.stripe_payment_intent_id || 'N/A'}</div>
+                        </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
@@ -515,9 +525,6 @@ const OrdersAdmin: React.FC = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">{order.direccion_telefono || 'N/A'}</div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm text-gray-500">{order.direccion_ciudad}, {order.direccion_estado}</div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
@@ -540,6 +547,18 @@ const OrdersAdmin: React.FC = () => {
                         <div className="text-sm text-gray-500">{order.total_items} items</div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{formatCurrency(order.costo_envio || 0)}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {order.seguro_envio ? (
+                            <span className="text-green-600 text-sm font-medium">✅ Sí</span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">❌ No</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -558,7 +577,7 @@ const OrdersAdmin: React.FC = () => {
                     {/* Fila expandida con detalles */}
                     {expandedOrders.has(order.id_pedido) && (
                       <tr className="bg-gray-50">
-                        <td colSpan={13} className="px-6 py-4">
+                        <td colSpan={14} className="px-6 py-4">
                           <div className="space-y-4">
                             {/* Información de la orden */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -569,6 +588,12 @@ const OrdersAdmin: React.FC = () => {
                                 <p className="text-sm"><strong>Ciudad:</strong> {order.direccion_ciudad}</p>
                                 <p className="text-sm"><strong>Estado:</strong> {order.direccion_estado}</p>
                                 <p className="text-sm"><strong>Método:</strong> {order.metodo_envio_nombre}</p>
+                                <p className="text-sm"><strong>Costo:</strong> {formatCurrency(order.costo_envio || 0)}</p>
+                                <p className="text-sm"><strong>Seguro:</strong> 
+                                  <span className={order.seguro_envio ? 'text-green-600 ml-1' : 'text-red-600 ml-1'}>
+                                    {order.seguro_envio ? '✅ Incluido' : '❌ No incluido'}
+                                  </span>
+                                </p>
                               </div>
                               
                               <div className="bg-white p-3 rounded-lg shadow-sm">
@@ -592,6 +617,8 @@ const OrdersAdmin: React.FC = () => {
                                 <p className="text-sm"><strong>Cliente:</strong> {order.cliente_nombres} {order.cliente_apellidos}</p>
                                 <p className="text-sm"><strong>Email:</strong> {order.cliente_correo}</p>
                                 <p className="text-sm"><strong>Fecha:</strong> {formatDate(order.fecha_creacion)}</p>
+                                <p className="text-sm"><strong>Stripe ID:</strong> {order.stripe_payment_intent_id || 'N/A'}</p>
+                                <p className="text-sm"><strong>Ref. Núm.:</strong> {order.numero_referencia || 'N/A'}</p>
                                 <p className="text-sm"><strong>Notas:</strong> {order.notas || 'Sin notas'}</p>
                               </div>
                             </div>
