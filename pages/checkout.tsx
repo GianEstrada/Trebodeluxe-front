@@ -78,6 +78,11 @@ const CheckoutPage: NextPage = () => {
     country: 'México'
   });
 
+  // Estados para auto-llenado de información de envío
+  const [userShippingLoaded, setUserShippingLoaded] = useState(false);
+  const [shippingUpdateAvailable, setShippingUpdateAvailable] = useState(false);
+  const [updateShippingInfo, setUpdateShippingInfo] = useState(false);
+
   // Métodos de envío disponibles
   const shippingMethods: ShippingMethod[] = [
     {
@@ -205,7 +210,12 @@ const CheckoutPage: NextPage = () => {
   };
 
   // Función para manejar el éxito del pago con Stripe
-  const handleStripePaymentSuccess = () => {
+  const handleStripePaymentSuccess = async () => {
+    // Guardar información de envío si el usuario lo solicita
+    if (user && updateShippingInfo) {
+      await saveUserShippingInfo();
+    }
+    
     alert(t('¡Pago procesado exitosamente con Stripe! Pronto recibirás una confirmación por email.'));
     router.push('/');
   };
@@ -353,6 +363,103 @@ const CheckoutPage: NextPage = () => {
     }
   };
 
+  // Función para cargar información de envío del usuario logueado
+  const loadUserShippingInfo = async () => {
+    if (!user) return;
+
+    try {
+      console.log('📦 [CHECKOUT] Cargando información de envío para usuario:', user.nombres);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipping`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.shippingInfo) {
+        const shipping = data.shippingInfo;
+        console.log('✅ [CHECKOUT] Información de envío cargada:', shipping);
+        
+        // Llenar información personal
+        setPersonalInfo({
+          firstName: shipping.nombre_completo.split(' ')[0] || '',
+          lastName: shipping.nombre_completo.split(' ').slice(1).join(' ') || '',
+          email: user.correo || '',
+          phone: shipping.telefono || ''
+        });
+
+        // Llenar información de envío
+        setShippingInfo({
+          address: shipping.direccion || '',
+          city: shipping.ciudad || '',
+          state: shipping.estado || '',
+          zipCode: shipping.codigo_postal || '',
+          country: shipping.pais || 'México'
+        });
+
+        setUserShippingLoaded(true);
+        setShippingUpdateAvailable(true);
+        
+        console.log('✅ [CHECKOUT] Formularios auto-llenados para usuario logueado');
+      } else {
+        console.log('ℹ️ [CHECKOUT] No se encontró información de envío guardada');
+        setUserShippingLoaded(false);
+        setShippingUpdateAvailable(false);
+      }
+    } catch (error) {
+      console.error('❌ [CHECKOUT] Error cargando información de envío:', error);
+      setUserShippingLoaded(false);
+      setShippingUpdateAvailable(false);
+    }
+  };
+
+  // Función para actualizar información de envío del usuario
+  const saveUserShippingInfo = async () => {
+    if (!user || !updateShippingInfo) return;
+
+    try {
+      console.log('💾 [CHECKOUT] Guardando información de envío actualizada');
+      
+      const token = localStorage.getItem('token');
+      const shippingData = {
+        nombre_completo: `${personalInfo.firstName} ${personalInfo.lastName}`.trim(),
+        telefono: personalInfo.phone,
+        direccion: shippingInfo.address,
+        ciudad: shippingInfo.city,
+        estado: shippingInfo.state,
+        codigo_postal: shippingInfo.zipCode,
+        pais: shippingInfo.country,
+        referencias: '' // Puede ser vacío o agregarse después
+      };
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shipping`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(shippingData)
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ [CHECKOUT] Información de envío guardada exitosamente');
+        // Mostrar feedback temporal al usuario
+        alert('✅ Tu información de envío ha sido actualizada');
+      } else {
+        console.error('❌ [CHECKOUT] Error guardando información:', data.message);
+      }
+    } catch (error) {
+      console.error('❌ [CHECKOUT] Error guardando información de envío:', error);
+    }
+  };
+
   // Función para formatear precio de cotización
   const formatQuotePrice = (price: string | number, currency: string = 'MXN') => {
     const numPrice = parseFloat(price.toString()) || 0;
@@ -369,6 +476,13 @@ const CheckoutPage: NextPage = () => {
     if (savedLanguage) setCurrentLanguage(savedLanguage);
     if (savedCurrency) setCurrentCurrency(savedCurrency);
   }, []);
+
+  // Cargar información de envío del usuario logueado
+  useEffect(() => {
+    if (user && !userShippingLoaded) {
+      loadUserShippingInfo();
+    }
+  }, [user, userShippingLoaded]);
 
   // Efecto para el carrusel de texto
   useEffect(() => {
@@ -1122,6 +1236,28 @@ const CheckoutPage: NextPage = () => {
           <div className="lg:col-span-2 space-y-8">
             <h1 className="text-3xl font-bold text-white">{t('Finalizar Compra')}</h1>
 
+            {/* Banner de usuario logueado */}
+            {user && (
+              <div className="bg-gradient-to-r from-green-600/20 to-green-400/20 backdrop-blur-sm rounded-lg p-4 border border-green-400/30">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="text-green-300 text-sm font-bold">👤</span>
+                  </div>
+                  <div>
+                    <h3 className="text-green-300 font-semibold">
+                      {t('¡Hola')} {user.nombres}!
+                    </h3>
+                    <p className="text-green-200 text-sm">
+                      {userShippingLoaded 
+                        ? t('Hemos llenado tus datos automáticamente')
+                        : t('Completa tu información para agilizar futuras compras')
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Información Personal */}
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-6">{t('Información Personal')}</h2>
@@ -1256,6 +1392,28 @@ const CheckoutPage: NextPage = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Checkbox para actualizar información de envío del usuario logueado */}
+              {user && shippingUpdateAvailable && (
+                <div className="mt-6 p-4 bg-blue-500/10 border border-blue-400/20 rounded-lg">
+                  <label className="flex items-start space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={updateShippingInfo}
+                      onChange={(e) => setUpdateShippingInfo(e.target.checked)}
+                      className="mt-1 w-4 h-4 text-green-500 bg-black/50 border border-white/20 rounded focus:ring-green-500 focus:ring-2"
+                    />
+                    <div>
+                      <span className="text-white text-sm font-medium">
+                        💾 {t('Guardar esta información para futuras compras')}
+                      </span>
+                      <p className="text-gray-300 text-xs mt-1">
+                        {t('Si cambias algún dato, marca esta opción para actualizar tu información guardada')}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Método de Envío */}
