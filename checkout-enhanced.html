@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Trebo de Luxe</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .checkout-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+        }
+        
+        .checkout-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .order-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-section h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .currency-selector {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .currency-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .currency-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .currency-btn.active {
+            border-color: #3498db;
+            background: #3498db;
+            color: white;
+        }
+        
+        .cart-items {
+            margin-bottom: 20px;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .item-details {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .item-variant {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .item-price {
+            font-weight: 600;
+        }
+        
+        .shipping-options {
+            margin: 20px 0;
+        }
+        
+        .shipping-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .shipping-option:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .shipping-option.selected {
+            border-color: #3498db;
+            background-color: #e3f2fd;
+        }
+        
+        .shipping-option input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .cost-breakdown {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .cost-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .cost-line.total {
+            font-weight: bold;
+            font-size: 18px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .payment-section {
+            margin-top: 20px;
+        }
+        
+        #payment-element {
+            margin: 20px 0;
+        }
+        
+        .checkout-btn {
+            width: 100%;
+            padding: 15px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .checkout-btn:hover {
+            background: #229954;
+        }
+        
+        .checkout-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .checkout-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="checkout-header">
+            <h1>Finalizar Compra</h1>
+            <p>Complete sus datos para procesar su pedido</p>
+        </div>
+
+        <div class="checkout-grid">
+            <!-- Formulario de checkout -->
+            <div class="checkout-form">
+                <!-- Selección de Moneda -->
+                <div class="form-section">
+                    <h3>💱 Moneda</h3>
+                    <div class="currency-selector">
+                        <p style="text-align: center; margin-bottom: 10px;">Selecciona tu moneda preferida:</p>
+                        <div class="currency-options">
+                            <button type="button" class="currency-btn active" data-currency="MXN">🇲🇽 MXN</button>
+                            <button type="button" class="currency-btn" data-currency="USD">🇺🇸 USD</button>
+                            <button type="button" class="currency-btn" data-currency="EUR">🇪🇺 EUR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información de Envío -->
+                <div class="form-section">
+                    <h3>📦 Información de Envío</h3>
+                    <form id="checkout-form">
+                        <div class="form-group">
+                            <label for="nombre_completo">Nombre Completo *</label>
+                            <input type="text" id="nombre_completo" name="nombre_completo" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="telefono">Teléfono *</label>
+                                <input type="tel" id="telefono" name="telefono" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="correo">Correo Electrónico</label>
+                                <input type="email" id="correo" name="correo">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="direccion">Dirección Completa *</label>
+                            <input type="text" id="direccion" name="direccion" required 
+                                   placeholder="Calle, número, colonia">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ciudad">Ciudad *</label>
+                                <input type="text" id="ciudad" name="ciudad" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="estado">Estado/Provincia *</label>
+                                <input type="text" id="estado" name="estado" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="codigo_postal">Código Postal *</label>
+                                <input type="text" id="codigo_postal" name="codigo_postal" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pais">País *</label>
+                                <select id="pais" name="pais" required>
+                                    <option value="MX">México</option>
+                                    <option value="US">Estados Unidos</option>
+                                    <option value="CA">Canadá</option>
+                                    <option value="GT">Guatemala</option>
+                                    <option value="BZ">Belice</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Opciones de Envío -->
+                <div class="form-section">
+                    <h3>🚚 Método de Envío</h3>
+                    <div class="shipping-options" id="shipping-options">
+                        <div class="shipping-option selected" data-method="standard" data-cost="150">
+                            <input type="radio" name="shipping" value="standard" checked>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">Envío Estándar</div>
+                                <div style="font-size: 12px; color: #666;">5-7 días hábiles</div>
+                            </div>
+                            <div class="shipping-cost">$150 MXN</div>
+                        </div>
+                        <div class="shipping-option" data-method="express" data-cost="300">
+                            <input type="radio" name="shipping" value="express">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">Envío Express</div>
+                                <div style="font-size: 12px; color: #666;">2-3 días hábiles</div>
+                            </div>
+                            <div class="shipping-cost">$300 MXN</div>
+                        </div>
+                        <div class="shipping-option" data-method="overnight" data-cost="500">
+                            <input type="radio" name="shipping" value="overnight">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">Envío Nocturno</div>
+                                <div style="font-size: 12px; color: #666;">1 día hábil</div>
+                            </div>
+                            <div class="shipping-cost">$500 MXN</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pago -->
+                <div class="form-section payment-section">
+                    <h3>💳 Información de Pago</h3>
+                    <div id="payment-element">
+                        <!-- Stripe Payment Element se insertará aquí -->
+                    </div>
+                    <button type="button" id="checkout-btn" class="checkout-btn">
+                        Procesar Pago
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resumen de la Orden -->
+            <div class="order-summary">
+                <h3>📋 Resumen de la Orden</h3>
+                
+                <div class="cart-items" id="cart-items">
+                    <!-- Los items del carrito se cargarán aquí -->
+                </div>
+                
+                <div class="cost-breakdown">
+                    <div class="cost-line">
+                        <span>Subtotal:</span>
+                        <span id="subtotal-amount">$0.00</span>
+                    </div>
+                    <div class="cost-line">
+                        <span>Envío:</span>
+                        <span id="shipping-amount">$150.00</span>
+                    </div>
+                    <div class="cost-line">
+                        <span>IVA (16%):</span>
+                        <span id="iva-amount">$0.00</span>
+                    </div>
+                    <div class="cost-line total">
+                        <span>Total:</span>
+                        <span id="total-amount">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estados de carga y alertas -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando su orden...</p>
+        </div>
+
+        <div class="alert success" id="success-alert">
+            <h4>¡Orden creada exitosamente!</h4>
+            <p>Su número de referencia es: <strong id="order-reference"></strong></p>
+            <p>Recibirá un correo de confirmación pronto.</p>
+        </div>
+
+        <div class="alert error" id="error-alert">
+            <h4>Error procesando la orden</h4>
+            <p id="error-message">Ha ocurrido un error inesperado.</p>
+        </div>
+    </div>
+
+    <script src="checkout-enhanced.js"></script>
+</body>
+</html>

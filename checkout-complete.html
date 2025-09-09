@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orden Completada - Trebo de Luxe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .order-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .info-value {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .reference-number {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 5px;
+            color: #1976d2;
+        }
+        
+        .next-steps {
+            margin-bottom: 30px;
+        }
+        
+        .next-steps h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .step-number {
+            background: #3498db;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #3498db;
+            border: 2px solid #3498db;
+        }
+        
+        .btn-secondary:hover {
+            background: #3498db;
+            color: white;
+            transform: translateY(-1px);
+        }
+        
+        .contact-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .contact-info h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .contact-info p {
+            color: #856404;
+            margin: 5px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 600px) {
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Estado de carga inicial -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <h2>Verificando su orden...</h2>
+            <p>Por favor espere un momento</p>
+        </div>
+
+        <!-- Contenido principal (oculto inicialmente) -->
+        <div id="main-content" style="display: none;">
+            <div class="header">
+                <div class="success-icon">✅</div>
+                <h1>¡Orden Completada!</h1>
+                <p>Su pago ha sido procesado exitosamente</p>
+            </div>
+
+            <div class="content">
+                <div class="order-info">
+                    <div class="info-row">
+                        <span class="info-label">Número de Referencia:</span>
+                        <span class="info-value">
+                            <div class="reference-number" id="order-reference">-</div>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Fecha de Orden:</span>
+                        <span class="info-value" id="order-date">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Pagado:</span>
+                        <span class="info-value" id="order-total">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Método de Envío:</span>
+                        <span class="info-value" id="shipping-method">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Estado:</span>
+                        <span class="info-value" style="color: #27ae60; font-weight: 600;">Procesando</span>
+                    </div>
+                </div>
+
+                <div class="next-steps">
+                    <h3>🚀 Próximos Pasos</h3>
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div>Recibirá un correo de confirmación con los detalles de su orden</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div>Su orden será preparada y enviada en 1-2 días hábiles</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div>Le enviaremos el número de seguimiento cuando sea despachada</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div>Podrá rastrear su envío en tiempo real</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="/" class="btn btn-primary">
+                        🏠 Volver al Inicio
+                    </a>
+                    <a href="#" class="btn btn-secondary" onclick="printOrder()">
+                        🖨️ Imprimir Recibo
+                    </a>
+                </div>
+
+                <div class="contact-info">
+                    <h4>📞 ¿Necesita Ayuda?</h4>
+                    <p><strong>Email:</strong> soporte@trebodeluxe.com</p>
+                    <p><strong>Teléfono:</strong> +52 (81) 1234-5678</p>
+                    <p><strong>WhatsApp:</strong> +52 (81) 8765-4321</p>
+                    <p><em>Horario: Lunes a Viernes 9:00 AM - 6:00 PM</em></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado de error -->
+        <div id="error-content" style="display: none;">
+            <div class="header" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                <div class="success-icon">❌</div>
+                <h1>Error en la Verificación</h1>
+                <p>No pudimos verificar su orden</p>
+            </div>
+            <div class="content">
+                <div class="contact-info">
+                    <h4>Por favor contacte nuestro soporte</h4>
+                    <p><strong>Email:</strong> soporte@trebodeluxe.com</p>
+                    <p><strong>Teléfono:</strong> +52 (81) 1234-5678</p>
+                    <p id="error-details"></p>
+                </div>
+                <div class="action-buttons">
+                    <a href="/" class="btn btn-primary">Volver al Inicio</a>
+                    <a href="mailto:soporte@trebodeluxe.com" class="btn btn-secondary">Contactar Soporte</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class OrderComplete {
+            constructor() {
+                this.API_BASE = 'https://trebodeluxe-backend.onrender.com';
+                this.init();
+            }
+
+            async init() {
+                console.log('🔍 Inicializando página de orden completa...');
+                
+                // Obtener parámetros de la URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const paymentIntentId = urlParams.get('payment_intent');
+                const paymentIntentClientSecret = urlParams.get('payment_intent_client_secret');
+                const redirectStatus = urlParams.get('redirect_status');
+
+                console.log('📋 Parámetros URL:', {
+                    paymentIntentId,
+                    redirectStatus
+                });
+
+                if (!paymentIntentId) {
+                    this.showError('No se encontró información de la orden');
+                    return;
+                }
+
+                // Verificar el estado del pago y buscar la orden
+                await this.verifyPaymentAndOrder(paymentIntentId, redirectStatus);
+            }
+
+            async verifyPaymentAndOrder(paymentIntentId, redirectStatus) {
+                try {
+                    console.log('🔍 Verificando pago y orden...');
+
+                    // Buscar orden por payment intent ID
+                    const orderResponse = await fetch(`${this.API_BASE}/api/orders/payment-intent/${paymentIntentId}`);
+                    
+                    if (!orderResponse.ok) {
+                        throw new Error('Orden no encontrada');
+                    }
+
+                    const orderData = await orderResponse.json();
+                    
+                    if (orderData.success && orderData.order) {
+                        this.displayOrderSuccess(orderData.order);
+                    } else {
+                        throw new Error('Datos de orden inválidos');
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error verificando orden:', error);
+                    
+                    // Si no se encuentra la orden, crear una búsqueda por referencia como backup
+                    await this.handleOrderNotFound(paymentIntentId);
+                }
+            }
+
+            async handleOrderNotFound(paymentIntentId) {
+                try {
+                    // Intentar buscar en local storage si hay datos de orden reciente
+                    const recentOrder = localStorage.getItem('recent_order');
+                    if (recentOrder) {
+                        const orderData = JSON.parse(recentOrder);
+                        if (orderData.paymentIntentId === paymentIntentId) {
+                            this.displayOrderSuccess(orderData);
+                            return;
+                        }
+                    }
+                    
+                    this.showError(`No se pudo verificar la orden. Payment Intent: ${paymentIntentId}`);
+                } catch (error) {
+                    this.showError('Error verificando la orden');
+                }
+            }
+
+            displayOrderSuccess(order) {
+                console.log('✅ Mostrando orden exitosa:', order);
+
+                // Ocultar loading y mostrar contenido principal
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+
+                // Llenar datos de la orden
+                document.getElementById('order-reference').textContent = order.numero_referencia || order.reference || 'N/A';
+                document.getElementById('order-date').textContent = this.formatDate(order.fecha_creacion || order.created_at || new Date());
+                document.getElementById('order-total').textContent = this.formatCurrency(order.total || 0, order.moneda || 'MXN');
+                document.getElementById('shipping-method').textContent = this.formatShippingMethod(order.metodo_envio || 'standard');
+
+                // Limpiar carrito si existe
+                this.clearCartData();
+
+                // Guardar orden en local storage para referencia
+                localStorage.setItem('recent_order', JSON.stringify(order));
+            }
+
+            showError(message) {
+                console.error('❌ Mostrando error:', message);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-content').style.display = 'block';
+                document.getElementById('error-details').textContent = message;
+            }
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            formatCurrency(amount, currency = 'MXN') {
+                const symbols = { MXN: '$', USD: '$', EUR: '€' };
+                const symbol = symbols[currency] || '$';
+                
+                return `${symbol}${parseFloat(amount).toFixed(2)} ${currency}`;
+            }
+
+            formatShippingMethod(method) {
+                const methods = {
+                    'standard': 'Envío Estándar (5-7 días)',
+                    'express': 'Envío Express (2-3 días)',
+                    'overnight': 'Envío Nocturno (1 día)'
+                };
+                return methods[method] || method;
+            }
+
+            clearCartData() {
+                try {
+                    // Limpiar datos relacionados al checkout
+                    localStorage.removeItem('checkout_data');
+                    localStorage.removeItem('cart_backup');
+                    
+                    console.log('🧹 Datos de carrito limpiados');
+                } catch (error) {
+                    console.warn('⚠️ Error limpiando datos de carrito:', error);
+                }
+            }
+        }
+
+        // Función para imprimir recibo
+        function printOrder() {
+            window.print();
+        }
+
+        // Inicializar cuando se carga la página
+        document.addEventListener('DOMContentLoaded', () => {
+            new OrderComplete();
+        });
+    </script>
+</body>
+</html>
