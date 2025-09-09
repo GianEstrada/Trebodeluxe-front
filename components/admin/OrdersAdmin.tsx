@@ -60,6 +60,10 @@ interface Order {
   direccion_telefono: string;
   direccion_ciudad: string;
   direccion_estado: string;
+  direccion_calle: string;
+  direccion_colonia: string;
+  direccion_codigo_postal: string;
+  direccion_referencia: string;
   metodo_envio_nombre: string;
   metodo_pago_nombre: string;
   total_items: number;
@@ -425,28 +429,46 @@ const OrdersAdmin: React.FC = () => {
       {/* Tabla de pedidos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1400px' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ver
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID / Fecha
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID Pedido
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fecha
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Teléfono
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ciudad/Estado
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total / Items
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Envío / Pago
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Items
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Envío
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pago
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -454,13 +476,13 @@ const OrdersAdmin: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center">
+                  <td colSpan={13} className="px-6 py-4 text-center">
                     Cargando pedidos...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={13} className="px-6 py-4 text-center text-gray-500">
                     No se encontraron pedidos
                   </td>
                 </tr>
@@ -477,22 +499,27 @@ const OrdersAdmin: React.FC = () => {
                           {expandedOrders.has(order.id_pedido) ? '🔽' : '▶️'}
                         </button>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
-                          <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">#{order.id_pedido}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{formatDate(order.fecha_creacion)}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {order.cliente_nombres} {order.cliente_apellidos}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {order.cliente_nombres} {order.cliente_apellidos}
-                          </div>
-                          <div className="text-sm text-gray-500">{order.cliente_correo}</div>
-                          <div className="text-sm text-gray-500">{order.direccion_ciudad}, {order.direccion_estado}</div>
-                        </div>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-500 break-all">{order.cliente_correo}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{order.direccion_telefono || 'N/A'}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-500">{order.direccion_ciudad}, {order.direccion_estado}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoStyle(order.estado)}`}>
                             {ESTADOS_PEDIDO.find(e => e.value === order.estado)?.label || order.estado}
@@ -506,19 +533,19 @@ const OrdersAdmin: React.FC = () => {
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
-                          <div className="text-sm text-gray-500">{order.total_items} items</div>
-                        </div>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
-                          <div className="text-sm text-gray-500">{order.metodo_pago_nombre}</div>
-                        </div>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{order.total_items} items</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{order.metodo_envio_nombre}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{order.metodo_pago_nombre}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <button
                           onClick={() => fetchOrderDetails(order.id_pedido)}
                           className="text-blue-600 hover:text-blue-900 text-sm font-medium"
@@ -531,27 +558,41 @@ const OrdersAdmin: React.FC = () => {
                     {/* Fila expandida con detalles */}
                     {expandedOrders.has(order.id_pedido) && (
                       <tr className="bg-gray-50">
-                        <td colSpan={7} className="px-6 py-4">
+                        <td colSpan={13} className="px-6 py-4">
                           <div className="space-y-4">
                             {/* Información de la orden */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                               <div className="bg-white p-3 rounded-lg shadow-sm">
                                 <h4 className="font-semibold text-gray-700 mb-2">📦 Información de Envío</h4>
-                                <p className="text-sm"><strong>Dirección:</strong> {order.direccion_nombre}</p>
+                                <p className="text-sm"><strong>Nombre:</strong> {order.direccion_nombre}</p>
                                 <p className="text-sm"><strong>Teléfono:</strong> {order.direccion_telefono}</p>
+                                <p className="text-sm"><strong>Ciudad:</strong> {order.direccion_ciudad}</p>
+                                <p className="text-sm"><strong>Estado:</strong> {order.direccion_estado}</p>
                                 <p className="text-sm"><strong>Método:</strong> {order.metodo_envio_nombre}</p>
                               </div>
                               
                               <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <h4 className="font-semibold text-gray-700 mb-2">💳 Información de Pago</h4>
-                                <p className="text-sm"><strong>Método:</strong> {order.metodo_pago_nombre}</p>
-                                <p className="text-sm"><strong>Total:</strong> {formatCurrency(order.total)}</p>
-                                <p className="text-sm"><strong>Estado:</strong> {order.estado}</p>
+                                <h4 className="font-semibold text-gray-700 mb-2">� Dirección Completa</h4>
+                                <p className="text-sm"><strong>Calle:</strong> {order.direccion_calle || 'N/A'}</p>
+                                <p className="text-sm"><strong>Colonia:</strong> {order.direccion_colonia || 'N/A'}</p>
+                                <p className="text-sm"><strong>CP:</strong> {order.direccion_codigo_postal || 'N/A'}</p>
+                                <p className="text-sm"><strong>Referencias:</strong> {order.direccion_referencia || 'Sin referencias'}</p>
                               </div>
                               
                               <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <h4 className="font-semibold text-gray-700 mb-2">📝 Notas</h4>
-                                <p className="text-sm">{order.notas || 'Sin notas'}</p>
+                                <h4 className="font-semibold text-gray-700 mb-2">�💳 Información de Pago</h4>
+                                <p className="text-sm"><strong>Método:</strong> {order.metodo_pago_nombre}</p>
+                                <p className="text-sm"><strong>Total:</strong> {formatCurrency(order.total)}</p>
+                                <p className="text-sm"><strong>Estado:</strong> {order.estado}</p>
+                                <p className="text-sm"><strong>Items:</strong> {order.total_items}</p>
+                              </div>
+                              
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <h4 className="font-semibold text-gray-700 mb-2">📝 Información Adicional</h4>
+                                <p className="text-sm"><strong>Cliente:</strong> {order.cliente_nombres} {order.cliente_apellidos}</p>
+                                <p className="text-sm"><strong>Email:</strong> {order.cliente_correo}</p>
+                                <p className="text-sm"><strong>Fecha:</strong> {formatDate(order.fecha_creacion)}</p>
+                                <p className="text-sm"><strong>Notas:</strong> {order.notas || 'Sin notas'}</p>
                               </div>
                             </div>
                             
