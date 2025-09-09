@@ -75,8 +75,8 @@ const RegisterScreen: NextPage = () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-codes/colonias/${cp}`);
       const data = await response.json();
       
-      if (data.success && data.data && data.data.length > 0) {
-        setColonias(data.data);
+      if (data.success && data.colonias && data.colonias.length > 0) {
+        setColonias(data.colonias);
       } else {
         setColonias([]);
       }
