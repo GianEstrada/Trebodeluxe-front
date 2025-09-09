@@ -178,7 +178,7 @@ const CheckoutPage: NextPage = () => {
         return quoteId === selectedShippingMethod;
       });
       
-      if (selectedQuote) {
+      if (selectedQuote && selectedQuote.price !== null && selectedQuote.price !== undefined) {
         return parseFloat(selectedQuote.price.toString()) || 0;
       }
     }
@@ -580,6 +580,7 @@ Pronto recibirás una confirmación por email.`));
 
   // Función para formatear precio de cotización
   const formatQuotePrice = (price: string | number, currency: string = 'MXN') => {
+    if (price === null || price === undefined) return '$0.00';
     const numPrice = parseFloat(price.toString()) || 0;
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -1589,7 +1590,12 @@ Pronto recibirás una confirmación por email.`));
                 {shippingQuotes.length > 0 ? (
                   // Mostrar cotizaciones dinámicas
                   shippingQuotes.map((quote, index) => {
-                    const quoteId = `${quote.carrier}_${quote.service?.replace(/\s+/g, '_')}_${index}`;
+                    // Verificar que el quote tenga las propiedades necesarias
+                    if (!quote || quote.price === null || quote.price === undefined) {
+                      return null; // Skip this quote if it's invalid
+                    }
+                    
+                    const quoteId = `${quote.carrier || 'unknown'}_${quote.service?.replace(/\s+/g, '_') || 'standard'}_${index}`;
                     return (
                       <div
                         key={quoteId}
@@ -1613,10 +1619,10 @@ Pronto recibirás una confirmación por email.`));
                             </div>
                             <div>
                               <h3 className="text-white font-medium">
-                                {quote.carrier} - {quote.service || 'Servicio Estándar'}
+                                {quote.carrier || 'Transportadora'} - {quote.service || 'Servicio Estándar'}
                               </h3>
                               <p className="text-gray-400 text-sm">
-                                {quote.description || `Envío por ${quote.carrier}`}
+                                {quote.description || `Envío por ${quote.carrier || 'transportadora'}`}
                               </p>
                             </div>
                           </div>
@@ -1633,7 +1639,7 @@ Pronto recibirás una confirmación por email.`));
                         </div>
                       </div>
                     );
-                  })
+                  }).filter(Boolean) // Remove null elements
                 ) : formsCompleted && !isLoadingQuotes && !quotesError ? (
                   // Mostrar mensaje cuando no hay cotizaciones disponibles
                   <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 text-yellow-300 text-sm">
