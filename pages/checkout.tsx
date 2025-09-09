@@ -174,7 +174,8 @@ const CheckoutPage: NextPage = () => {
     // Si hay cotizaciones dinámicas disponibles y una está seleccionada
     if (shippingQuotes.length > 0) {
       const selectedQuote = shippingQuotes.find((quote, index) => {
-        const quoteId = `${quote.carrier}_${quote.service?.replace(/\s+/g, '_')}_${index}`;
+        if (!quote) return false;
+        const quoteId = `${quote.carrier || 'unknown'}_${quote.service?.replace(/\s+/g, '_') || 'standard'}_${index}`;
         return quoteId === selectedShippingMethod;
       });
       
