@@ -72,7 +72,7 @@ const RegisterScreen: NextPage = () => {
     
     setLoadingColonias(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/postal-codes/colonias/${cp}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-codes/colonias/${cp}`);
       const data = await response.json();
       
       if (data.success && data.data && data.data.length > 0) {
