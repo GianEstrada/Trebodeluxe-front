@@ -98,7 +98,7 @@ const PaymentForm = ({
             <span>{t('Procesando...')}</span>
           </div>
         ) : (
-          `${t('Pagar con Stripe')} ${amount ? `$${amount.toFixed(2)} ${currency.toUpperCase()}` : ''}`
+          `${t('Pagar con Stripe')} ${amount ? `$${(amount / 100).toFixed(2)} ${currency.toUpperCase()}` : ''}`
         )}
       </button>
     </form>
