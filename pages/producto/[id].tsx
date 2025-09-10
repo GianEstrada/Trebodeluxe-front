@@ -70,6 +70,9 @@ const ProductPage: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
+  
+  // 🔥 NUEVO: Estado para stock específico por variante (SOLUCIÓN AL PROBLEMA)
+  const [variantStock, setVariantStock] = useState<TallaDisponible[]>([]);
 
   // Estados para header y navegación  
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -132,6 +135,13 @@ const ProductPage: NextPage = () => {
   useEffect(() => {
     setQuantity(1);
   }, [selectedVariant, selectedSize]);
+
+  // 🔥 NUEVO: Cargar stock cuando se seleccione una variante (SOLUCIÓN AL PROBLEMA)
+  useEffect(() => {
+    if (selectedVariant) {
+      loadVariantStock(selectedVariant.id_variante);
+    }
+  }, [selectedVariant]);
 
   const loadProductData = async () => {
     setLoading(true);
@@ -229,11 +239,51 @@ const ProductPage: NextPage = () => {
     }
   };
 
-  const handleVariantChange = (variant: Variante) => {
+  const handleVariantChange = async (variant: Variante) => {
     setSelectedVariant(variant);
     setSelectedImageIndex(0); // Reset carousel
+    
+    // 🔥 NUEVO: Obtener stock específico por variante (SOLUCIÓN AL PROBLEMA)
+    try {
+      console.log(`🔍 Cargando stock para variante: ${variant.nombre} (ID: ${variant.id_variante})`);
+      const stockResponse = await productsApi.getStockByVariant(variant.id_variante) as any;
+      
+      if (stockResponse.success && stockResponse.data.tallas_stock) {
+        console.log(`✅ Stock obtenido para ${variant.nombre}:`, stockResponse.data.tallas_stock);
+        setVariantStock(stockResponse.data.tallas_stock);
+        
+        // Resetear talla seleccionada para que el usuario elija nueva
+        setSelectedSize(null);
+      } else {
+        console.warn(`⚠️ No se pudo obtener stock para variante ${variant.id_variante}`);
+        setVariantStock([]);
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo stock por variante:', error);
+      setVariantStock([]);
+    }
+    
     // Cambiar la URL para reflejar la nueva variante
     router.push(`/producto/${id}?variante=${variant.id_variante}`, undefined, { shallow: true });
+  };
+
+  // 🔥 NUEVO: Función para cargar stock de variante específica
+  const loadVariantStock = async (variantId: number) => {
+    try {
+      console.log(`🔍 Cargando stock inicial para variante ID: ${variantId}`);
+      const stockResponse = await productsApi.getStockByVariant(variantId) as any;
+      
+      if (stockResponse.success && stockResponse.data.tallas_stock) {
+        console.log(`✅ Stock inicial obtenido:`, stockResponse.data.tallas_stock);
+        setVariantStock(stockResponse.data.tallas_stock);
+      } else {
+        console.warn(`⚠️ No se pudo obtener stock inicial para variante ${variantId}`);
+        setVariantStock([]);
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo stock inicial:', error);
+      setVariantStock([]);
+    }
   };
 
   const handleSizeChange = (size: TallaDisponible) => {
@@ -1199,13 +1249,13 @@ const ProductPage: NextPage = () => {
             )}
 
             {/* Botones de tallas */}
-            {productData.tallas_disponibles && productData.tallas_disponibles.length > 0 && (
+            {variantStock && variantStock.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">
                   {t('Tallas disponibles')} ({productData.sistema_talla_nombre || t('Sistema estándar')}):
                 </h3>
                 <div className="flex flex-wrap gap-3">
-                  {productData.tallas_disponibles.map((size) => {
+                  {variantStock.map((size) => {
                     const hasStock = size.cantidad && size.cantidad > 0;
                     const isSelected = selectedSize?.id_talla === size.id_talla;
                     
@@ -1236,7 +1286,7 @@ const ProductPage: NextPage = () => {
                   })}
                 </div>
                 <div className="mt-3 text-sm text-gray-400">
-                  <span>💡 {t('Consejo')}: {t('Selecciona una talla para ver la disponibilidad')}</span>
+                  <span>💡 {t('Consejo')}: {t('El stock mostrado es específico para la variante seleccionada')}</span>
                 </div>
               </div>
             )}

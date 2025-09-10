@@ -86,6 +86,11 @@ export const productsApi = {
     return apiRequest(`/api/products/stock/${idProducto}/${idVariante}/${idTalla}`);
   },
 
+  // Obtener stock específico por variante (SOLUCIÓN AL PROBLEMA DE STOCK INCORRECTO)
+  async getStockByVariant(variantId) {
+    return apiRequest(`/api/products/variants/${variantId}/stock`);
+  },
+
   // === FUNCIONES PARA ADMINISTRADORES ===
 
   // Crear nuevo producto
