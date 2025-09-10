@@ -340,7 +340,7 @@ const OrdersAdmin: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Gestión de Pedidos</h1>
 
       {/* Estadísticas */}
