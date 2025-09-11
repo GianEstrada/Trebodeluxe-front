@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import Image from 'next/image';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { productsApi } from '../utils/productsApi';
+import { promotionsApi } from '../utils/promotionsApi';
 
 interface Variant {
   id_variante: number;
@@ -34,6 +35,14 @@ interface Product {
   variantes: Variant[];
 }
 
+interface PromotionDiscount {
+  hasDiscount: boolean;
+  originalPrice: number;
+  discountedPrice: number;
+  discountPercentage: number;
+  promotionName?: string;
+}
+
 interface VariantSizeSelectorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -55,6 +64,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [variantStock, setVariantStock] = useState<{[variantId: number]: Talla[]}>({});
+  const [promotionDiscounts, setPromotionDiscounts] = useState<{[key: string]: PromotionDiscount}>({});
 
   // Helper function para convertir precios de manera segura
   const parsePrice = (price: any): number => {
@@ -72,6 +82,34 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
     return `$${numPrice.toFixed(2)}`;
   };
 
+  // Función para calcular promociones
+  const calculatePromotionDiscount = async (productId: number, variantId: number, quantity: number): Promise<PromotionDiscount> => {
+    try {
+      const response = await promotionsApi.calculateDiscount(productId, variantId, quantity) as any;
+      
+      if (response?.success && response?.data) {
+        const { hasDiscount, originalPrice, discountedPrice, discountPercentage, promotionName } = response.data;
+        
+        return {
+          hasDiscount: hasDiscount || false,
+          originalPrice: parsePrice(originalPrice) || 0,
+          discountedPrice: parsePrice(discountedPrice) || parsePrice(originalPrice) || 0,
+          discountPercentage: discountPercentage || 0,
+          promotionName: promotionName || ''
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating promotion:', error);
+    }
+    
+    return {
+      hasDiscount: false,
+      originalPrice: 0,
+      discountedPrice: 0,
+      discountPercentage: 0
+    };
+  };
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen && product?.variantes?.length > 0) {
@@ -83,6 +121,13 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
       loadStockForAllVariants();
     }
   }, [isOpen, product]);
+
+  // Cargar promociones cuando cambie la variante seleccionada o cantidad
+  useEffect(() => {
+    if (selectedVariant && product) {
+      loadPromotionsForVariant(selectedVariant.id_variante);
+    }
+  }, [selectedVariant, quantity, product]);
 
   // Cargar stock específico para todas las variantes
   const loadStockForAllVariants = async () => {
@@ -107,6 +152,23 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
     setVariantStock(stockData);
   };
 
+  // Cargar promociones para variante seleccionada
+  const loadPromotionsForVariant = async (variantId: number) => {
+    if (!product) return;
+    
+    try {
+      const promotionKey = `${product.id_producto}-${variantId}-${quantity}`;
+      const discount = await calculatePromotionDiscount(product.id_producto, variantId, quantity);
+      
+      setPromotionDiscounts(prev => ({
+        ...prev,
+        [promotionKey]: discount
+      }));
+    } catch (error) {
+      console.error('Error loading promotions:', error);
+    }
+  };
+
   // Auto-select first available size when variant changes
   useEffect(() => {
     if (selectedVariant && variantStock[selectedVariant.id_variante]) {
@@ -122,6 +184,24 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
       ...variant,
       tallas_disponibles: variantStock[variant.id_variante] || []
     };
+  };
+
+  // Helper para obtener precio con promoción aplicada
+  const getPriceWithPromotion = (precio: number, variantId: number): { finalPrice: number; hasDiscount: boolean; originalPrice?: number } => {
+    if (!product) return { finalPrice: parsePrice(precio), hasDiscount: false };
+    
+    const promotionKey = `${product.id_producto}-${variantId}-${quantity}`;
+    const discount = promotionDiscounts[promotionKey];
+    
+    if (discount?.hasDiscount) {
+      return {
+        finalPrice: discount.discountedPrice,
+        hasDiscount: true,
+        originalPrice: discount.originalPrice
+      };
+    }
+    
+    return { finalPrice: parsePrice(precio), hasDiscount: false };
   };
 
   const handleAddToCart = async () => {
@@ -192,10 +272,16 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                     )}
                     <div className="text-left min-w-0 flex-1">
                       <p className="text-white text-sm font-medium truncate">{variant.nombre}</p>
-                      <p className="text-green-400 text-xs font-bold">
+                      <div className="text-xs space-y-1">
                         {(() => {
-                          // Usar el stock cargado dinámicamente
+                          // Obtener información de promoción para esta variante
+                          const promotionKey = `${product.id_producto}-${variant.id_variante}-${quantity}`;
+                          const promotion = promotionDiscounts[promotionKey];
+                          
+                          // Usar el stock cargado dinámicamente para rangos de precio
                           const variantTallas = variantStock[variant.id_variante];
+                          let priceDisplay = '';
+                          
                           if (variantTallas && variantTallas.length > 0) {
                             const prices = variantTallas
                               .filter(t => t.precio && t.cantidad > 0)
@@ -208,17 +294,40 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                               const maxPrice = prices[prices.length - 1];
                               
                               if (minPrice === maxPrice) {
-                                return formatPrice(minPrice);
+                                priceDisplay = formatPrice(minPrice);
                               } else {
-                                return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+                                priceDisplay = `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
                               }
                             }
+                          } else {
+                            // Fallback al precio general de la variante
+                            priceDisplay = formatPrice(variant.precio || 0);
                           }
                           
-                          // Fallback al precio general de la variante
-                          return formatPrice(variant.precio || 0);
+                          // Si hay promoción activa, mostrar precio con descuento
+                          if (promotion?.hasDiscount) {
+                            return (
+                              <>
+                                <p className="text-red-400 line-through text-xs">
+                                  {priceDisplay}
+                                </p>
+                                <p className="text-green-400 font-bold">
+                                  {formatPrice(promotion.discountedPrice)}
+                                </p>
+                                <p className="text-yellow-400 text-xs">
+                                  -{promotion.discountPercentage}% OFF
+                                </p>
+                              </>
+                            );
+                          }
+                          
+                          return (
+                            <p className="text-green-400 font-bold">
+                              {priceDisplay}
+                            </p>
+                          );
                         })()}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -249,9 +358,32 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                       {talla.cantidad === 0 ? t('Sin stock') : `${talla.cantidad} ${t('disponible')}`}
                     </p>
                     {talla.precio && talla.cantidad > 0 && (
-                      <p className="text-green-400 text-xs font-bold mt-1">
-                        {formatPrice(talla.precio)}
-                      </p>
+                      <div className="mt-1">
+                        {(() => {
+                          if (!selectedVariant) return formatPrice(talla.precio);
+                          
+                          const priceInfo = getPriceWithPromotion(talla.precio, selectedVariant.id_variante);
+                          
+                          if (priceInfo.hasDiscount && priceInfo.originalPrice) {
+                            return (
+                              <>
+                                <p className="text-red-400 line-through text-xs">
+                                  {formatPrice(priceInfo.originalPrice)}
+                                </p>
+                                <p className="text-green-400 font-bold text-xs">
+                                  {formatPrice(priceInfo.finalPrice)}
+                                </p>
+                              </>
+                            );
+                          }
+                          
+                          return (
+                            <p className="text-green-400 text-xs font-bold">
+                              {formatPrice(priceInfo.finalPrice)}
+                            </p>
+                          );
+                        })()}
+                      </div>
                     )}
                   </button>
                 ))}
@@ -289,20 +421,60 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           {/* Price Summary */}
           {selectedVariant && selectedTalla && (
             <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">{t('Total')}:</span>
-                <span className="text-green-400 font-bold text-lg">
-                  {formatPrice(parsePrice(selectedTalla.precio) * quantity)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm mt-2">
-                <span className="text-gray-400">
-                  {selectedTalla.nombre_talla} × {quantity}
-                </span>
-                <span className="text-gray-300">
-                  {formatPrice(selectedTalla.precio)} c/u
-                </span>
-              </div>
+              {(() => {
+                const priceInfo = getPriceWithPromotion(selectedTalla.precio, selectedVariant.id_variante);
+                const unitPrice = priceInfo.finalPrice;
+                const totalPrice = unitPrice * quantity;
+                
+                return (
+                  <>
+                    {/* Mostrar descuento si existe */}
+                    {priceInfo.hasDiscount && priceInfo.originalPrice && (
+                      <div className="mb-3 p-2 bg-green-500/20 border border-green-400/30 rounded">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-green-200">🎉 {t('Promoción aplicada')}</span>
+                          {(() => {
+                            const promotionKey = `${product.id_producto}-${selectedVariant.id_variante}-${quantity}`;
+                            const promotion = promotionDiscounts[promotionKey];
+                            return promotion?.discountPercentage ? (
+                              <span className="text-green-300 font-bold">
+                                -{promotion.discountPercentage}% OFF
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-green-300 mt-1">
+                          <span>{t('Precio original')}:</span>
+                          <span className="line-through">
+                            {formatPrice(priceInfo.originalPrice * quantity)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-green-300">
+                          <span>{t('Tu ahorras')}:</span>
+                          <span className="font-bold">
+                            {formatPrice((priceInfo.originalPrice - priceInfo.finalPrice) * quantity)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300">{t('Total')}:</span>
+                      <span className="text-green-400 font-bold text-lg">
+                        {formatPrice(totalPrice)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm mt-2">
+                      <span className="text-gray-400">
+                        {selectedTalla.nombre_talla} × {quantity}
+                      </span>
+                      <span className="text-gray-300">
+                        {formatPrice(unitPrice)} c/u
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
