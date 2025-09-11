@@ -495,7 +495,21 @@ const HomeScreen: NextPage = () => {
         // Seleccionar un producto aleatorio
         const randomIndex = Math.floor(Math.random() * response.products.length);
         let selectedProduct = response.products[randomIndex];
-        console.log('� Producto base seleccionado:', selectedProduct);
+        console.log('🎲 Producto base seleccionado:', selectedProduct);
+        
+        // Verificar que el producto tenga ID válido
+        if (!selectedProduct.id && !selectedProduct.producto_id) {
+          console.log('❌ Producto sin ID válido, reintentando...');
+          setRecommendedProduct(null);
+          return;
+        }
+        
+        // Asegurar que el producto tenga un ID
+        if (selectedProduct.producto_id && !selectedProduct.id) {
+          selectedProduct.id = selectedProduct.producto_id;
+        }
+        
+        console.log('✅ ID del producto confirmado:', selectedProduct.id);
         
         // Si hay promociones disponibles, aplicarlas
         if (Object.keys(promotions).length > 0 && promotions[selectedProduct.id]) {
@@ -1121,8 +1135,14 @@ const HomeScreen: NextPage = () => {
                             <div 
                               className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
                               onClick={() => {
-                                router.push(`/producto/${recommendedProduct.id}`);
-                                setShowLoginDropdown(false);
+                                const productId = recommendedProduct.id || recommendedProduct.producto_id;
+                                console.log('🔗 Navegando al producto con ID:', productId);
+                                if (productId) {
+                                  router.push(`/producto/${productId}`);
+                                  setShowLoginDropdown(false);
+                                } else {
+                                  console.error('❌ No se puede navegar: ID de producto no válido');
+                                }
                               }}
                             >
                               <div className="flex gap-3">
@@ -1131,27 +1151,35 @@ const HomeScreen: NextPage = () => {
                                     // Buscar imagen en diferentes estructuras
                                     let imageUrl = null;
                                     
-                                    if (recommendedProduct.imagenes && recommendedProduct.imagenes.length > 0) {
-                                      imageUrl = recommendedProduct.imagenes[0].url;
-                                    } else if (recommendedProduct.images && recommendedProduct.images.length > 0) {
+                                    console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                    
+                                    // Intentar diferentes propiedades de imagen
+                                    if (recommendedProduct.imagen_principal) {
+                                      imageUrl = recommendedProduct.imagen_principal;
+                                    } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                      imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                    } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
                                       imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
                                     } else if (recommendedProduct.imagen_url) {
                                       imageUrl = recommendedProduct.imagen_url;
                                     } else if (recommendedProduct.image) {
                                       imageUrl = recommendedProduct.image;
+                                    } else if (recommendedProduct.foto) {
+                                      imageUrl = recommendedProduct.foto;
                                     }
                                     
-                                    console.log('🖼️ Imagen del producto:', imageUrl);
-                                    console.log('📷 Estructura de imágenes:', recommendedProduct.imagenes || recommendedProduct.images);
+                                    console.log('�️ URL de imagen detectada:', imageUrl);
                                     
                                     return imageUrl ? (
                                       <img 
                                         src={imageUrl} 
-                                        alt={recommendedProduct.nombre}
+                                        alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
                                           console.log('❌ Error cargando imagen:', imageUrl);
-                                          e.currentTarget.style.display = 'none';
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.nextElementSibling?.setAttribute('style', 'display: flex');
                                         }}
                                       />
                                     ) : (
@@ -1162,10 +1190,20 @@ const HomeScreen: NextPage = () => {
                                       </div>
                                     );
                                   })()}
+                                  {/* Fallback icon (hidden by default, shown when image fails) */}
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="text-white text-sm font-medium truncate">{recommendedProduct.nombre}</h5>
-                                  <p className="text-gray-300 text-xs line-clamp-2">{recommendedProduct.descripcion}</p>
+                                  <h5 className="text-white text-sm font-medium truncate">
+                                    {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                                  </h5>
+                                  <p className="text-gray-300 text-xs line-clamp-2">
+                                    {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                                  </p>
                                   <div className="mt-1">
                                     {recommendedProduct.hasDiscount ? (
                                       <div className="flex items-center gap-2">
