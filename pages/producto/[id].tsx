@@ -150,8 +150,9 @@ const ProductPage: NextPage = () => {
       };
     }
     
-    // Si no hay promoción, aplicar descuento estándar del 30%
-    const originalPrice = precio / 0.7; // Calcular precio original asumiendo 30% descuento
+    // Si no hay promoción explícita, aplicar descuento estándar del 30%
+    // El precio actual ya tiene el descuento aplicado, calcular el original
+    const originalPrice = precio / (1 - 0.30); // precio / 0.7 para obtener el precio sin descuento
     return {
       finalPrice: precio,
       originalPrice: originalPrice,

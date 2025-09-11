@@ -933,7 +933,23 @@ const CarritoPage: NextPage = () => {
                                 <h4 className="text-white font-medium truncate">{item.name}</h4>
                                 <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {t('Variante')}: {item.variantName}</p>
                                 <div className="flex items-center justify-between mt-2">
-                                  <span className="text-white font-bold">${item.price.toFixed(2)}</span>
+                                  {item.hasDiscount ? (
+                                    <div className="flex flex-col">
+                                      <span className="text-xs text-red-400 line-through">
+                                        ${item.price.toFixed(2)}
+                                      </span>
+                                      <span className="text-white font-bold">
+                                        ${item.finalPrice.toFixed(2)}
+                                      </span>
+                                      <span className="text-xs text-yellow-400">
+                                        -{item.discountPercentage}% OFF
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-white font-bold">
+                                      ${item.finalPrice.toFixed(2)}
+                                    </span>
+                                  )}
                                   <div className="flex items-center gap-2">
                                     <button 
                                       onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity - 1)}
@@ -1075,12 +1091,21 @@ const CarritoPage: NextPage = () => {
                               {t('Talla')}: {item.tallaName} | {t('Variante')}: {item.variantName}
                             </p>
                             <div className="flex items-center space-x-2">
-                              <span className="text-lg font-bold text-green-400">
-                                ${item.price.toFixed(2)}
-                              </span>
-                              {item.hasDiscount && (
-                                <span className="text-sm text-gray-500 line-through">
-                                  ${item.totalItemPrice.toFixed(2)}
+                              {item.hasDiscount ? (
+                                <div className="flex flex-col">
+                                  <span className="text-sm text-red-400 line-through">
+                                    ${item.price.toFixed(2)}
+                                  </span>
+                                  <span className="text-lg font-bold text-green-400">
+                                    ${item.finalPrice.toFixed(2)}
+                                  </span>
+                                  <span className="text-xs text-yellow-400">
+                                    -{item.discountPercentage}% OFF
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-lg font-bold text-green-400">
+                                  ${item.finalPrice.toFixed(2)}
                                 </span>
                               )}
                             </div>

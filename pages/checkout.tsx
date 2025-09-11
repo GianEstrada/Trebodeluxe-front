@@ -253,7 +253,7 @@ const CheckoutPage: NextPage = () => {
           id_variante: item.variantId,
           id_talla: item.tallaId,
           cantidad: item.quantity,
-          precio_unitario: item.price,
+          precio_unitario: item.finalPrice, // Usar precio final con descuento aplicado
           producto_nombre: item.name,
           categoria: 'general', // Por defecto, se puede obtener de la BD después
           peso_gramos: 100 // Peso por defecto, se puede obtener de la BD después
@@ -2032,9 +2032,25 @@ Pronto recibirás una confirmación por email.`));
                       <p className="text-gray-400 text-xs">
                         {item.tallaName} | {item.variantName} | {t('Cantidad')}: {item.quantity}
                       </p>
-                      <p className="text-green-400 text-sm font-bold">
-                        {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
-                      </p>
+                      <div className="text-sm">
+                        {item.hasDiscount ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-red-400 line-through">
+                              {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
+                            </p>
+                            <p className="text-green-400 font-bold">
+                              {formatPrice(item.finalPrice * item.quantity, currentCurrency, 'MXN')}
+                            </p>
+                            <p className="text-xs text-yellow-400">
+                              -{item.discountPercentage}% OFF
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-green-400 font-bold">
+                            {formatPrice(item.finalPrice * item.quantity, currentCurrency, 'MXN')}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
