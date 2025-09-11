@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Image from 'next/image';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
+import { productsApi } from '../utils/productsApi';
 
 interface Variant {
   id_variante: number;
@@ -53,6 +54,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
   const [selectedTalla, setSelectedTalla] = useState<Talla | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [variantStock, setVariantStock] = useState<{[variantId: number]: Talla[]}>({});
 
   // Reset state when modal opens
   useEffect(() => {
@@ -60,16 +62,51 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
       setSelectedVariant(product.variantes[0]);
       setSelectedTalla(null);
       setQuantity(1);
+      
+      // Cargar stock específico para cada variante
+      loadStockForAllVariants();
     }
   }, [isOpen, product]);
 
+  // Cargar stock específico para todas las variantes
+  const loadStockForAllVariants = async () => {
+    if (!product?.variantes) return;
+    
+    const stockData: {[variantId: number]: Talla[]} = {};
+    
+    for (const variant of product.variantes) {
+      try {
+        const stockResponse = await productsApi.getStockByVariant(variant.id_variante) as any;
+        if (stockResponse.success && stockResponse.data.tallas_stock) {
+          stockData[variant.id_variante] = stockResponse.data.tallas_stock;
+        } else {
+          stockData[variant.id_variante] = [];
+        }
+      } catch (error) {
+        console.error(`Error loading stock for variant ${variant.id_variante}:`, error);
+        stockData[variant.id_variante] = [];
+      }
+    }
+    
+    setVariantStock(stockData);
+  };
+
   // Auto-select first available size when variant changes
   useEffect(() => {
-    if (selectedVariant && selectedVariant.tallas_disponibles && selectedVariant.tallas_disponibles.length > 0) {
-      const availableTalla = selectedVariant.tallas_disponibles.find(talla => talla.cantidad > 0);
+    if (selectedVariant && variantStock[selectedVariant.id_variante]) {
+      const availableTallas = variantStock[selectedVariant.id_variante];
+      const availableTalla = availableTallas.find(talla => talla.cantidad > 0);
       setSelectedTalla(availableTalla || null);
     }
-  }, [selectedVariant]);
+  }, [selectedVariant, variantStock]);
+
+  // Actualizar la variante seleccionada con el stock cargado
+  const getVariantWithStock = (variant: Variant): Variant => {
+    return {
+      ...variant,
+      tallas_disponibles: variantStock[variant.id_variante] || []
+    };
+  };
 
   const handleAddToCart = async () => {
     if (!selectedVariant || !selectedTalla) {
@@ -139,7 +176,32 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                     )}
                     <div className="text-left min-w-0 flex-1">
                       <p className="text-white text-sm font-medium truncate">{variant.nombre}</p>
-                      <p className="text-green-400 text-xs font-bold">${variant.precio?.toFixed(2) || 'N/A'}</p>
+                      <p className="text-green-400 text-xs font-bold">
+                        {(() => {
+                          // Usar el stock cargado dinámicamente
+                          const variantTallas = variantStock[variant.id_variante];
+                          if (variantTallas && variantTallas.length > 0) {
+                            const prices = variantTallas
+                              .filter(t => t.precio && t.cantidad > 0)
+                              .map(t => t.precio)
+                              .sort((a, b) => a - b);
+                            
+                            if (prices.length > 0) {
+                              const minPrice = prices[0];
+                              const maxPrice = prices[prices.length - 1];
+                              
+                              if (minPrice === maxPrice) {
+                                return `$${minPrice.toFixed(2)}`;
+                              } else {
+                                return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+                              }
+                            }
+                          }
+                          
+                          // Fallback al precio general de la variante
+                          return `$${variant.precio?.toFixed(2) || 'N/A'}`;
+                        })()}
+                      </p>
                     </div>
                   </div>
                 </button>
@@ -148,11 +210,11 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           </div>
 
           {/* Size Selection */}
-          {selectedVariant && selectedVariant.tallas_disponibles && (
+          {selectedVariant && variantStock[selectedVariant.id_variante] && (
             <div>
               <h4 className="text-white font-medium mb-3">{t('Selecciona Talla')}</h4>
               <div className="grid grid-cols-3 gap-2">
-                {selectedVariant.tallas_disponibles.map((talla) => (
+                {variantStock[selectedVariant.id_variante].map((talla) => (
                   <button
                     key={talla.id_talla}
                     onClick={() => setSelectedTalla(talla)}
@@ -169,6 +231,11 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                     <p className="text-xs opacity-70">
                       {talla.cantidad === 0 ? t('Sin stock') : `${talla.cantidad} ${t('disponible')}`}
                     </p>
+                    {talla.precio && talla.cantidad > 0 && (
+                      <p className="text-green-400 text-xs font-bold mt-1">
+                        ${talla.precio.toFixed(2)}
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -208,7 +275,15 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">{t('Total')}:</span>
                 <span className="text-green-400 font-bold text-lg">
-                  ${(selectedVariant.precio * quantity).toFixed(2)}
+                  ${(selectedTalla.precio * quantity).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm mt-2">
+                <span className="text-gray-400">
+                  {selectedTalla.nombre_talla} × {quantity}
+                </span>
+                <span className="text-gray-300">
+                  ${selectedTalla.precio.toFixed(2)} c/u
                 </span>
               </div>
             </div>
