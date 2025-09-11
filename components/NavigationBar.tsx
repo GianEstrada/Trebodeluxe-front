@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { canAccessAdminPanel } from '../utils/roles';
 import { useCategories } from '../hooks/useCategories';
+import { productsApi } from '../utils/productsApi';
 
 interface NavigationBarProps {
   currentLanguage: string;
@@ -28,6 +30,12 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Estados para perfil personalizado
+  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   
   // Referencias para detectar clicks fuera
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -41,9 +49,72 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   const { t } = useUniversalTranslate(currentLanguage);
   const { user, isAuthenticated, logout } = useAuth();
   const { items: cartItems, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isLoading } = useCart();
+  const router = useRouter();
   
   // Usar categorías dinámicas desde la API
   const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
+
+  // Función para cargar producto aleatorio
+  const loadRandomProduct = async () => {
+    try {
+      setLoadingRecommendation(true);
+      const response = await productsApi.getRecent(20) as any;
+      if (response.success && response.products && response.products.length > 0) {
+        const randomIndex = Math.floor(Math.random() * response.products.length);
+        const product = response.products[randomIndex];
+        setRecommendedProduct(product);
+      }
+    } catch (error) {
+      console.error('Error cargando producto aleatorio:', error);
+    } finally {
+      setLoadingRecommendation(false);
+    }
+  };
+
+  // Función para buscar productos en tiempo real
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      const response = await productsApi.getAll() as any;
+      if (response.success && response.products && response.products.length > 0) {
+        const filtered = response.products.filter((product: any) =>
+          product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
+          product.descripcion?.toLowerCase().includes(query.toLowerCase())
+        );
+        setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+      }
+    } catch (error) {
+      console.error('Error buscando productos:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Cargar producto aleatorio cuando se abre el dropdown del perfil
+  useEffect(() => {
+    if (showLoginDropdown && isAuthenticated && !recommendedProduct) {
+      loadRandomProduct();
+    }
+  }, [showLoginDropdown, isAuthenticated]);
+
+  // Búsqueda en tiempo real
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm && showSearchDropdown) {
+        searchProducts(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, showSearchDropdown]);
 
   // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
@@ -60,7 +131,9 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   // Función para manejar la búsqueda
   const handleSearch = () => {
     if (searchTerm.trim()) {
-      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
+      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
+      setShowSearchDropdown(false);
+      setSearchTerm('');
     }
   };
 
@@ -518,25 +591,80 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                     <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                   </div>
                   
-                  <div className="space-y-3 mb-6">
-                    <Link 
-                      href="/profile"
-                      className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
-                    >
+                  {/* Información de Envío */}
+                  <div className="bg-white/10 rounded-lg p-4 mb-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
-                      {t('Mi perfil')}
-                    </Link>
-                    <Link 
-                      href="/orders"
-                      className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
-                    >
+                      {t('Información de Envío')}
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div className="flex justify-between">
+                        <span>{t('Envío gratuito:')}</span>
+                        <span className="text-green-400">{t('Compras > $50')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('Entrega estándar:')}</span>
+                        <span>{t('3-5 días')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('Entrega express:')}</span>
+                        <span>{t('24-48 horas')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recomendación de Producto */}
+                  <div className="bg-white/10 rounded-lg p-4 mb-6">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
-                      {t('Mis pedidos')}
-                    </Link>
+                      {t('Producto Recomendado')}
+                    </h4>
+                    {loadingRecommendation ? (
+                      <div className="animate-pulse">
+                        <div className="bg-white/20 h-20 rounded mb-2"></div>
+                        <div className="bg-white/20 h-4 rounded mb-1"></div>
+                        <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                      </div>
+                    ) : recommendedProduct ? (
+                      <div 
+                        className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                        onClick={() => {
+                          router.push(`/producto/${recommendedProduct.id}`);
+                          setShowLoginDropdown(false);
+                        }}
+                      >
+                        <div className="flex gap-3">
+                          <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                            {recommendedProduct.imagenes && recommendedProduct.imagenes.length > 0 ? (
+                              <img 
+                                src={recommendedProduct.imagenes[0].url} 
+                                alt={recommendedProduct.nombre}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-white text-sm font-medium truncate">{recommendedProduct.nombre}</h5>
+                            <p className="text-gray-300 text-xs line-clamp-2">{recommendedProduct.descripcion}</p>
+                            <p className="text-green-400 text-sm font-medium mt-1">
+                              ${recommendedProduct.precio?.toFixed(2) || '0.00'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">{t('No se pudo cargar la recomendación')}</p>
+                    )}
                   </div>
                   
                   <button 
@@ -626,9 +754,85 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                     {t('Buscar')}
                   </button>
                 </div>
-                <p className="text-gray-300 text-sm">
-                  {t('Encuentra exactamente lo que buscas en nuestra colección.')}
-                </p>
+                
+                {/* Resultados de búsqueda */}
+                {searchTerm && (
+                  <div className="mt-4">
+                    {searchLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-white/20 rounded mb-2"></div>
+                              <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                            onClick={() => {
+                              router.push(`/producto/${product.id}`);
+                              setShowSearchDropdown(false);
+                              setSearchTerm('');
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                {product.imagenes && product.imagenes.length > 0 ? (
+                                  <img 
+                                    src={product.imagenes[0].url} 
+                                    alt={product.nombre}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
+                                <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                <p className="text-green-400 text-sm font-medium">
+                                  ${product.precio?.toFixed(2) || '0.00'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-white/20">
+                          <button
+                            onClick={handleSearch}
+                            className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                          >
+                            {t('Ver todos los resultados')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!searchTerm && (
+                  <p className="text-gray-300 text-sm">
+                    {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
