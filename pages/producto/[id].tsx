@@ -224,13 +224,28 @@ const ProductPage: NextPage = () => {
         
         // Cargar promociones para este producto específico
         try {
+          console.log('🔄 Iniciando carga de promociones para producto:', product.id_producto, 'categoría:', product.categoria_nombre);
           const promotionsResponse = await (promotionsApi as any).getPromotionsForProduct(product.id_producto, product.categoria_nombre);
-          if (promotionsResponse && promotionsResponse[product.id_producto]) {
+          
+          console.log('📡 Respuesta completa de promociones:', promotionsResponse);
+          console.log('📊 Estructura de respuesta:', {
+            hasSuccess: !!promotionsResponse?.success,
+            hasPromotions: !!promotionsResponse?.promotions,
+            hasProductKey: !!promotionsResponse?.[product.id_producto],
+            keys: promotionsResponse ? Object.keys(promotionsResponse) : []
+          });
+          
+          // Usar la misma lógica que en el index
+          if (promotionsResponse && promotionsResponse.success && promotionsResponse.promotions) {
+            setPromotions({ [product.id_producto]: promotionsResponse.promotions });
+            console.log('🎯 Promociones cargadas correctamente:', promotionsResponse.promotions);
+          } else if (promotionsResponse && promotionsResponse[product.id_producto]) {
+            // Fallback al formato anterior
             setPromotions({ [product.id_producto]: promotionsResponse[product.id_producto] });
-            console.log('🎯 Promociones cargadas para producto:', promotionsResponse);
+            console.log('🎯 Promociones cargadas con formato alternativo:', promotionsResponse[product.id_producto]);
           } else {
             setPromotions({});
-            console.log('ℹ️ No hay promociones para este producto');
+            console.log('ℹ️ No hay promociones para este producto - estructura no reconocida');
           }
         } catch (promotionError) {
           console.error('Error cargando promociones:', promotionError);
