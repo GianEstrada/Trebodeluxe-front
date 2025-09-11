@@ -23,6 +23,7 @@ interface TallaDisponible {
   id_talla: number;
   nombre_talla: string;
   cantidad?: number;
+  precio?: number; // Precio específico por talla
 }
 
 interface Variante {
@@ -1273,7 +1274,7 @@ const ProductPage: NextPage = () => {
                         }`}
                         title={
                           hasStock 
-                            ? `${size.nombre_talla} - Stock: ${size.cantidad}` 
+                            ? `${size.nombre_talla} - Stock: ${size.cantidad}${size.precio ? ` - Precio: ${formatPrice(size.precio)}` : ''}` 
                             : `${size.nombre_talla} - Agotado`
                         }
                       >
@@ -1281,6 +1282,11 @@ const ProductPage: NextPage = () => {
                         <div className="text-xs mt-1">
                           {hasStock ? `Stock: ${size.cantidad}` : t('Agotado')}
                         </div>
+                        {size.precio && hasStock && (
+                          <div className="text-xs mt-1 text-green-300 font-semibold">
+                            {formatPrice(size.precio)}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -1295,11 +1301,52 @@ const ProductPage: NextPage = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-4">
                 <span className="text-3xl font-bold text-green-400">
-                  {selectedVariant && selectedVariant.precio && formatPrice(selectedVariant.precio)}
+                  {(() => {
+                    // Si hay una talla seleccionada, usar su precio específico
+                    if (selectedSize && variantStock) {
+                      const sizeWithPrice = variantStock.find(s => s.id_talla === selectedSize.id_talla);
+                      if (sizeWithPrice && sizeWithPrice.precio) {
+                        return formatPrice(sizeWithPrice.precio);
+                      }
+                    }
+                    
+                    // Si no hay talla seleccionada, mostrar rango de precios de la variante
+                    if (selectedVariant && variantStock && variantStock.length > 0) {
+                      const prices = variantStock
+                        .map(s => s.precio)
+                        .filter((p): p is number => p !== undefined && p !== null && p > 0)
+                        .sort((a, b) => a - b);
+                      
+                      if (prices.length > 0) {
+                        const minPrice = prices[0];
+                        const maxPrice = prices[prices.length - 1];
+                        
+                        if (minPrice === maxPrice) {
+                          return formatPrice(minPrice);
+                        } else {
+                          return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+                        }
+                      }
+                    }
+                    
+                    // Fallback al precio general de la variante
+                    if (selectedVariant && selectedVariant.precio) {
+                      return formatPrice(selectedVariant.precio);
+                    }
+                    
+                    return 'Precio no disponible';
+                  })()}
                 </span>
               </div>
-              {selectedVariant && !selectedVariant.precio && (
-                <p className="text-red-400 font-medium">Precio no disponible</p>
+              {selectedSize && (
+                <p className="text-sm text-gray-400">
+                  Precio para talla {selectedSize.nombre_talla}
+                </p>
+              )}
+              {!selectedSize && variantStock && variantStock.length > 0 && (
+                <p className="text-sm text-yellow-400">
+                  💡 Selecciona una talla para ver el precio específico
+                </p>
               )}
             </div>
 
