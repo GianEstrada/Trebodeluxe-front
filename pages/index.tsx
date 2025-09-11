@@ -496,17 +496,37 @@ const HomeScreen: NextPage = () => {
         const randomIndex = Math.floor(Math.random() * response.products.length);
         let selectedProduct = response.products[randomIndex];
         console.log('🎲 Producto base seleccionado:', selectedProduct);
+        console.log('🔍 Propiedades del producto:', Object.keys(selectedProduct));
+        console.log('🆔 ID disponibles:', {
+          id: selectedProduct.id,
+          producto_id: selectedProduct.producto_id,
+          productId: selectedProduct.productId,
+          _id: selectedProduct._id
+        });
         
-        // Verificar que el producto tenga ID válido
-        if (!selectedProduct.id && !selectedProduct.producto_id) {
-          console.log('❌ Producto sin ID válido, reintentando...');
-          setRecommendedProduct(null);
-          return;
+        // Verificar que el producto tenga ID válido - más flexible
+        let productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id;
+        
+        if (!productId) {
+          console.log('❌ Producto sin ID válido, estructura completa:', selectedProduct);
+          // En lugar de fallar, intentemos con otro producto
+          if (response.products.length > 1) {
+            const fallbackIndex = (randomIndex + 1) % response.products.length;
+            selectedProduct = response.products[fallbackIndex];
+            productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id;
+            console.log('🔄 Intentando producto fallback:', selectedProduct);
+          }
+          
+          if (!productId) {
+            console.log('❌ No se encontró producto con ID válido');
+            setRecommendedProduct(null);
+            return;
+          }
         }
         
-        // Asegurar que el producto tenga un ID
-        if (selectedProduct.producto_id && !selectedProduct.id) {
-          selectedProduct.id = selectedProduct.producto_id;
+        // Asegurar que el producto tenga un ID normalizado
+        if (!selectedProduct.id && productId) {
+          selectedProduct.id = productId;
         }
         
         console.log('✅ ID del producto confirmado:', selectedProduct.id);
