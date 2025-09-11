@@ -1300,43 +1300,114 @@ const ProductPage: NextPage = () => {
             {/* Precio */}
             <div className="space-y-2">
               <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-green-400">
-                  {(() => {
-                    // Si hay una talla seleccionada, usar su precio específico
-                    if (selectedSize && variantStock) {
-                      const sizeWithPrice = variantStock.find(s => s.id_talla === selectedSize.id_talla);
-                      if (sizeWithPrice && sizeWithPrice.precio) {
-                        return formatPrice(sizeWithPrice.precio);
-                      }
-                    }
-                    
-                    // Si no hay talla seleccionada, mostrar rango de precios de la variante
-                    if (selectedVariant && variantStock && variantStock.length > 0) {
-                      const prices = variantStock
-                        .map(s => s.precio)
-                        .filter((p): p is number => p !== undefined && p !== null && p > 0)
-                        .sort((a, b) => a - b);
+                {(() => {
+                  // Si hay una talla seleccionada, usar su precio específico
+                  if (selectedSize && variantStock) {
+                    const sizeWithPrice = variantStock.find(s => s.id_talla === selectedSize.id_talla);
+                    if (sizeWithPrice && sizeWithPrice.precio) {
+                      // Verificar si la variante tiene promoción
+                      const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > sizeWithPrice.precio;
                       
-                      if (prices.length > 0) {
-                        const minPrice = prices[0];
-                        const maxPrice = prices[prices.length - 1];
-                        
-                        if (minPrice === maxPrice) {
-                          return formatPrice(minPrice);
-                        } else {
-                          return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
-                        }
+                      if (hasPromotion && selectedVariant.precio_original) {
+                        const discountPercentage = Math.round(((selectedVariant.precio_original - sizeWithPrice.precio) / selectedVariant.precio_original) * 100);
+                        return (
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-2xl text-gray-400 line-through">
+                                {formatPrice(selectedVariant.precio_original)}
+                              </span>
+                              <span className="text-3xl font-bold text-green-400">
+                                {formatPrice(sizeWithPrice.precio)}
+                              </span>
+                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                                -{discountPercentage}% OFF
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <span className="text-3xl font-bold text-green-400">
+                            {formatPrice(sizeWithPrice.precio)}
+                          </span>
+                        );
                       }
                     }
+                  }
+                  
+                  // Si no hay talla seleccionada, mostrar rango de precios de la variante
+                  if (selectedVariant && variantStock && variantStock.length > 0) {
+                    const prices = variantStock
+                      .map(s => s.precio)
+                      .filter((p): p is number => p !== undefined && p !== null && p > 0)
+                      .sort((a, b) => a - b);
                     
-                    // Fallback al precio general de la variante
-                    if (selectedVariant && selectedVariant.precio) {
-                      return formatPrice(selectedVariant.precio);
+                    if (prices.length > 0) {
+                      const minPrice = prices[0];
+                      const maxPrice = prices[prices.length - 1];
+                      
+                      // Verificar si hay promoción
+                      const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > minPrice;
+                      
+                      if (hasPromotion && selectedVariant.precio_original) {
+                        const discountPercentage = Math.round(((selectedVariant.precio_original - minPrice) / selectedVariant.precio_original) * 100);
+                        return (
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-2xl text-gray-400 line-through">
+                                {formatPrice(selectedVariant.precio_original)}
+                              </span>
+                              <span className="text-3xl font-bold text-green-400">
+                                {minPrice === maxPrice ? formatPrice(minPrice) : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`}
+                              </span>
+                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                                -{discountPercentage}% OFF
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <span className="text-3xl font-bold text-green-400">
+                            {minPrice === maxPrice ? formatPrice(minPrice) : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`}
+                          </span>
+                        );
+                      }
                     }
+                  }
+                  
+                  // Fallback al precio general de la variante
+                  if (selectedVariant && selectedVariant.precio) {
+                    const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > selectedVariant.precio;
                     
-                    return 'Precio no disponible';
-                  })()}
-                </span>
+                    if (hasPromotion && selectedVariant.precio_original) {
+                      const discountPercentage = Math.round(((selectedVariant.precio_original - selectedVariant.precio) / selectedVariant.precio_original) * 100);
+                      return (
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-2xl text-gray-400 line-through">
+                              {formatPrice(selectedVariant.precio_original)}
+                            </span>
+                            <span className="text-3xl font-bold text-green-400">
+                              {formatPrice(selectedVariant.precio)}
+                            </span>
+                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                              -{discountPercentage}% OFF
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <span className="text-3xl font-bold text-green-400">
+                          {formatPrice(selectedVariant.precio)}
+                        </span>
+                      );
+                    }
+                  }
+                  
+                  return 'Precio no disponible';
+                })()}
               </div>
               {selectedSize && (
                 <p className="text-sm text-gray-400">

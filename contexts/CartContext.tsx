@@ -12,6 +12,9 @@ export interface CartItem {
   imagen_url?: string;
   precio: number;
   precio_original?: number;
+  precio_final_item?: number; // Precio final con descuentos aplicados
+  tiene_descuento?: boolean; // Indica si tiene descuento
+  descuento_porcentaje?: number; // Porcentaje de descuento
   id_talla: number;
   nombre_talla: string;
   cantidad: number;
@@ -93,7 +96,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           nombre_variante: item.nombre_variante,
           imagen_url: item.imagen_url,
           precio: typeof item.precio === 'string' ? parseFloat(item.precio) : (item.precio || 0),
-          precio_original: item.precio_original,
+          precio_original: item.precio_original ? 
+            (typeof item.precio_original === 'string' ? parseFloat(item.precio_original) : item.precio_original) : 
+            undefined,
+          precio_final_item: item.precio_final_item ? 
+            (typeof item.precio_final_item === 'string' ? parseFloat(item.precio_final_item) : item.precio_final_item) : 
+            undefined,
+          tiene_descuento: item.tiene_descuento || false,
+          descuento_porcentaje: item.descuento_porcentaje || 0,
           id_talla: item.id_talla,
           nombre_talla: item.nombre_talla,
           cantidad: item.cantidad,

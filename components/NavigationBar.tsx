@@ -775,9 +775,23 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                           </div>
                           
                           <div className="text-right mt-1">
-                            <span className="text-sm font-semibold text-gray-800">
-                              ${(item.precio * item.cantidad).toFixed(2)}
-                            </span>
+                            {item.precio_original && item.precio_original > item.precio ? (
+                              <div className="space-y-1">
+                                <div className="text-xs text-red-500 line-through">
+                                  ${(item.precio_original * item.cantidad).toFixed(2)}
+                                </div>
+                                <div className="text-sm font-semibold text-green-600">
+                                  ${(item.precio * item.cantidad).toFixed(2)}
+                                </div>
+                                <div className="text-xs text-yellow-600 font-medium">
+                                  -{Math.round(((item.precio_original - item.precio) / item.precio_original) * 100)}% OFF
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-sm font-semibold text-gray-800">
+                                ${(item.precio * item.cantidad).toFixed(2)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
