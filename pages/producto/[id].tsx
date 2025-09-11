@@ -10,6 +10,7 @@ import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../../utils/roles';
 import { productsApi } from '../../utils/productsApi';
+import { promotionsApi } from '../../utils/promotionsApi';
 
 // Interfaces para la nueva estructura de datos
 interface ImagenVariante {
@@ -71,6 +72,7 @@ const ProductPage: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
+  const [promotions, setPromotions] = useState<any>({});
   
   // 🔥 NUEVO: Estado para stock específico por variante (SOLUCIÓN AL PROBLEMA)
   const [variantStock, setVariantStock] = useState<TallaDisponible[]>([]);
@@ -138,26 +140,37 @@ const ProductPage: NextPage = () => {
   }, [selectedVariant, selectedSize]);
 
   // Helper function para aplicar promociones a un precio
-  const applyPromotion = (precio: number, variante: Variante) => {
-    // Verificar si hay promoción activa (30% de descuento)
-    if (variante?.precio_original && variante.precio_original > precio) {
-      const discountPercentage = Math.round(((variante.precio_original - precio) / variante.precio_original) * 100);
+  const applyPromotion = (precio: number, varianteId: number) => {
+    // Buscar promociones específicas para este producto
+    const productPromotions = productData?.id_producto ? promotions[productData.id_producto] : null;
+    
+    if (!productPromotions || productPromotions.length === 0) {
+      // Sin promociones - mostrar precio normal
       return {
         finalPrice: precio,
-        originalPrice: variante.precio_original,
-        hasDiscount: true,
-        discountPercentage
+        originalPrice: precio,
+        hasDiscount: false,
+        discountPercentage: 0
       };
     }
     
-    // Si no hay promoción explícita, aplicar descuento estándar del 30%
-    // El precio actual ya tiene el descuento aplicado, calcular el original
-    const originalPrice = precio / (1 - 0.30); // precio / 0.7 para obtener el precio sin descuento
+    // Tomar la primera promoción (más prioritaria)
+    const promotion = productPromotions[0];
+    let discountedPrice = precio;
+    let discountPercentage = 0;
+    
+    if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento > 0) {
+      discountPercentage = promotion.porcentaje_descuento;
+      const discount = discountPercentage / 100;
+      discountedPrice = precio * (1 - discount);
+    }
+    
     return {
-      finalPrice: precio,
-      originalPrice: originalPrice,
-      hasDiscount: true,
-      discountPercentage: 30
+      finalPrice: discountedPrice,
+      originalPrice: precio,
+      hasDiscount: discountedPrice < precio,
+      discountPercentage,
+      promotion
     };
   };
 
@@ -191,6 +204,21 @@ const ProductPage: NextPage = () => {
         };
         
         setProductData(productData);
+        
+        // Cargar promociones para este producto específico
+        try {
+          const promotionsResponse = await (promotionsApi as any).getPromotionsForProduct(product.id_producto, product.categoria_nombre);
+          if (promotionsResponse && promotionsResponse[product.id_producto]) {
+            setPromotions({ [product.id_producto]: promotionsResponse[product.id_producto] });
+            console.log('🎯 Promociones cargadas para producto:', promotionsResponse);
+          } else {
+            setPromotions({});
+            console.log('ℹ️ No hay promociones para este producto');
+          }
+        } catch (promotionError) {
+          console.error('Error cargando promociones:', promotionError);
+          setPromotions({});
+        }
         
         // Para productos relacionados, usamos productos recientes de la misma categoría
         const relatedResponse = await productsApi.getRecentByCategory(4) as any;
@@ -1329,7 +1357,7 @@ const ProductPage: NextPage = () => {
                   if (selectedSize && variantStock) {
                     const sizeWithPrice = variantStock.find(s => s.id_talla === selectedSize.id_talla);
                     if (sizeWithPrice && sizeWithPrice.precio && selectedVariant) {
-                      const priceInfo = applyPromotion(sizeWithPrice.precio, selectedVariant);
+                      const priceInfo = applyPromotion(sizeWithPrice.precio, selectedVariant.id_variante);
                       
                       return (
                         <div className="flex flex-col">
@@ -1359,8 +1387,8 @@ const ProductPage: NextPage = () => {
                     if (prices.length > 0) {
                       const minPrice = prices[0];
                       const maxPrice = prices[prices.length - 1];
-                      const minPriceInfo = applyPromotion(minPrice, selectedVariant);
-                      const maxPriceInfo = applyPromotion(maxPrice, selectedVariant);
+                      const minPriceInfo = applyPromotion(minPrice, selectedVariant.id_variante);
+                      const maxPriceInfo = applyPromotion(maxPrice, selectedVariant.id_variante);
                       
                       return (
                         <div className="flex flex-col">
@@ -1388,7 +1416,7 @@ const ProductPage: NextPage = () => {
                   
                   // Fallback al precio general de la variante
                   if (selectedVariant && selectedVariant.precio) {
-                    const priceInfo = applyPromotion(selectedVariant.precio, selectedVariant);
+                    const priceInfo = applyPromotion(selectedVariant.precio, selectedVariant.id_variante);
                     
                     return (
                       <div className="flex flex-col">

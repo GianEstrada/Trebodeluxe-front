@@ -1181,6 +1181,14 @@ const HomeScreen: NextPage = () => {
                                       imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
                                     } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
                                       imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                    } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                      // Buscar imagen en las variantes
+                                      const firstVariant = recommendedProduct.variantes[0];
+                                      if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                        imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                      } else if (firstVariant.imagen_url) {
+                                        imageUrl = firstVariant.imagen_url;
+                                      }
                                     } else if (recommendedProduct.imagen_url) {
                                       imageUrl = recommendedProduct.imagen_url;
                                     } else if (recommendedProduct.image) {
