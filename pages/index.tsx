@@ -501,11 +501,12 @@ const HomeScreen: NextPage = () => {
           id: selectedProduct.id,
           producto_id: selectedProduct.producto_id,
           productId: selectedProduct.productId,
-          _id: selectedProduct._id
+          _id: selectedProduct._id,
+          id_producto: selectedProduct.id_producto
         });
         
         // Verificar que el producto tenga ID válido - más flexible
-        let productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id;
+        let productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id || selectedProduct.id_producto;
         
         if (!productId) {
           console.log('❌ Producto sin ID válido, estructura completa:', selectedProduct);
@@ -513,7 +514,7 @@ const HomeScreen: NextPage = () => {
           if (response.products.length > 1) {
             const fallbackIndex = (randomIndex + 1) % response.products.length;
             selectedProduct = response.products[fallbackIndex];
-            productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id;
+            productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id || selectedProduct.id_producto;
             console.log('🔄 Intentando producto fallback:', selectedProduct);
           }
           
@@ -1155,7 +1156,7 @@ const HomeScreen: NextPage = () => {
                             <div 
                               className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
                               onClick={() => {
-                                const productId = recommendedProduct.id || recommendedProduct.producto_id;
+                                const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
                                 console.log('🔗 Navegando al producto con ID:', productId);
                                 if (productId) {
                                   router.push(`/producto/${productId}`);
