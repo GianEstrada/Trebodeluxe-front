@@ -33,6 +33,10 @@ interface Product {
   nombre: string;
   descripcion?: string;
   variantes: Variant[];
+  hasDiscount?: boolean;
+  originalPrice?: number;
+  discountedPrice?: number;
+  appliedPromotion?: any;
 }
 
 interface PromotionDiscount {
@@ -158,6 +162,35 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
     
     try {
       const promotionKey = `${product.id_producto}-${variantId}-${quantity}`;
+      
+      // Si el producto ya tiene información de promociones desde la card, usarla
+      if (product.hasDiscount && product.originalPrice && product.discountedPrice) {
+        console.log('🎯 Using promotion data from card:', {
+          hasDiscount: product.hasDiscount,
+          originalPrice: product.originalPrice,
+          discountedPrice: product.discountedPrice
+        });
+        
+        // Calcular el porcentaje de descuento
+        const discountPercentage = Math.round(((product.originalPrice - product.discountedPrice) / product.originalPrice) * 100);
+        
+        const discount: PromotionDiscount = {
+          hasDiscount: true,
+          originalPrice: product.originalPrice,
+          discountedPrice: product.discountedPrice,
+          discountPercentage: discountPercentage,
+          promotionName: product.appliedPromotion?.nombre || 'Promoción activa'
+        };
+        
+        setPromotionDiscounts(prev => ({
+          ...prev,
+          [promotionKey]: discount
+        }));
+        
+        return;
+      }
+      
+      // Fallback: consultar API si no hay datos de promoción
       const discount = await calculatePromotionDiscount(product.id_producto, variantId, quantity);
       
       setPromotionDiscounts(prev => ({
@@ -194,10 +227,14 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
     const discount = promotionDiscounts[promotionKey];
     
     if (discount?.hasDiscount) {
+      // Aplicar el mismo porcentaje de descuento al precio específico de la talla
+      const discountMultiplier = 1 - (discount.discountPercentage / 100);
+      const finalPrice = parsePrice(precio) * discountMultiplier;
+      
       return {
-        finalPrice: discount.discountedPrice,
+        finalPrice: finalPrice,
         hasDiscount: true,
-        originalPrice: discount.originalPrice
+        originalPrice: parsePrice(precio)
       };
     }
     
@@ -290,8 +327,15 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                               .sort((a, b) => a - b);
                             
                             if (prices.length > 0) {
-                              const minPrice = prices[0];
-                              const maxPrice = prices[prices.length - 1];
+                              let minPrice = prices[0];
+                              let maxPrice = prices[prices.length - 1];
+                              
+                              // Aplicar descuento si existe promoción
+                              if (promotion?.hasDiscount) {
+                                const discountMultiplier = 1 - (promotion.discountPercentage / 100);
+                                minPrice = minPrice * discountMultiplier;
+                                maxPrice = maxPrice * discountMultiplier;
+                              }
                               
                               if (minPrice === maxPrice) {
                                 priceDisplay = formatPrice(minPrice);
@@ -301,18 +345,46 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                             }
                           } else {
                             // Fallback al precio general de la variante
-                            priceDisplay = formatPrice(variant.precio || 0);
+                            let basePrice = variant.precio || 0;
+                            if (promotion?.hasDiscount) {
+                              const discountMultiplier = 1 - (promotion.discountPercentage / 100);
+                              basePrice = basePrice * discountMultiplier;
+                            }
+                            priceDisplay = formatPrice(basePrice);
                           }
                           
-                          // Si hay promoción activa, mostrar precio con descuento
+                          // Si hay promoción activa, mostrar precio original tachado y precio con descuento
                           if (promotion?.hasDiscount) {
+                            // Calcular precio original para mostrar tachado
+                            const originalPriceDisplay = (() => {
+                              if (variantTallas && variantTallas.length > 0) {
+                                const originalPrices = variantTallas
+                                  .filter(t => t.precio && t.cantidad > 0)
+                                  .map(t => parsePrice(t.precio))
+                                  .filter(p => !isNaN(p) && p > 0)
+                                  .sort((a, b) => a - b);
+                                
+                                if (originalPrices.length > 0) {
+                                  const minOriginal = originalPrices[0];
+                                  const maxOriginal = originalPrices[originalPrices.length - 1];
+                                  
+                                  if (minOriginal === maxOriginal) {
+                                    return formatPrice(minOriginal);
+                                  } else {
+                                    return `${formatPrice(minOriginal)} - ${formatPrice(maxOriginal)}`;
+                                  }
+                                }
+                              }
+                              return formatPrice(variant.precio || 0);
+                            })();
+                            
                             return (
                               <>
                                 <p className="text-red-400 line-through text-xs">
-                                  {priceDisplay}
+                                  {originalPriceDisplay}
                                 </p>
                                 <p className="text-green-400 font-bold">
-                                  {formatPrice(promotion.discountedPrice)}
+                                  {priceDisplay}
                                 </p>
                                 <p className="text-yellow-400 text-xs">
                                   -{promotion.discountPercentage}% OFF

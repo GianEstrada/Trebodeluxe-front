@@ -28,6 +28,8 @@ interface Product {
   size: string;
   inStock: boolean;
   promotions?: Promotion[];
+  hasDiscount?: boolean;
+  appliedPromotion?: Promotion;
 }
 
 // Definir el tipo para las promociones
@@ -468,6 +470,21 @@ const HomeScreen: NextPage = () => {
           console.log('✅ Found valid variants, opening selector');
           // Asegurar que el producto tenga el array de variantes filtrado
           fullProduct.variantes = validVariantes;
+          
+          // IMPORTANTE: Transferir información de promociones desde la card al producto completo
+          if (product.hasDiscount || product.originalPrice > product.price) {
+            console.log('🎯 Transferring promotion data from card to full product');
+            fullProduct.hasDiscount = product.hasDiscount;
+            fullProduct.originalPrice = product.originalPrice;
+            fullProduct.discountedPrice = product.price;
+            fullProduct.appliedPromotion = product.appliedPromotion;
+            console.log('💰 Promotion data transferred:', {
+              hasDiscount: fullProduct.hasDiscount,
+              originalPrice: fullProduct.originalPrice,
+              discountedPrice: fullProduct.discountedPrice
+            });
+          }
+          
           handleOpenVariantSelector(fullProduct);
         } else {
           console.log('❌ No valid variants found');
