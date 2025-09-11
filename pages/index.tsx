@@ -425,7 +425,7 @@ const HomeScreen: NextPage = () => {
     if (showLoginDropdown && isAuthenticated && !recommendedProduct) {
       loadRandomProduct();
     }
-  }, [showLoginDropdown, isAuthenticated]);
+  }, [showLoginDropdown, isAuthenticated, promotions]);
 
   // Búsqueda en tiempo real
   useEffect(() => {
@@ -469,11 +469,26 @@ const HomeScreen: NextPage = () => {
   const loadRandomProduct = async () => {
     try {
       setLoadingRecommendation(true);
-      const response = await productsApi.getRecent(20) as any;
+      const response = await productsApi.getAll() as any;
       if (response.success && response.products && response.products.length > 0) {
-        const randomIndex = Math.floor(Math.random() * response.products.length);
-        const product = response.products[randomIndex];
-        setRecommendedProduct(product);
+        // Filtrar productos que tienen promociones
+        const productsWithPromotions = response.products.filter((product: any) => {
+          return promotions[product.id] && promotions[product.id].length > 0;
+        });
+        
+        // Si hay productos con promociones, usarlos; si no, usar todos los productos
+        const productsToChooseFrom = productsWithPromotions.length > 0 ? productsWithPromotions : response.products;
+        
+        const randomIndex = Math.floor(Math.random() * productsToChooseFrom.length);
+        const product = productsToChooseFrom[randomIndex];
+        
+        // Aplicar promociones si las hay
+        if (promotions[product.id] && promotions[product.id].length > 0) {
+          const updatedProduct = productUtils.applyPromotionDiscounts([product], promotions)[0];
+          setRecommendedProduct(updatedProduct);
+        } else {
+          setRecommendedProduct(product);
+        }
       }
     } catch (error) {
       console.error('Error cargando producto aleatorio:', error);
@@ -1052,8 +1067,8 @@ const HomeScreen: NextPage = () => {
                           </h4>
                           <div className="space-y-2 text-sm text-gray-300">
                             <div className="flex justify-between">
-                              <span>{t('Envío gratuito:')}</span>
-                              <span className="text-green-400">{t('Compras > $50')}</span>
+                              <span>{t('Envíos salen:')}</span>
+                              <span className="text-green-400">{t('Al día siguiente')}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>{t('Entrega estándar:')}</span>
@@ -1107,9 +1122,25 @@ const HomeScreen: NextPage = () => {
                                 <div className="flex-1 min-w-0">
                                   <h5 className="text-white text-sm font-medium truncate">{recommendedProduct.nombre}</h5>
                                   <p className="text-gray-300 text-xs line-clamp-2">{recommendedProduct.descripcion}</p>
-                                  <p className="text-green-400 text-sm font-medium mt-1">
-                                    ${recommendedProduct.precio?.toFixed(2) || '0.00'}
-                                  </p>
+                                  <div className="mt-1">
+                                    {recommendedProduct.hasDiscount ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-400 text-sm font-medium">
+                                          ${recommendedProduct.price?.toFixed(2) || '0.00'}
+                                        </span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          ${recommendedProduct.originalPrice?.toFixed(2) || '0.00'}
+                                        </span>
+                                        <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                          -{recommendedProduct.discountPercentage}%
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-green-400 text-sm font-medium">
+                                        ${recommendedProduct.precio?.toFixed(2) || recommendedProduct.price?.toFixed(2) || '0.00'}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
