@@ -1234,23 +1234,49 @@ const HomeScreen: NextPage = () => {
                                     {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
                                   </p>
                                   <div className="mt-1">
-                                    {recommendedProduct.hasDiscount ? (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-green-400 text-sm font-medium">
-                                          ${recommendedProduct.price?.toFixed(2) || '0.00'}
-                                        </span>
-                                        <span className="text-gray-400 text-xs line-through">
-                                          ${recommendedProduct.originalPrice?.toFixed(2) || '0.00'}
-                                        </span>
-                                        <span className="bg-red-500 text-white text-xs px-1 rounded">
-                                          -{recommendedProduct.discountPercentage}%
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-green-400 text-sm font-medium">
-                                        ${recommendedProduct.precio?.toFixed(2) || recommendedProduct.price?.toFixed(2) || '0.00'}
-                                      </span>
-                                    )}
+                                    {(() => {
+                                      // Obtener el precio base del producto
+                                      let basePrice = 0;
+                                      
+                                      // Buscar precio en diferentes estructuras
+                                      if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                        const firstVariant = recommendedProduct.variantes[0];
+                                        basePrice = firstVariant.precio || basePrice;
+                                      }
+                                      
+                                      // Si aún no hay precio, buscar en otros campos
+                                      if (basePrice === 0) {
+                                        basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                      }
+                                      
+                                      // Verificar si tiene descuento real
+                                      const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                            recommendedProduct.price && 
+                                                            recommendedProduct.originalPrice && 
+                                                            recommendedProduct.price < recommendedProduct.originalPrice;
+                                      
+                                      if (hasRealDiscount) {
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-green-400 text-sm font-medium">
+                                              {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="text-gray-400 text-xs line-through">
+                                              {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                              -{recommendedProduct.discountPercentage}%
+                                            </span>
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="text-green-400 text-sm font-medium">
+                                            {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                          </span>
+                                        );
+                                      }
+                                    })()}
                                   </div>
                                 </div>
                               </div>

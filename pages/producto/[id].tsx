@@ -237,6 +237,27 @@ const ProductPage: NextPage = () => {
             }));
           
           setRelatedProducts(relatedProducts);
+          
+          // Cargar promociones para productos relacionados
+          try {
+            const relatedPromotions: any = {};
+            for (const relatedProduct of relatedProducts) {
+              try {
+                const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.categoria_nombre);
+                if (promotionResponse && promotionResponse[relatedProduct.id_producto]) {
+                  relatedPromotions[relatedProduct.id_producto] = promotionResponse[relatedProduct.id_producto];
+                }
+              } catch (error) {
+                console.log(`Sin promociones para producto ${relatedProduct.id_producto}`);
+              }
+            }
+            
+            // Combinar promociones del producto actual con las de productos relacionados
+            setPromotions((prevPromotions: any) => ({ ...prevPromotions, ...relatedPromotions }));
+            console.log('🎯 Promociones cargadas para productos relacionados:', relatedPromotions);
+          } catch (error) {
+            console.error('Error cargando promociones para productos relacionados:', error);
+          }
         } else {
           // Si no hay productos por categoría específica, usar productos recientes generales
           const fallbackResponse = await productsApi.getRecent(8) as any;
@@ -255,6 +276,27 @@ const ProductPage: NextPage = () => {
               }));
             
             setRelatedProducts(fallbackProducts);
+            
+            // Cargar promociones para productos relacionados (fallback)
+            try {
+              const relatedPromotions: any = {};
+              for (const relatedProduct of fallbackProducts) {
+                try {
+                  const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.categoria_nombre);
+                  if (promotionResponse && promotionResponse[relatedProduct.id_producto]) {
+                    relatedPromotions[relatedProduct.id_producto] = promotionResponse[relatedProduct.id_producto];
+                  }
+                } catch (error) {
+                  console.log(`Sin promociones para producto ${relatedProduct.id_producto}`);
+                }
+              }
+              
+              // Combinar promociones del producto actual con las de productos relacionados
+              setPromotions((prevPromotions: any) => ({ ...prevPromotions, ...relatedPromotions }));
+              console.log('🎯 Promociones cargadas para productos relacionados (fallback):', relatedPromotions);
+            } catch (error) {
+              console.error('Error cargando promociones para productos relacionados (fallback):', error);
+            }
           }
         }
       } else {
@@ -1361,17 +1403,25 @@ const ProductPage: NextPage = () => {
                       
                       return (
                         <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl text-gray-400 line-through">
-                              {formatPrice(priceInfo.originalPrice)}
-                            </span>
-                            <span className="text-3xl font-bold text-green-400">
-                              {formatPrice(priceInfo.finalPrice)}
-                            </span>
-                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                              -{priceInfo.discountPercentage}% OFF
-                            </span>
-                          </div>
+                          {priceInfo.hasDiscount ? (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-2xl text-gray-400 line-through">
+                                {formatPrice(priceInfo.originalPrice)}
+                              </span>
+                              <span className="text-3xl font-bold text-green-400">
+                                {formatPrice(priceInfo.finalPrice)}
+                              </span>
+                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                                -{priceInfo.discountPercentage}% OFF
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-3xl font-bold text-green-400">
+                                {formatPrice(priceInfo.finalPrice)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     }
@@ -1392,23 +1442,34 @@ const ProductPage: NextPage = () => {
                       
                       return (
                         <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl text-gray-400 line-through">
-                              {minPrice === maxPrice 
-                                ? formatPrice(minPriceInfo.originalPrice)
-                                : `${formatPrice(minPriceInfo.originalPrice)} - ${formatPrice(maxPriceInfo.originalPrice)}`
-                              }
-                            </span>
-                            <span className="text-3xl font-bold text-green-400">
-                              {minPrice === maxPrice 
-                                ? formatPrice(minPriceInfo.finalPrice) 
-                                : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
-                              }
-                            </span>
-                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                              -{minPriceInfo.discountPercentage}% OFF
-                            </span>
-                          </div>
+                          {minPriceInfo.hasDiscount || maxPriceInfo.hasDiscount ? (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-2xl text-gray-400 line-through">
+                                {minPrice === maxPrice 
+                                  ? formatPrice(minPriceInfo.originalPrice)
+                                  : `${formatPrice(minPriceInfo.originalPrice)} - ${formatPrice(maxPriceInfo.originalPrice)}`
+                                }
+                              </span>
+                              <span className="text-3xl font-bold text-green-400">
+                                {minPrice === maxPrice 
+                                  ? formatPrice(minPriceInfo.finalPrice) 
+                                  : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
+                                }
+                              </span>
+                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                                -{minPriceInfo.discountPercentage}% OFF
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-3xl font-bold text-green-400">
+                                {minPrice === maxPrice 
+                                  ? formatPrice(minPriceInfo.finalPrice) 
+                                  : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
+                                }
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     }
@@ -1420,17 +1481,25 @@ const ProductPage: NextPage = () => {
                     
                     return (
                       <div className="flex flex-col">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-2xl text-gray-400 line-through">
-                            {formatPrice(priceInfo.originalPrice)}
-                          </span>
-                          <span className="text-3xl font-bold text-green-400">
-                            {formatPrice(priceInfo.finalPrice)}
-                          </span>
-                          <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                            -{priceInfo.discountPercentage}% OFF
-                          </span>
-                        </div>
+                        {priceInfo.hasDiscount ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-2xl text-gray-400 line-through">
+                              {formatPrice(priceInfo.originalPrice)}
+                            </span>
+                            <span className="text-3xl font-bold text-green-400">
+                              {formatPrice(priceInfo.finalPrice)}
+                            </span>
+                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                              -{priceInfo.discountPercentage}% OFF
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-3xl font-bold text-green-400">
+                              {formatPrice(priceInfo.finalPrice)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   }
@@ -1534,16 +1603,24 @@ const ProductPage: NextPage = () => {
                 // Obtener la primera imagen de la primera variante
                 const firstImage = firstVariant.imagenes?.[0]?.url || '/sin-ttulo1-2@2x.png';
                 
-                // Calcular descuento si existe
-                const discount = firstVariant.descuento_porcentaje || 0;
+                // Aplicar promociones reales de la BD (similar al index)
+                const productPromotions = promotions[product.id_producto];
+                let finalPrice = firstVariant.precio || 0;
+                let originalPrice = firstVariant.precio || 0;
+                let hasRealDiscount = false;
+                let discountPercentage = 0;
+                
+                if (productPromotions && productPromotions.length > 0 && originalPrice > 0) {
+                  const promotion = productPromotions[0];
+                  if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento > 0) {
+                    discountPercentage = promotion.porcentaje_descuento;
+                    finalPrice = originalPrice * (1 - discountPercentage / 100);
+                    hasRealDiscount = true;
+                  }
+                }
                 
                 // Verificar si tiene stock
                 const hasStock = firstVariant.stock_total > 0;
-                
-                // Calcular precio original si hay descuento
-                const originalPrice = discount > 0 && firstVariant.precio 
-                  ? (firstVariant.precio / (1 - discount / 100)) 
-                  : firstVariant.precio;
 
                 return (
                   <Link 
@@ -1562,9 +1639,9 @@ const ProductPage: NextPage = () => {
                           target.src = '/sin-ttulo1-2@2x.png';
                         }}
                       />
-                      {discount > 0 && (
+                      {hasRealDiscount && (
                         <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
-                          -{discount}%
+                          -{discountPercentage}%
                         </div>
                       )}
                       {!hasStock && (
@@ -1587,12 +1664,12 @@ const ProductPage: NextPage = () => {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        {firstVariant.precio && (
+                        {finalPrice > 0 && (
                           <>
                             <span className="text-green-400 font-bold text-lg">
-                              {formatPrice(firstVariant.precio)}
+                              {formatPrice(finalPrice)}
                             </span>
-                            {discount > 0 && originalPrice && (
+                            {hasRealDiscount && originalPrice > finalPrice && (
                               <span className="text-gray-400 line-through text-sm">
                                 {formatPrice(originalPrice)}
                               </span>
