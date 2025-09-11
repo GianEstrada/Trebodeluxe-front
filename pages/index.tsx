@@ -424,10 +424,19 @@ const HomeScreen: NextPage = () => {
 
   // Cargar producto aleatorio cuando se abre el dropdown del perfil
   useEffect(() => {
-    if (showLoginDropdown && isAuthenticated && !recommendedProduct) {
+    if (showLoginDropdown && isAuthenticated) {
+      console.log('🔄 useEffect disparado - cargando producto recomendado');
       loadRandomProduct();
     }
-  }, [showLoginDropdown, isAuthenticated, promotions]);
+  }, [showLoginDropdown, isAuthenticated]);
+
+  // Recargar producto cuando cambien las promociones
+  useEffect(() => {
+    if (showLoginDropdown && isAuthenticated && recommendedProduct && Object.keys(promotions).length > 0) {
+      console.log('🔄 Promociones actualizadas - recargando producto');
+      loadRandomProduct();
+    }
+  }, [promotions]);
 
   // Búsqueda en tiempo real
   useEffect(() => {
@@ -473,31 +482,40 @@ const HomeScreen: NextPage = () => {
   const loadRandomProduct = async () => {
     try {
       setLoadingRecommendation(true);
-      const response = await productsApi.getAll() as any;
+      console.log('🔍 Iniciando carga de producto recomendado...');
+      
+      // Usar getRecent que suele ser más confiable
+      const response = await productsApi.getRecent(50) as any;
+      console.log('📦 Respuesta getRecent:', response);
+      
       if (response.success && response.products && response.products.length > 0) {
-        // Solo filtrar productos que tienen promociones activas
-        const productsWithPromotions = response.products.filter((product: any) => {
-          return promotions[product.id] && promotions[product.id].length > 0;
-        });
+        console.log('🎯 Productos encontrados:', response.products.length);
+        console.log('💰 Estado de promociones:', Object.keys(promotions).length > 0 ? 'Cargadas' : 'No cargadas');
         
-        // Solo continuar si hay productos con promociones
-        if (productsWithPromotions.length > 0) {
-          const randomIndex = Math.floor(Math.random() * productsWithPromotions.length);
-          const product = productsWithPromotions[randomIndex];
-          
-          // Aplicar promociones
-          const updatedProduct = productUtils.applyPromotionDiscounts([product], promotions)[0];
-          setRecommendedProduct(updatedProduct);
-        } else {
-          // No hay productos con promociones
-          setRecommendedProduct(null);
+        // Seleccionar un producto aleatorio
+        const randomIndex = Math.floor(Math.random() * response.products.length);
+        let selectedProduct = response.products[randomIndex];
+        console.log('� Producto base seleccionado:', selectedProduct);
+        
+        // Si hay promociones disponibles, aplicarlas
+        if (Object.keys(promotions).length > 0 && promotions[selectedProduct.id]) {
+          console.log('✅ Aplicando promociones al producto:', selectedProduct.id);
+          selectedProduct = productUtils.applyPromotionDiscounts([selectedProduct], promotions)[0];
+          console.log('💸 Producto con promoción aplicada:', selectedProduct);
         }
+        
+        setRecommendedProduct(selectedProduct);
+        console.log('✅ Producto recomendado establecido exitosamente');
+      } else {
+        console.log('❌ No se encontraron productos en la respuesta');
+        setRecommendedProduct(null);
       }
     } catch (error) {
-      console.error('Error cargando producto aleatorio:', error);
+      console.error('❌ Error completo cargando producto:', error);
       setRecommendedProduct(null);
     } finally {
       setLoadingRecommendation(false);
+      console.log('🏁 Finalizó la carga del producto recomendado');
     }
   };
 
@@ -1109,19 +1127,41 @@ const HomeScreen: NextPage = () => {
                             >
                               <div className="flex gap-3">
                                 <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
-                                  {recommendedProduct.imagenes && recommendedProduct.imagenes.length > 0 ? (
-                                    <img 
-                                      src={recommendedProduct.imagenes[0].url} 
-                                      alt={recommendedProduct.nombre}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-500 flex items-center justify-center">
-                                      <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    // Buscar imagen en diferentes estructuras
+                                    let imageUrl = null;
+                                    
+                                    if (recommendedProduct.imagenes && recommendedProduct.imagenes.length > 0) {
+                                      imageUrl = recommendedProduct.imagenes[0].url;
+                                    } else if (recommendedProduct.images && recommendedProduct.images.length > 0) {
+                                      imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                    } else if (recommendedProduct.imagen_url) {
+                                      imageUrl = recommendedProduct.imagen_url;
+                                    } else if (recommendedProduct.image) {
+                                      imageUrl = recommendedProduct.image;
+                                    }
+                                    
+                                    console.log('🖼️ Imagen del producto:', imageUrl);
+                                    console.log('📷 Estructura de imágenes:', recommendedProduct.imagenes || recommendedProduct.images);
+                                    
+                                    return imageUrl ? (
+                                      <img 
+                                        src={imageUrl} 
+                                        alt={recommendedProduct.nombre}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          console.log('❌ Error cargando imagen:', imageUrl);
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h5 className="text-white text-sm font-medium truncate">{recommendedProduct.nombre}</h5>
@@ -1153,7 +1193,12 @@ const HomeScreen: NextPage = () => {
                               <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                               </svg>
-                              <p className="text-gray-400 text-sm">{t('No hay productos en promoción disponibles')}</p>
+                              <p className="text-gray-400 text-sm">
+                                {Object.keys(promotions).length === 0 
+                                  ? t('Cargando productos...')
+                                  : t('No hay productos en promoción disponibles')
+                                }
+                              </p>
                             </div>
                           )}
                         </div>
