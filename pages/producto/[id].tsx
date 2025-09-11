@@ -141,16 +141,10 @@ const ProductPage: NextPage = () => {
 
   // Helper function para aplicar promociones a un precio
   const applyPromotion = (precio: number, varianteId: number) => {
-    console.log('🔍 applyPromotion called with:', { precio, varianteId, productId: productData?.id_producto });
-    
     // Buscar promociones específicas para este producto
     const productPromotions = productData?.id_producto ? promotions[productData.id_producto] : null;
     
-    console.log('📊 Promociones encontradas:', productPromotions);
-    console.log('🗂️ Estado completo de promociones:', promotions);
-    
     if (!productPromotions || productPromotions.length === 0) {
-      console.log('❌ No hay promociones para este producto');
       // Sin promociones - mostrar precio normal
       return {
         finalPrice: precio,
@@ -165,18 +159,10 @@ const ProductPage: NextPage = () => {
     let discountedPrice = precio;
     let discountPercentage = 0;
     
-    console.log('🎯 Aplicando promoción:', promotion);
-    
     if (promotion.tipo === 'porcentaje' && promotion.porcentaje_descuento > 0) {
       discountPercentage = promotion.porcentaje_descuento;
       const discount = discountPercentage / 100;
       discountedPrice = precio * (1 - discount);
-      
-      console.log('💰 Cálculo de precio:', {
-        precioOriginal: precio,
-        descuentoPorcentaje: discountPercentage,
-        precioConDescuento: discountedPrice
-      });
     }
     
     const result = {
@@ -187,7 +173,6 @@ const ProductPage: NextPage = () => {
       promotion
     };
     
-    console.log('✅ Resultado de applyPromotion:', result);
     return result;
   };
 
@@ -239,10 +224,6 @@ const ProductPage: NextPage = () => {
           if (promotionsResponse && promotionsResponse.success && promotionsResponse.promotions) {
             setPromotions({ [product.id_producto]: promotionsResponse.promotions });
             console.log('🎯 Promociones cargadas correctamente:', promotionsResponse.promotions);
-          } else if (promotionsResponse && promotionsResponse[product.id_producto]) {
-            // Fallback al formato anterior
-            setPromotions({ [product.id_producto]: promotionsResponse[product.id_producto] });
-            console.log('🎯 Promociones cargadas con formato alternativo:', promotionsResponse[product.id_producto]);
           } else {
             setPromotions({});
             console.log('ℹ️ No hay promociones para este producto - estructura no reconocida');
