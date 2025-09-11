@@ -76,6 +76,14 @@ const HomeScreen: NextPage = () => {
   const [showVariantSelector, setShowVariantSelector] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   
+  // Estados para perfil personalizado
+  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  
+  // Estados para búsqueda mejorada
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const loginDropdownRef = useRef<HTMLDivElement>(null);
@@ -412,6 +420,26 @@ const HomeScreen: NextPage = () => {
     return () => clearInterval(interval);
   }, [promoTexts.length]);
 
+  // Cargar producto aleatorio cuando se abre el dropdown del perfil
+  useEffect(() => {
+    if (showLoginDropdown && isAuthenticated && !recommendedProduct) {
+      loadRandomProduct();
+    }
+  }, [showLoginDropdown, isAuthenticated]);
+
+  // Búsqueda en tiempo real
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm && showSearchDropdown) {
+        searchProducts(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, showSearchDropdown]);
+
   // Función para cambiar manualmente el texto
   const handleDotClick = (index: number) => {
     if (index !== currentTextIndex) {
@@ -434,6 +462,48 @@ const HomeScreen: NextPage = () => {
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  // Función para cargar producto aleatorio
+  const loadRandomProduct = async () => {
+    try {
+      setLoadingRecommendation(true);
+      const response = await productsApi.getRecent(20) as any;
+      if (response.success && response.products && response.products.length > 0) {
+        const randomIndex = Math.floor(Math.random() * response.products.length);
+        const product = response.products[randomIndex];
+        setRecommendedProduct(product);
+      }
+    } catch (error) {
+      console.error('Error cargando producto aleatorio:', error);
+    } finally {
+      setLoadingRecommendation(false);
+    }
+  };
+
+  // Función para buscar productos en tiempo real
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      const response = await productsApi.getAll() as any;
+      if (response.success && response.products && response.products.length > 0) {
+        const filtered = response.products.filter((product: any) =>
+          product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
+          product.descripcion?.toLowerCase().includes(query.toLowerCase())
+        );
+        setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+      }
+    } catch (error) {
+      console.error('Error buscando productos:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -972,25 +1042,80 @@ const HomeScreen: NextPage = () => {
                           <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                         </div>
                         
-                        <div className="space-y-3 mb-6">
-                          <Link 
-                            href="/profile"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
+                        {/* Información de Envío */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-4">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            {t('Mi perfil')}
-                          </Link>
-                          <Link 
-                            href="/orders"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
+                            {t('Información de Envío')}
+                          </h4>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <div className="flex justify-between">
+                              <span>{t('Envío gratuito:')}</span>
+                              <span className="text-green-400">{t('Compras > $50')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega estándar:')}</span>
+                              <span>{t('3-5 días')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega express:')}</span>
+                              <span>{t('24-48 horas')}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recomendación de Producto */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-6">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            {t('Mis pedidos')}
-                          </Link>
+                            {t('Producto Recomendado')}
+                          </h4>
+                          {loadingRecommendation ? (
+                            <div className="animate-pulse">
+                              <div className="bg-white/20 h-20 rounded mb-2"></div>
+                              <div className="bg-white/20 h-4 rounded mb-1"></div>
+                              <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                            </div>
+                          ) : recommendedProduct ? (
+                            <div 
+                              className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                              onClick={() => {
+                                window.location.href = `/producto/${recommendedProduct.id}`;
+                                setShowLoginDropdown(false);
+                              }}
+                            >
+                              <div className="flex gap-3">
+                                <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                                  {recommendedProduct.imagenes && recommendedProduct.imagenes.length > 0 ? (
+                                    <img 
+                                      src={recommendedProduct.imagenes[0].url} 
+                                      alt={recommendedProduct.nombre}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                      <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-white text-sm font-medium truncate">{recommendedProduct.nombre}</h5>
+                                  <p className="text-gray-300 text-xs line-clamp-2">{recommendedProduct.descripcion}</p>
+                                  <p className="text-green-400 text-sm font-medium mt-1">
+                                    ${recommendedProduct.precio?.toFixed(2) || '0.00'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-gray-400 text-sm">{t('No se pudo cargar la recomendación')}</p>
+                          )}
                         </div>
                         
                         <button 
@@ -1061,70 +1186,145 @@ const HomeScreen: NextPage = () => {
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('BÚSQUEDA')}</h3>
-                        <p className="text-gray-300 text-sm">{t('Encuentra los productos que buscas')}</p>
+                      <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onKeyPress={handleSearchKeyPress}
+                          placeholder={t('¿Qué estás buscando?')}
+                          className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                        />
+                        <button 
+                          onClick={handleSearch}
+                          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          {t('Buscar')}
+                        </button>
                       </div>
                       
-                      <div className="space-y-4">
-                        <div className="flex justify-center">
-                          <input
-                            type="text"
-                            placeholder={t('¿Qué estás buscando?')}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={handleSearchKeyPress}
-                            className="w-4/5 bg-white/20 border border-white/30 rounded-lg py-3 px-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
-                          />
+                      {/* Resultados de búsqueda */}
+                      {searchTerm && (
+                        <div className="mt-4">
+                          {searchLoading ? (
+                            <div className="space-y-3">
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse flex gap-3">
+                                  <div className="w-12 h-12 bg-white/20 rounded"></div>
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-white/20 rounded mb-2"></div>
+                                    <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : searchResults.length > 0 ? (
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {searchResults.map((product) => (
+                                <div
+                                  key={product.id}
+                                  className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                                  onClick={() => {
+                                    window.location.href = `/producto/${product.id}`;
+                                    setShowSearchDropdown(false);
+                                    setSearchTerm('');
+                                  }}
+                                >
+                                  <div className="flex gap-3">
+                                    <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                      {product.imagenes && product.imagenes.length > 0 ? (
+                                        <img 
+                                          src={product.imagenes[0].url} 
+                                          alt={product.nombre}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                          <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                          </svg>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
+                                      <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                      <p className="text-green-400 text-sm font-medium">
+                                        ${product.precio?.toFixed(2) || '0.00'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="pt-2 border-t border-white/20">
+                                <button
+                                  onClick={handleSearch}
+                                  className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                                >
+                                  {t('Ver todos los resultados')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex justify-center">
-                          <button 
-                            onClick={handleSearch}
-                            className="w-4/5 bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            {t('Buscar')}
-                          </button>
-                        </div>
-                      </div>
+                      )}
                       
-                      <div className="mt-8 pt-6 border-t border-white/20">
-                        <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Camisas'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Camisas')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Pantalones'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Pantalones')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Vestidos'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Vestidos')}
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/catalogo?busqueda=Zapatos'}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Zapatos')}
-                          </button>
+                      {!searchTerm && (
+                        <div className="mt-4">
+                          <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            <button 
+                              onClick={() => {
+                                setSearchTerm('Camisas');
+                                window.location.href = '/catalogo?busqueda=Camisas';
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Camisas')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSearchTerm('Pantalones');
+                                window.location.href = '/catalogo?busqueda=Pantalones';
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Pantalones')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSearchTerm('Vestidos');
+                                window.location.href = '/catalogo?busqueda=Vestidos';
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Vestidos')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSearchTerm('Zapatos');
+                                window.location.href = '/catalogo?busqueda=Zapatos';
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Zapatos')}
+                            </button>
+                          </div>
+                          <div className="mt-6 pt-4 border-t border-white/20">
+                            <p className="text-gray-300 text-sm">
+                              {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-auto p-6 border-t border-white/20">
-                      <p className="text-gray-300 text-xs text-center">
-                        {t('Utiliza filtros para encontrar exactamente lo que necesitas.')}
-                      </p>
+                      )}
                     </div>
                   </div>
                 </div>
