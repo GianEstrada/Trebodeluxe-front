@@ -46,6 +46,7 @@ interface ProductData {
   nombre: string;
   descripcion: string;
   categoria_nombre: string;
+  id_categoria: number;
   marca: string;
   sistema_talla_nombre?: string;
   variantes: Variante[];
@@ -199,6 +200,7 @@ const ProductPage: NextPage = () => {
           nombre: product.nombre,
           descripcion: product.descripcion,
           categoria_nombre: product.categoria_nombre,
+          id_categoria: product.id_categoria,
           marca: product.marca,
           sistema_talla_nombre: product.sistema_talla_nombre,
           variantes: product.variantes || [],
@@ -209,8 +211,8 @@ const ProductPage: NextPage = () => {
         
         // Cargar promociones para este producto específico
         try {
-          console.log('🔄 Iniciando carga de promociones para producto:', product.id_producto, 'categoría:', product.categoria_nombre);
-          const promotionsResponse = await (promotionsApi as any).getPromotionsForProduct(product.id_producto, product.categoria_nombre);
+          console.log('🔄 Iniciando carga de promociones para producto:', product.id_producto, 'categoría ID:', product.id_categoria);
+          const promotionsResponse = await (promotionsApi as any).getPromotionsForProduct(product.id_producto, product.id_categoria);
           
           console.log('📡 Respuesta completa de promociones:', promotionsResponse);
           console.log('📊 Estructura de respuesta:', {
@@ -244,6 +246,7 @@ const ProductPage: NextPage = () => {
               nombre: p.nombre,
               descripcion: p.descripcion,
               categoria_nombre: p.categoria_nombre,
+              id_categoria: p.id_categoria,
               marca: p.marca,
               variantes: p.variantes || [],
               tallas_disponibles: p.tallas_disponibles || []
@@ -256,9 +259,9 @@ const ProductPage: NextPage = () => {
             const relatedPromotions: any = {};
             for (const relatedProduct of relatedProducts) {
               try {
-                const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.categoria_nombre);
-                if (promotionResponse && promotionResponse[relatedProduct.id_producto]) {
-                  relatedPromotions[relatedProduct.id_producto] = promotionResponse[relatedProduct.id_producto];
+                const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.id_categoria);
+                if (promotionResponse && promotionResponse.success && promotionResponse.promotions) {
+                  relatedPromotions[relatedProduct.id_producto] = promotionResponse.promotions;
                 }
               } catch (error) {
                 console.log(`Sin promociones para producto ${relatedProduct.id_producto}`);
@@ -283,6 +286,7 @@ const ProductPage: NextPage = () => {
                 nombre: p.nombre,
                 descripcion: p.descripcion,
                 categoria_nombre: p.categoria_nombre,
+                id_categoria: p.id_categoria,
                 marca: p.marca,
                 variantes: p.variantes || [],
                 tallas_disponibles: p.tallas_disponibles || []
@@ -295,9 +299,9 @@ const ProductPage: NextPage = () => {
               const relatedPromotions: any = {};
               for (const relatedProduct of fallbackProducts) {
                 try {
-                  const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.categoria_nombre);
-                  if (promotionResponse && promotionResponse[relatedProduct.id_producto]) {
-                    relatedPromotions[relatedProduct.id_producto] = promotionResponse[relatedProduct.id_producto];
+                  const promotionResponse = await (promotionsApi as any).getPromotionsForProduct(relatedProduct.id_producto, relatedProduct.id_categoria);
+                  if (promotionResponse && promotionResponse.success && promotionResponse.promotions) {
+                    relatedPromotions[relatedProduct.id_producto] = promotionResponse.promotions;
                   }
                 } catch (error) {
                   console.log(`Sin promociones para producto ${relatedProduct.id_producto}`);
