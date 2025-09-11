@@ -56,6 +56,22 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [variantStock, setVariantStock] = useState<{[variantId: number]: Talla[]}>({});
 
+  // Helper function para convertir precios de manera segura
+  const parsePrice = (price: any): number => {
+    if (typeof price === 'number') return price;
+    if (typeof price === 'string') {
+      const parsed = parseFloat(price);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  // Helper function para formatear precios
+  const formatPrice = (price: any): string => {
+    const numPrice = parsePrice(price);
+    return `$${numPrice.toFixed(2)}`;
+  };
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen && product?.variantes?.length > 0) {
@@ -183,7 +199,8 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                           if (variantTallas && variantTallas.length > 0) {
                             const prices = variantTallas
                               .filter(t => t.precio && t.cantidad > 0)
-                              .map(t => t.precio)
+                              .map(t => parsePrice(t.precio))
+                              .filter(p => !isNaN(p) && p > 0)
                               .sort((a, b) => a - b);
                             
                             if (prices.length > 0) {
@@ -191,15 +208,15 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                               const maxPrice = prices[prices.length - 1];
                               
                               if (minPrice === maxPrice) {
-                                return `$${minPrice.toFixed(2)}`;
+                                return formatPrice(minPrice);
                               } else {
-                                return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+                                return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
                               }
                             }
                           }
                           
                           // Fallback al precio general de la variante
-                          return `$${variant.precio?.toFixed(2) || 'N/A'}`;
+                          return formatPrice(variant.precio || 0);
                         })()}
                       </p>
                     </div>
@@ -233,7 +250,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                     </p>
                     {talla.precio && talla.cantidad > 0 && (
                       <p className="text-green-400 text-xs font-bold mt-1">
-                        ${talla.precio.toFixed(2)}
+                        {formatPrice(talla.precio)}
                       </p>
                     )}
                   </button>
@@ -275,7 +292,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">{t('Total')}:</span>
                 <span className="text-green-400 font-bold text-lg">
-                  ${(selectedTalla.precio * quantity).toFixed(2)}
+                  {formatPrice(parsePrice(selectedTalla.precio) * quantity)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm mt-2">
@@ -283,7 +300,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                   {selectedTalla.nombre_talla} × {quantity}
                 </span>
                 <span className="text-gray-300">
-                  ${selectedTalla.precio.toFixed(2)} c/u
+                  {formatPrice(selectedTalla.precio)} c/u
                 </span>
               </div>
             </div>
