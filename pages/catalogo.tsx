@@ -1460,7 +1460,23 @@ const Catalogo: NextPage = () => {
                                   <h4 className="text-white font-medium truncate">{item.name}</h4>
                                   <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-white font-bold">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
+                                    {item.hasDiscount ? (
+                                      <div className="flex flex-col">
+                                        <span className="text-xs text-red-400 line-through">
+                                          {formatPrice(item.price, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-white font-bold">
+                                          {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-xs text-yellow-400">
+                                          -{item.discountPercentage}% OFF
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-white font-bold">
+                                        {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                      </span>
+                                    )}
                                     <div className="flex items-center gap-2">
                                       <button 
                                         onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}

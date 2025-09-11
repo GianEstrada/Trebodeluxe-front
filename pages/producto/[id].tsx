@@ -137,6 +137,29 @@ const ProductPage: NextPage = () => {
     setQuantity(1);
   }, [selectedVariant, selectedSize]);
 
+  // Helper function para aplicar promociones a un precio
+  const applyPromotion = (precio: number, variante: Variante) => {
+    // Verificar si hay promoción activa (30% de descuento)
+    if (variante?.precio_original && variante.precio_original > precio) {
+      const discountPercentage = Math.round(((variante.precio_original - precio) / variante.precio_original) * 100);
+      return {
+        finalPrice: precio,
+        originalPrice: variante.precio_original,
+        hasDiscount: true,
+        discountPercentage
+      };
+    }
+    
+    // Si no hay promoción, aplicar descuento estándar del 30%
+    const originalPrice = precio / 0.7; // Calcular precio original asumiendo 30% descuento
+    return {
+      finalPrice: precio,
+      originalPrice: originalPrice,
+      hasDiscount: true,
+      discountPercentage: 30
+    };
+  };
+
   // 🔥 NUEVO: Cargar stock cuando se seleccione una variante (SOLUCIÓN AL PROBLEMA)
   useEffect(() => {
     if (selectedVariant) {
@@ -1304,34 +1327,24 @@ const ProductPage: NextPage = () => {
                   // Si hay una talla seleccionada, usar su precio específico
                   if (selectedSize && variantStock) {
                     const sizeWithPrice = variantStock.find(s => s.id_talla === selectedSize.id_talla);
-                    if (sizeWithPrice && sizeWithPrice.precio) {
-                      // Verificar si la variante tiene promoción
-                      const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > sizeWithPrice.precio;
+                    if (sizeWithPrice && sizeWithPrice.precio && selectedVariant) {
+                      const priceInfo = applyPromotion(sizeWithPrice.precio, selectedVariant);
                       
-                      if (hasPromotion && selectedVariant.precio_original) {
-                        const discountPercentage = Math.round(((selectedVariant.precio_original - sizeWithPrice.precio) / selectedVariant.precio_original) * 100);
-                        return (
-                          <div className="flex flex-col">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-2xl text-gray-400 line-through">
-                                {formatPrice(selectedVariant.precio_original)}
-                              </span>
-                              <span className="text-3xl font-bold text-green-400">
-                                {formatPrice(sizeWithPrice.precio)}
-                              </span>
-                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                                -{discountPercentage}% OFF
-                              </span>
-                            </div>
+                      return (
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-2xl text-gray-400 line-through">
+                              {formatPrice(priceInfo.originalPrice)}
+                            </span>
+                            <span className="text-3xl font-bold text-green-400">
+                              {formatPrice(priceInfo.finalPrice)}
+                            </span>
+                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                              -{priceInfo.discountPercentage}% OFF
+                            </span>
                           </div>
-                        );
-                      } else {
-                        return (
-                          <span className="text-3xl font-bold text-green-400">
-                            {formatPrice(sizeWithPrice.precio)}
-                          </span>
-                        );
-                      }
+                        </div>
+                      );
                     }
                   }
                   
@@ -1345,65 +1358,52 @@ const ProductPage: NextPage = () => {
                     if (prices.length > 0) {
                       const minPrice = prices[0];
                       const maxPrice = prices[prices.length - 1];
+                      const minPriceInfo = applyPromotion(minPrice, selectedVariant);
+                      const maxPriceInfo = applyPromotion(maxPrice, selectedVariant);
                       
-                      // Verificar si hay promoción
-                      const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > minPrice;
-                      
-                      if (hasPromotion && selectedVariant.precio_original) {
-                        const discountPercentage = Math.round(((selectedVariant.precio_original - minPrice) / selectedVariant.precio_original) * 100);
-                        return (
-                          <div className="flex flex-col">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-2xl text-gray-400 line-through">
-                                {formatPrice(selectedVariant.precio_original)}
-                              </span>
-                              <span className="text-3xl font-bold text-green-400">
-                                {minPrice === maxPrice ? formatPrice(minPrice) : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`}
-                              </span>
-                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                                -{discountPercentage}% OFF
-                              </span>
-                            </div>
+                      return (
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-2xl text-gray-400 line-through">
+                              {minPrice === maxPrice 
+                                ? formatPrice(minPriceInfo.originalPrice)
+                                : `${formatPrice(minPriceInfo.originalPrice)} - ${formatPrice(maxPriceInfo.originalPrice)}`
+                              }
+                            </span>
+                            <span className="text-3xl font-bold text-green-400">
+                              {minPrice === maxPrice 
+                                ? formatPrice(minPriceInfo.finalPrice) 
+                                : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
+                              }
+                            </span>
+                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                              -{minPriceInfo.discountPercentage}% OFF
+                            </span>
                           </div>
-                        );
-                      } else {
-                        return (
-                          <span className="text-3xl font-bold text-green-400">
-                            {minPrice === maxPrice ? formatPrice(minPrice) : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`}
-                          </span>
-                        );
-                      }
+                        </div>
+                      );
                     }
                   }
                   
                   // Fallback al precio general de la variante
                   if (selectedVariant && selectedVariant.precio) {
-                    const hasPromotion = selectedVariant?.precio_original && selectedVariant.precio_original > selectedVariant.precio;
+                    const priceInfo = applyPromotion(selectedVariant.precio, selectedVariant);
                     
-                    if (hasPromotion && selectedVariant.precio_original) {
-                      const discountPercentage = Math.round(((selectedVariant.precio_original - selectedVariant.precio) / selectedVariant.precio_original) * 100);
-                      return (
-                        <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl text-gray-400 line-through">
-                              {formatPrice(selectedVariant.precio_original)}
-                            </span>
-                            <span className="text-3xl font-bold text-green-400">
-                              {formatPrice(selectedVariant.precio)}
-                            </span>
-                            <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
-                              -{discountPercentage}% OFF
-                            </span>
-                          </div>
+                    return (
+                      <div className="flex flex-col">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl text-gray-400 line-through">
+                            {formatPrice(priceInfo.originalPrice)}
+                          </span>
+                          <span className="text-3xl font-bold text-green-400">
+                            {formatPrice(priceInfo.finalPrice)}
+                          </span>
+                          <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                            -{priceInfo.discountPercentage}% OFF
+                          </span>
                         </div>
-                      );
-                    } else {
-                      return (
-                        <span className="text-3xl font-bold text-green-400">
-                          {formatPrice(selectedVariant.precio)}
-                        </span>
-                      );
-                    }
+                      </div>
+                    );
                   }
                   
                   return 'Precio no disponible';
