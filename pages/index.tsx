@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState, useEffect, useRef } from "react";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
@@ -94,6 +95,7 @@ const HomeScreen: NextPage = () => {
   // Usar el hook de traducción universal y autenticación
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   
   // Usar el carrito integrado con la base de datos
   const { items: cartItems, totalItems, totalFinal, removeFromCart, updateQuantity, clearCart, isLoading, addToCart } = useCart();
@@ -455,7 +457,9 @@ const HomeScreen: NextPage = () => {
   // Función para manejar la búsqueda
   const handleSearch = () => {
     if (searchTerm.trim()) {
-      window.location.href = `/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`;
+      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
+      setShowSearchDropdown(false);
+      setSearchTerm('');
     }
   };
 
@@ -471,27 +475,27 @@ const HomeScreen: NextPage = () => {
       setLoadingRecommendation(true);
       const response = await productsApi.getAll() as any;
       if (response.success && response.products && response.products.length > 0) {
-        // Filtrar productos que tienen promociones
+        // Solo filtrar productos que tienen promociones activas
         const productsWithPromotions = response.products.filter((product: any) => {
           return promotions[product.id] && promotions[product.id].length > 0;
         });
         
-        // Si hay productos con promociones, usarlos; si no, usar todos los productos
-        const productsToChooseFrom = productsWithPromotions.length > 0 ? productsWithPromotions : response.products;
-        
-        const randomIndex = Math.floor(Math.random() * productsToChooseFrom.length);
-        const product = productsToChooseFrom[randomIndex];
-        
-        // Aplicar promociones si las hay
-        if (promotions[product.id] && promotions[product.id].length > 0) {
+        // Solo continuar si hay productos con promociones
+        if (productsWithPromotions.length > 0) {
+          const randomIndex = Math.floor(Math.random() * productsWithPromotions.length);
+          const product = productsWithPromotions[randomIndex];
+          
+          // Aplicar promociones
           const updatedProduct = productUtils.applyPromotionDiscounts([product], promotions)[0];
           setRecommendedProduct(updatedProduct);
         } else {
-          setRecommendedProduct(product);
+          // No hay productos con promociones
+          setRecommendedProduct(null);
         }
       }
     } catch (error) {
       console.error('Error cargando producto aleatorio:', error);
+      setRecommendedProduct(null);
     } finally {
       setLoadingRecommendation(false);
     }
@@ -1099,7 +1103,7 @@ const HomeScreen: NextPage = () => {
                             <div 
                               className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
                               onClick={() => {
-                                window.location.href = `/producto/${recommendedProduct.id}`;
+                                router.push(`/producto/${recommendedProduct.id}`);
                                 setShowLoginDropdown(false);
                               }}
                             >
@@ -1145,7 +1149,12 @@ const HomeScreen: NextPage = () => {
                               </div>
                             </div>
                           ) : (
-                            <p className="text-gray-400 text-sm">{t('No se pudo cargar la recomendación')}</p>
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">{t('No hay productos en promoción disponibles')}</p>
+                            </div>
                           )}
                         </div>
                         
@@ -1257,7 +1266,7 @@ const HomeScreen: NextPage = () => {
                                   key={product.id}
                                   className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
                                   onClick={() => {
-                                    window.location.href = `/producto/${product.id}`;
+                                    router.push(`/producto/${product.id}`);
                                     setShowSearchDropdown(false);
                                     setSearchTerm('');
                                   }}
@@ -1314,8 +1323,8 @@ const HomeScreen: NextPage = () => {
                           <div className="flex flex-wrap gap-2">
                             <button 
                               onClick={() => {
-                                setSearchTerm('Camisas');
-                                window.location.href = '/catalogo?busqueda=Camisas';
+                                router.push('/catalogo?busqueda=Camisas');
+                                setShowSearchDropdown(false);
                               }}
                               className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                             >
@@ -1323,8 +1332,8 @@ const HomeScreen: NextPage = () => {
                             </button>
                             <button 
                               onClick={() => {
-                                setSearchTerm('Pantalones');
-                                window.location.href = '/catalogo?busqueda=Pantalones';
+                                router.push('/catalogo?busqueda=Pantalones');
+                                setShowSearchDropdown(false);
                               }}
                               className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                             >
@@ -1332,8 +1341,8 @@ const HomeScreen: NextPage = () => {
                             </button>
                             <button 
                               onClick={() => {
-                                setSearchTerm('Vestidos');
-                                window.location.href = '/catalogo?busqueda=Vestidos';
+                                router.push('/catalogo?busqueda=Vestidos');
+                                setShowSearchDropdown(false);
                               }}
                               className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                             >
@@ -1341,8 +1350,8 @@ const HomeScreen: NextPage = () => {
                             </button>
                             <button 
                               onClick={() => {
-                                setSearchTerm('Zapatos');
-                                window.location.href = '/catalogo?busqueda=Zapatos';
+                                router.push('/catalogo?busqueda=Zapatos');
+                                setShowSearchDropdown(false);
                               }}
                               className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
                             >
