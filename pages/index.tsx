@@ -679,14 +679,15 @@ const HomeScreen: NextPage = () => {
       )}
       
       {/* Navbar Móvil - Solo visible en pantallas pequeñas */}
-      <div className="md:hidden bg-black/90 sticky top-0 z-50 backdrop-blur-lg border-b border-white/20">
+      <div className="block md:hidden w-full bg-black/90 sticky top-0 z-50 backdrop-blur-lg border-b border-white/20">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Botón de Menú (izquierda) */}
           <button 
             onClick={() => setShowMobileMenu(true)}
             className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+            type="button"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -701,12 +702,13 @@ const HomeScreen: NextPage = () => {
               setMobileSidebarContent('cart');
             }}
             className="p-2 text-white hover:bg-white/20 rounded-md transition-colors relative"
+            type="button"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
             </svg>
             {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {totalItems}
               </span>
             )}
@@ -813,11 +815,14 @@ const HomeScreen: NextPage = () => {
                     {cartItems.map((item: any) => (
                       <div key={`${item.producto_id}-${item.variante_id}-${item.talla_id}`} className="flex items-center space-x-3 p-3 bg-white/10 rounded-md">
                         <Image
-                          src={item.imagen || '/placeholder.jpg'}
-                          alt={item.nombre}
+                          src={item.imagen || '/sin-ttulo1-2@2x.png'}
+                          alt={item.nombre || 'Producto'}
                           width={60}
                           height={60}
                           className="rounded-md object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                          }}
                         />
                         <div className="flex-1 min-w-0">
                           <h4 className="text-white text-sm font-medium truncate">{item.nombre}</h4>
@@ -868,7 +873,323 @@ const HomeScreen: NextPage = () => {
               </div>
             )}
             
-            {/* Aquí iría el contenido de otros paneles (language, profile, search) */}
+            {/* Contenido del panel de idioma/moneda */}
+            {mobileSidebarContent === 'language' && (
+              <div className="space-y-6">
+                {/* Sección de idioma */}
+                <div>
+                  <h3 className="text-white font-semibold text-lg mb-4">{t('Idioma')}</h3>
+                  <div className="space-y-2">
+                    <button 
+                      onClick={() => {
+                        changeLanguage('es');
+                        setShowLanguageDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
+                        currentLanguage === 'es' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇸</span>
+                          <span>Español</span>
+                        </div>
+                        {currentLanguage === 'es' && <span className="font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        changeLanguage('en');
+                        setShowLanguageDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
+                        currentLanguage === 'en' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>English</span>
+                        </div>
+                        {currentLanguage === 'en' && <span className="font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sección de moneda */}
+                <div>
+                  <h3 className="text-white font-semibold text-lg mb-4">{t('Moneda')}</h3>
+                  <div className="space-y-2">
+                    <button 
+                      onClick={() => {
+                        changeCurrency('MXN');
+                        setShowLanguageDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
+                        currentCurrency === 'MXN' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇲🇽</span>
+                          <span>MXN - Peso Mexicano</span>
+                        </div>
+                        {currentCurrency === 'MXN' && <span className="font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        changeCurrency('USD');
+                        setShowLanguageDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
+                        currentCurrency === 'USD' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>USD - US Dollar</span>
+                        </div>
+                        {currentCurrency === 'USD' && <span className="font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        changeCurrency('EUR');
+                        setShowLanguageDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
+                        currentCurrency === 'EUR' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇺</span>
+                          <span>EUR - Euro</span>
+                        </div>
+                        {currentCurrency === 'EUR' && <span className="font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contenido del panel de perfil */}
+            {mobileSidebarContent === 'profile' && (
+              <div className="space-y-6">
+                {isAuthenticated ? (
+                  <>
+                    {/* Usuario autenticado */}
+                    <div className="text-center pb-6 border-b border-white/20">
+                      <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-white font-semibold text-lg mb-2">
+                        {user?.nombres || t('Usuario')}
+                      </h3>
+                      <p className="text-gray-400 text-sm">{user?.correo}</p>
+                    </div>
+
+                    {/* Opciones de usuario */}
+                    <div className="space-y-2">
+                      <Link
+                        href="/perfil"
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {t('Mi Perfil')}
+                      </Link>
+                      <Link
+                        href="/pedidos"
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        {t('Mis Pedidos')}
+                      </Link>
+                      <Link
+                        href="/favoritos"
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        {t('Favoritos')}
+                      </Link>
+                      {user?.rol && canAccessAdminPanel(user.rol) && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="flex items-center px-4 py-3 text-green-400 hover:bg-green-600/20 rounded-md transition-colors"
+                        >
+                          <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {t('Panel Admin')}
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => {
+                          logout();
+                          setShowMobileSidebar(false);
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-red-400 hover:bg-red-600/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        {t('Cerrar Sesión')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Usuario no autenticado */}
+                    <div className="text-center py-8">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <h3 className="text-white font-semibold text-lg mb-2">{t('Inicia Sesión')}</h3>
+                      <p className="text-gray-400 text-sm mb-6">{t('Accede a tu cuenta para ver tus pedidos y favoritos')}</p>
+                      <div className="space-y-3">
+                        <Link
+                          href="/login"
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="block w-full bg-green-600 text-white text-center py-3 rounded-md font-medium hover:bg-green-700 transition-colors"
+                        >
+                          {t('Iniciar Sesión')}
+                        </Link>
+                        <Link
+                          href="/register"
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="block w-full bg-transparent border-2 border-white text-white text-center py-3 rounded-md font-medium hover:bg-white hover:text-black transition-colors"
+                        >
+                          {t('Registrarse')}
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Contenido del panel de búsqueda */}
+            {mobileSidebarContent === 'search' && (
+              <div className="space-y-4">
+                {/* Barra de búsqueda */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearch();
+                      }
+                    }}
+                    placeholder={t('Buscar productos...')}
+                    className="w-full bg-white/10 border border-white/20 rounded-md px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Resultados de búsqueda */}
+                {searchLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                    <p className="text-gray-400 mt-4">{t('Buscando...')}</p>
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  <div className="space-y-3">
+                    <h4 className="text-white font-semibold">{t('Resultados')}</h4>
+                    {searchResults.slice(0, 5).map((product) => (
+                      <Link
+                        key={product.id}
+                        href={`/producto/${product.id}`}
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="block bg-white/10 rounded-md p-3 hover:bg-white/20 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-600 rounded-md flex-shrink-0 overflow-hidden">
+                            {product.image && (
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-white font-medium text-sm truncate">{product.name}</h5>
+                            <p className="text-gray-400 text-xs">{product.category}</p>
+                            <p className="text-green-400 font-semibold text-sm">
+                              {formatPrice(product.price, currentCurrency, 'MXN')}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                    {searchResults.length > 5 && (
+                      <Link
+                        href={`/catalogo?search=${encodeURIComponent(searchTerm)}`}
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="block text-center text-green-400 hover:text-green-300 font-medium py-2"
+                      >
+                        {t('Ver todos los resultados')} ({searchResults.length})
+                      </Link>
+                    )}
+                  </div>
+                ) : searchTerm ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p className="text-gray-400">{t('No se encontraron resultados')}</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p className="text-gray-400">{t('Escribe algo para buscar productos')}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Botones de navegación inferior */}
@@ -937,7 +1258,8 @@ const HomeScreen: NextPage = () => {
       )}
       
       {/* Navbar Desktop - Oculta en móvil */}
-      <div className="hidden md:flex self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
+      <div className="hidden md:block">
+        <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
             {/* Logo TREBOLUXE - oculto en tablet */}
@@ -1907,6 +2229,8 @@ const HomeScreen: NextPage = () => {
             </div>
           </div>
         </div>
+        </div>
+      </div>
       
       {/* Main Images Section */}
       <div className="self-stretch flex flex-col items-center justify-start h-screen">
@@ -2619,7 +2943,6 @@ const HomeScreen: NextPage = () => {
         />
       )}
       
-      </div>
     </div>
   );
 };
