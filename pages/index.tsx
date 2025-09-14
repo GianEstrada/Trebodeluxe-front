@@ -2331,15 +2331,15 @@ const HomeScreen: NextPage = () => {
                                 {searchResults.map((product) => (
                                 <div
                                   key={product.id}
-                                  className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                                  className="cursor-pointer hover:bg-white/20 rounded-lg p-1 transition-colors duration-200"
                                   onClick={() => {
                                     router.push(`/producto/${product.id}`);
                                     setShowSearchDropdown(false);
                                     setSearchTerm('');
                                   }}
                                 >
-                                  <div className="flex flex-col gap-3">
-                                    {/* Imagen que ocupa todo el ancho */}
+                                  <div className="flex flex-col gap-2">
+                                    {/* Imagen que ocupa casi todo el ancho del overlay */}
                                     <div className="w-full h-32 bg-gray-400 rounded-lg overflow-hidden flex items-center justify-center">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
@@ -2372,7 +2372,7 @@ const HomeScreen: NextPage = () => {
                                           <img 
                                             src={imageUrl} 
                                             alt={product.nombre || product.name || 'Producto'}
-                                            className="max-w-full max-h-full object-contain"
+                                            className="w-full h-full object-cover"
                                             onError={(e) => {
                                               const target = e.target as HTMLImageElement;
                                               target.style.display = 'none';
