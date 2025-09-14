@@ -2331,7 +2331,7 @@ const HomeScreen: NextPage = () => {
                                 {searchResults.map((product) => (
                                 <div
                                   key={product.id}
-                                  className="cursor-pointer hover:bg-white/20 rounded-lg p-1 transition-colors duration-200"
+                                  className="cursor-pointer hover:bg-white/20 rounded-lg transition-colors duration-200 overflow-hidden"
                                   onClick={() => {
                                     router.push(`/producto/${product.id}`);
                                     setShowSearchDropdown(false);
@@ -2339,8 +2339,8 @@ const HomeScreen: NextPage = () => {
                                   }}
                                 >
                                   <div className="flex flex-col gap-2">
-                                    {/* Imagen que ocupa casi todo el ancho del overlay */}
-                                    <div className="w-full h-40 bg-gray-400 rounded-lg overflow-hidden flex items-center justify-center p-1">
+                                    {/* Imagen que ocupa TODO el ancho sin márgenes */}
+                                    <div className="w-full h-40 bg-gray-400 overflow-hidden flex items-center justify-center">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
                                         let imageUrl = null;
@@ -2372,7 +2372,7 @@ const HomeScreen: NextPage = () => {
                                           <img 
                                             src={imageUrl} 
                                             alt={product.nombre || product.name || 'Producto'}
-                                            className="max-w-full max-h-full object-contain rounded"
+                                            className="w-full h-full object-contain"
                                             onError={(e) => {
                                               const target = e.target as HTMLImageElement;
                                               target.style.display = 'none';
@@ -2396,7 +2396,7 @@ const HomeScreen: NextPage = () => {
                                     </div>
                                     
                                     {/* Información del producto debajo de la imagen */}
-                                    <div className="w-full text-center">
+                                    <div className="w-full text-center px-3 pb-2">
                                       <h5 className="text-white text-sm font-medium truncate mb-1">
                                         {product.nombre || product.name || 'Producto sin nombre'}
                                       </h5>
