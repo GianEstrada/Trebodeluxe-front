@@ -9,6 +9,10 @@ import { useCart } from '../contexts/NewCartContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
+import { productsApi, productUtils } from '../utils/productsApi';
+import { categoriesApi } from '../utils/categoriesApi';
+import { promotionsApi } from '../utils/promotionsApi';
+import { useCategories } from '../hooks/useCategories';
 import StripePayment from '../components/StripePayment';
 
 interface ShippingMethod {
@@ -21,7 +25,21 @@ interface ShippingMethod {
 
 const CheckoutPage: NextPage = () => {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  
+  // Hook de categorías para la navbar
+  const { categories: activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
+  
+  // Estados para productos recomendados
+  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  
+  // Estados para búsqueda
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Estados para promociones
+  const [promotions, setPromotions] = useState<any>({});
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -796,13 +814,12 @@ Pronto recibirás una confirmación por email.`));
         </div>
       )}
       
-      {/* Header igual al del index */}
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
             <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-              <span className="text-white">{t('TREBOLUXE')}</span>
-            </div>
+            <span className="text-white">{t('TREBOLUXE')}</span>
+          </div>
             
             {/* Contenido central - texto del carrusel */}
             <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
@@ -835,8 +852,8 @@ Pronto recibirás una confirmación por email.`));
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
-            <div className="flex-1 flex flex-row items-center justify-start gap-[33px]">
+          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+            <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
                 className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
                 ref={dropdownRef}
@@ -859,8 +876,23 @@ Pronto recibirás una confirmación por email.`));
                     <div className="pt-6 pb-8 px-6 h-full flex flex-col overflow-y-auto">
                       <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('CATEGORÍAS DE ROPA')}</h3>
                       <div className="space-y-1">
+                        {/* Mostrar indicador de carga */}
+                        {categoriesLoading && (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="text-white text-sm">{t('Cargando categorías...')}</div>
+                          </div>
+                        )}
+
+                        {/* Mostrar error si ocurre */}
+                        {categoriesError && (
+                          <div className="text-red-300 text-sm px-4 py-2">
+                            {t('Error al cargar categorías')}
+                          </div>
+                        )}
+
+                        {/* Opción "Todas las categorías" siempre visible */}
                         <Link 
-                          href="/catalogo" 
+                          href="/catalogo?categoria=todas" 
                           className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
                         >
                           <div className="flex items-center justify-between">
@@ -868,66 +900,71 @@ Pronto recibirás una confirmación por email.`));
                             <span className="text-gray-400">→</span>
                           </div>
                         </Link>
-                        <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Camisas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Pantalones')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Vestidos')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Abrigos y Chaquetas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Faldas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Jeans')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Ropa Interior')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Trajes de Baño')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Accesorios de Moda')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=calzado" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Calzado')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
+
+                        {/* Renderizar categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
+                          <Link 
+                            key={category.id} 
+                            href={`/catalogo?categoria=${category.slug}`} 
+                            className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{t(category.name)}</span>
+                              <span className="text-gray-400">→</span>
+                            </div>
+                          </Link>
+                        ))}
+
+                        {/* Fallback con categorías estáticas si no hay categorías dinámicas */}
+                        {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
+                          <>
+                            <Link 
+                              href="/catalogo?categoria=todas" 
+                              className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md border-b border-gray-600 mb-2"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">{t('Todas las categorías')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Camisas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Pantalones')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Vestidos')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Abrigos y Chaquetas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Faldas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Jeans')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                          </>
+                        )}
                       </div>
                       
                       <div className="mt-8 pt-6 border-t border-gray-700">
@@ -939,10 +976,10 @@ Pronto recibirás una confirmación por email.`));
                   </div>
                 </div>
               </div>
-              <Link href="/catalogo?filter=populares" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
+              <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
                 <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('POPULARES')}
+                    {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
@@ -950,13 +987,6 @@ Pronto recibirás una confirmación por email.`));
                 <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
                   <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
                     {t('NUEVOS')}
-                  </div>
-                </div>
-              </Link>
-              <Link href="/catalogo?filter=basicos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
-                    {t('BASICOS')}
                   </div>
                 </div>
               </Link>
@@ -978,9 +1008,9 @@ Pronto recibirás una confirmación por email.`));
               </Link>
             </div>
             
-            <div className="flex-1 flex flex-row items-center justify-end gap-[31px]">
+            <div className="flex flex-row items-center justify-end gap-[32px]">
               <div 
-                className="w-5 relative h-5 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+                className="w-8 relative h-8 cursor-pointer hover:bg-gray-700 rounded p-1 transition-colors duration-200"
                 ref={languageDropdownRef}
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
               >
@@ -993,7 +1023,7 @@ Pronto recibirás una confirmación por email.`));
                   src="/icon.svg"
                 />
                 
-                {/* Language & Currency Dropdown */}
+                {/* Language & Currency Dropdown - Positioned on the right side */}
                 <div 
                   className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-50 transform transition-all duration-300 ease-out ${
                     showLanguageDropdown 
@@ -1045,7 +1075,7 @@ Pronto recibirás una confirmación por email.`));
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">🇫🇷</span>
+                              <span className="text-2xl">��</span>
                               <span>Français</span>
                             </div>
                             {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
@@ -1113,9 +1143,9 @@ Pronto recibirás una confirmación por email.`));
                 </div>
               </div>
               
-              {/* Botón de Admin - Solo visible para usuarios con rol = 1 */}
-              {user && canAccessAdminPanel(user.rol) && (
-                <div className="w-4 relative h-[18px]" ref={adminDropdownRef}>
+              {/* Botón de Admin - Solo visible para usuarios autenticados y administradores */}
+              {isAuthenticated && user && canAccessAdminPanel(user.rol) && (
+                <div className="w-8 relative h-8" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setShowAdminDropdown(!showAdminDropdown)}
                     className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -1135,7 +1165,7 @@ Pronto recibirás una confirmación por email.`));
                   
                   {/* Admin Dropdown */}
                   <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                    showAdminDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                   } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                     <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                       <div className="p-6 text-center">
@@ -1161,6 +1191,17 @@ Pronto recibirás una confirmación por email.`));
                             </svg>
                             {t('Acceder al Panel')}
                           </Link>
+                          <div className="text-xs text-gray-400 bg-white/5 p-3 rounded-lg">
+                            <p className="font-medium mb-1">{t('Características:')}</p>
+                            <ul className="text-left space-y-1">
+                              <li>• {t('Gestión de textos del header')}</li>
+                              <li>• {t('Administración de imágenes')}</li>
+                              <li>• {t('CRUD de productos')}</li>
+                              <li>• {t('Gestión de promociones')}</li>
+                              <li>• {t('Control de pedidos')}</li>
+                              <li>• {t('Sistema de notas')}</li>
+                            </ul>
+                          </div>
                         </div>
                       </div>
                       
@@ -1174,7 +1215,7 @@ Pronto recibirás una confirmación por email.`));
                 </div>
               )}
               
-              <div className="w-4 relative h-[18px]" ref={loginDropdownRef}>
+              <div className="w-8 relative h-8" ref={loginDropdownRef}>
                 <button 
                   onClick={() => setShowLoginDropdown(!showLoginDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -1191,10 +1232,10 @@ Pronto recibirás una confirmación por email.`));
                 
                 {/* Login Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showLoginDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    {user ? (
+                    {isAuthenticated && user ? (
                       // Usuario logueado
                       <div className="p-6">
                         <div className="text-center mb-6">
@@ -1207,25 +1248,186 @@ Pronto recibirás una confirmación por email.`));
                           <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                         </div>
                         
-                        <div className="space-y-3 mb-6">
-                          <Link 
-                            href="/profile"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
-                          >
+                        {/* Información de Envío */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-4">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            {t('Mi perfil')}
-                          </Link>
-                          <Link 
-                            href="/orders"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2 no-underline"
-                          >
+                            {t('Información de Envío')}
+                          </h4>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <div className="flex justify-between">
+                              <span>{t('Envíos salen:')}</span>
+                              <span className="text-green-400">{t('Al día siguiente')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega estándar:')}</span>
+                              <span>{t('3-5 días')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega express:')}</span>
+                              <span>{t('24-48 horas')}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recomendación de Producto */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-6">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            {t('Mis pedidos')}
-                          </Link>
+                            {t('Producto Recomendado')}
+                          </h4>
+                          {loadingRecommendation ? (
+                            <div className="animate-pulse">
+                              <div className="bg-white/20 h-20 rounded mb-2"></div>
+                              <div className="bg-white/20 h-4 rounded mb-1"></div>
+                              <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                            </div>
+                          ) : recommendedProduct ? (
+                            <div 
+                              className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                              onClick={() => {
+                                const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                                console.log('🔗 Navegando al producto con ID:', productId);
+                                if (productId) {
+                                  router.push(`/producto/${productId}`);
+                                  setShowLoginDropdown(false);
+                                } else {
+                                  console.error('❌ No se puede navegar: ID de producto no válido');
+                                }
+                              }}
+                            >
+                              <div className="flex gap-3">
+                                <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                                  {(() => {
+                                    // Buscar imagen en diferentes estructuras
+                                    let imageUrl = null;
+                                    
+                                    console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                    
+                                    // Intentar diferentes propiedades de imagen
+                                    if (recommendedProduct.imagen_principal) {
+                                      imageUrl = recommendedProduct.imagen_principal;
+                                    } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                      imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                    } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                      imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                    } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                      // Buscar imagen en las variantes
+                                      const firstVariant = recommendedProduct.variantes[0];
+                                      if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                        imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                      } else if (firstVariant.imagen_url) {
+                                        imageUrl = firstVariant.imagen_url;
+                                      }
+                                    } else if (recommendedProduct.imagen_url) {
+                                      imageUrl = recommendedProduct.imagen_url;
+                                    } else if (recommendedProduct.image) {
+                                      imageUrl = recommendedProduct.image;
+                                    } else if (recommendedProduct.foto) {
+                                      imageUrl = recommendedProduct.foto;
+                                    }
+                                    
+                                    console.log('�️ URL de imagen detectada:', imageUrl);
+                                    
+                                    return imageUrl ? (
+                                      <img 
+                                        src={imageUrl} 
+                                        alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          console.log('❌ Error cargando imagen:', imageUrl);
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* Fallback icon (hidden by default, shown when image fails) */}
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-white text-sm font-medium truncate">
+                                    {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                                  </h5>
+                                  <p className="text-gray-300 text-xs line-clamp-2">
+                                    {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                                  </p>
+                                  <div className="mt-1">
+                                    {(() => {
+                                      // Obtener el precio base del producto
+                                      let basePrice = 0;
+                                      
+                                      // Buscar precio en diferentes estructuras
+                                      if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                        const firstVariant = recommendedProduct.variantes[0];
+                                        basePrice = firstVariant.precio || basePrice;
+                                      }
+                                      
+                                      // Si aún no hay precio, buscar en otros campos
+                                      if (basePrice === 0) {
+                                        basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                      }
+                                      
+                                      // Verificar si tiene descuento real
+                                      const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                            recommendedProduct.price && 
+                                                            recommendedProduct.originalPrice && 
+                                                            recommendedProduct.price < recommendedProduct.originalPrice;
+                                      
+                                      if (hasRealDiscount) {
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-green-400 text-sm font-medium">
+                                              {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="text-gray-400 text-xs line-through">
+                                              {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                              -{recommendedProduct.discountPercentage}%
+                                            </span>
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="text-green-400 text-sm font-medium">
+                                            {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                          </span>
+                                        );
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">
+                                {Object.keys(promotions).length === 0 
+                                  ? t('Cargando productos...')
+                                  : t('No hay productos en promoción disponibles')
+                                }
+                              </p>
+                            </div>
+                          )}
                         </div>
                         
                         <button 
@@ -1253,13 +1455,13 @@ Pronto recibirás una confirmación por email.`));
                         <div className="space-y-4">
                           <Link 
                             href="/login"
-                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center no-underline"
+                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           >
                             {t('Iniciar sesión')}
                           </Link>
                           <Link 
                             href="/register"
-                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center no-underline"
+                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           >
                             {t('Registrarse')}
                           </Link>
@@ -1275,7 +1477,7 @@ Pronto recibirás una confirmación por email.`));
                   </div>
                 </div>
               </div>
-              <div className="w-[15px] relative h-[15px]" ref={searchDropdownRef}>
+              <div className="w-8 relative h-8" ref={searchDropdownRef}>
                 <button 
                   onClick={() => setShowSearchDropdown(!showSearchDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -1292,7 +1494,7 @@ Pronto recibirás una confirmación por email.`));
                 
                 {/* Search Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6">
@@ -1313,14 +1515,133 @@ Pronto recibirás una confirmación por email.`));
                           {t('Buscar')}
                         </button>
                       </div>
-                      <p className="text-gray-300 text-sm">
-                        {t('Encuentra exactamente lo que buscas en nuestra colección.')}
-                      </p>
+                      
+                      {/* Resultados de búsqueda */}
+                      {searchTerm && (
+                        <div className="mt-4">
+                          {searchLoading ? (
+                            <div className="space-y-3">
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse flex gap-3">
+                                  <div className="w-12 h-12 bg-white/20 rounded"></div>
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-white/20 rounded mb-2"></div>
+                                    <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : searchResults.length > 0 ? (
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {searchResults.map((product) => (
+                                <div
+                                  key={product.id}
+                                  className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                                  onClick={() => {
+                                    router.push(`/producto/${product.id}`);
+                                    setShowSearchDropdown(false);
+                                    setSearchTerm('');
+                                  }}
+                                >
+                                  <div className="flex gap-3">
+                                    <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                      {product.imagenes && product.imagenes.length > 0 ? (
+                                        <img 
+                                          src={product.imagenes[0].url} 
+                                          alt={product.nombre}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                          <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                          </svg>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
+                                      <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                      <p className="text-green-400 text-sm font-medium">
+                                        ${product.precio?.toFixed(2) || '0.00'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="pt-2 border-t border-white/20">
+                                <button
+                                  onClick={handleSearch}
+                                  className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                                >
+                                  {t('Ver todos los resultados')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {!searchTerm && (
+                        <div className="mt-4">
+                          <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Camisas');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Camisas')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Pantalones');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Pantalones')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Vestidos');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Vestidos')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Zapatos');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Zapatos')}
+                            </button>
+                          </div>
+                          <div className="mt-6 pt-4 border-t border-white/20">
+                            <p className="text-gray-300 text-sm">
+                              {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="w-[19.2px] relative h-[17.5px]" ref={cartDropdownRef}>
+              <div className="w-8 relative h-8" ref={cartDropdownRef}>
                 <button 
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
@@ -1333,6 +1654,7 @@ Pronto recibirás una confirmación por email.`));
                     alt="Carrito de compras"
                     src="/icon3.svg"
                   />
+                  {/* Badge de cantidad */}
                   {totalItems > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                       {totalItems}
@@ -1342,7 +1664,7 @@ Pronto recibirás una confirmación por email.`));
                 
                 {/* Cart Dropdown */}
                 <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
                     <div className="p-6 flex-1 flex flex-col">
@@ -1396,15 +1718,15 @@ Pronto recibirás una confirmación por email.`));
                                     )}
                                     <div className="flex items-center gap-2">
                                       <button 
-                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
-                                        disabled={isLoading || item.quantity <= 1}
+                                        disabled={isLoading}
                                       >
                                         -
                                       </button>
                                       <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                       <button 
-                                        onClick={() => updateQuantity(0, item.variantId, item.tallaId, item.quantity + 1)}
+                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
                                         className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
                                         disabled={isLoading}
                                       >
@@ -1414,7 +1736,7 @@ Pronto recibirás una confirmación por email.`));
                                   </div>
                                 </div>
                                 <button 
-                                  onClick={() => removeFromCart(0, item.variantId, item.tallaId)}
+                                  onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
                                   className="text-red-400 hover:text-red-300 transition-colors"
                                   disabled={isLoading}
                                 >
@@ -1433,7 +1755,7 @@ Pronto recibirás una confirmación por email.`));
                         <div className="mt-6 pt-4 border-t border-white/20">
                           <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-300">{t('Subtotal:')}</span>
-                            <span className="text-white font-bold">{formatPrice(calculateSubtotal(), currentCurrency, 'MXN')}</span>
+                            <span className="text-white font-bold">{formatPrice(totalPrice, currentCurrency, 'MXN')}</span>
                           </div>
                           <div className="flex justify-between items-center mb-6">
                             <span className="text-gray-300">{t('Envío:')}</span>
@@ -1461,7 +1783,7 @@ Pronto recibirás una confirmación por email.`));
             </div>
           </div>
         </div>
-      </div>
+         </div>
 
       {/* Contenido principal del checkout */}
       <div className="flex-1 container mx-auto px-4 py-8">
