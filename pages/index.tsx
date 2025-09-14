@@ -2328,17 +2328,17 @@ const HomeScreen: NextPage = () => {
             <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('AGREGADOS RECIENTEMENTE')}</h2>
             <p className="text-gray-300 text-lg">{t('Descubre nuestros productos más nuevos')}</p>
           </div>
-            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {/* En móvil: mostrar máximo 9 productos (3x3), en otras pantallas: 6 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
+            {/* En móvil: mostrar máximo 6 productos (2x3), en otras pantallas: 6 */}
             {(typeof window !== 'undefined' && window.innerWidth <= 600 
-              ? featuredProducts.slice(0, 9) 
+              ? featuredProducts.slice(0, 6) 
               : featuredProducts.slice(0, 6)
             ).map((product) => (
               <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                  <div className="relative mb-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 md:p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                  <div className="relative mb-3 sm:mb-4">
                     <Image
-                      className="w-full h-64 object-cover rounded-lg"
+                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover rounded-lg"
                       width={300}
                       height={256}
                       src={product.image}
@@ -2352,31 +2352,31 @@ const HomeScreen: NextPage = () => {
                     />
                     {!product.inStock && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                        <span className="text-white font-bold text-xs sm:text-sm lg:text-lg">{t('Agotado')}</span>
                       </div>
                     )}
                     {/* Mostrar promociones en lugar del descuento calculado */}
                     {renderPromotions(product.id)}
                   </div>
                   
-                  <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                  <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                  <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                  <h3 className="text-white font-semibold text-sm sm:text-base lg:text-lg mb-2 line-clamp-2">{t(product.name)}</h3>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden sm:block">{t('Categoría')}: {t(product.category)}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden md:block">{t('Marca')}: {product.brand}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden md:block">{t('Color')}: {t(product.color)}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 hidden lg:block">{t('Talla')}: {product.size}</p>
                   
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                      <span className="text-white font-bold text-sm sm:text-base lg:text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
                       {product.originalPrice > product.price && (
-                        <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                        <span className="text-gray-400 line-through text-xs sm:text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                       )}
                     </div>
                   </div>
                   
                   <button
                     disabled={!product.inStock}
-                    className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full py-2 sm:py-3 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-200 ${
                       product.inStock 
                         ? 'bg-white text-black hover:bg-gray-100' 
                         : 'bg-gray-600 text-gray-400 cursor-not-allowed'
@@ -2449,17 +2449,17 @@ const HomeScreen: NextPage = () => {
           )}
           
           {!loading && !error && (
-            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {/* En móvil: mostrar máximo 9 productos (3x3), en otras pantallas: 6 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
+            {/* En móvil: mostrar máximo 6 productos (2x3), en otras pantallas: 6 */}
             {(typeof window !== 'undefined' && window.innerWidth <= 600 
-              ? getFilteredProducts().slice(0, 9) 
+              ? getFilteredProducts().slice(0, 6) 
               : getFilteredProducts().slice(0, 6)
             ).map((product) => (
               <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                  <div className="relative mb-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 md:p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
+                  <div className="relative mb-3 sm:mb-4">
                     <Image
-                      className="w-full h-64 object-cover rounded-lg"
+                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover rounded-lg"
                       width={300}
                       height={256}
                       src={product.image}
@@ -2473,31 +2473,31 @@ const HomeScreen: NextPage = () => {
                     />
                     {!product.inStock && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                        <span className="text-white font-bold text-xs sm:text-sm lg:text-lg">{t('Agotado')}</span>
                       </div>
                     )}
                     {/* Mostrar promociones en lugar del descuento calculado */}
                     {renderPromotions(product.id)}
                   </div>
                   
-                  <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                  <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                  <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                  <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
+                  <h3 className="text-white font-semibold text-sm sm:text-base lg:text-lg mb-2 line-clamp-2">{t(product.name)}</h3>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden sm:block">{t('Categoría')}: {t(product.category)}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden md:block">{t('Marca')}: {product.brand}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-1 sm:mb-2 hidden md:block">{t('Color')}: {t(product.color)}</p>
+                  <p className="text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4 hidden lg:block">{t('Talla')}: {product.size}</p>
                   
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                      <span className="text-white font-bold text-sm sm:text-base lg:text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
                       {product.originalPrice > product.price && (
-                        <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                        <span className="text-gray-400 line-through text-xs sm:text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                       )}
                     </div>
                   </div>
                   
                   <button
                     disabled={!product.inStock}
-                    className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full py-2 sm:py-3 rounded-lg font-medium text-xs sm:text-sm transition-colors duration-200 ${
                       product.inStock 
                         ? 'bg-white text-black hover:bg-gray-100' 
                         : 'bg-gray-600 text-gray-400 cursor-not-allowed'
