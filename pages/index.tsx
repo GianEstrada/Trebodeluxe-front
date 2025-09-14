@@ -569,12 +569,14 @@ const HomeScreen: NextPage = () => {
 
     try {
       setSearchLoading(true);
+      console.log('🔍 Iniciando búsqueda con query:', query);
       
       // Usar los productos que ya están cargados y procesados con promociones
       let allProducts: any[] = [];
       
       // Combinar featuredProducts con productos de categorías
       allProducts = [...featuredProducts];
+      console.log('📦 Productos destacados:', allProducts.length);
       
       // Agregar productos de todas las categorías
       Object.values(recentByCategory).forEach((categoryProducts: any) => {
@@ -587,26 +589,52 @@ const HomeScreen: NextPage = () => {
           });
         }
       });
+      console.log('📦 Total productos después de combinar:', allProducts.length);
 
       // Si no hay productos cargados aún, hacer llamada a la API
       if (allProducts.length === 0) {
+        console.log('⚠️ No hay productos cargados, consultando API...');
         const response = await productsApi.getAll() as any;
         if (response.success && response.products && response.products.length > 0) {
           // Aplicar promociones a los productos de la API
           const productsWithPromotions = productUtils.applyPromotionDiscounts(response.products, promotions);
           allProducts = productsWithPromotions;
+          console.log('📦 Productos de API:', allProducts.length);
         }
       }
 
-      // Filtrar productos por el término de búsqueda
-      const filtered = allProducts.filter((product: any) =>
-        product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
-        product.descripcion?.toLowerCase().includes(query.toLowerCase()) ||
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.categoria?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category?.toLowerCase().includes(query.toLowerCase())
-      );
+      // Mostrar estructura del primer producto para debugging
+      if (allProducts.length > 0) {
+        console.log('🔍 Ejemplo de producto para debugging:', {
+          id: allProducts[0].id,
+          nombre: allProducts[0].nombre,
+          name: allProducts[0].name,
+          descripcion: allProducts[0].descripcion,
+          description: allProducts[0].description,
+          categoria: allProducts[0].categoria,
+          category: allProducts[0].category,
+          availableFields: Object.keys(allProducts[0])
+        });
+      }
+
+      // Filtrar productos por el término de búsqueda con más campos
+      const filtered = allProducts.filter((product: any) => {
+        const searchTerm = query.toLowerCase();
+        const matches = [
+          product.nombre?.toLowerCase().includes(searchTerm),
+          product.name?.toLowerCase().includes(searchTerm),
+          product.descripcion?.toLowerCase().includes(searchTerm),
+          product.description?.toLowerCase().includes(searchTerm),
+          product.categoria?.toLowerCase().includes(searchTerm),
+          product.category?.toLowerCase().includes(searchTerm),
+          product.marca?.toLowerCase().includes(searchTerm),
+          product.brand?.toLowerCase().includes(searchTerm)
+        ];
+        
+        return matches.some(match => match === true);
+      });
       
+      console.log('🎯 Productos filtrados:', filtered.length, 'de', allProducts.length);
       setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
     } catch (error) {
       console.error('Error buscando productos:', error);
@@ -1403,7 +1431,7 @@ const HomeScreen: NextPage = () => {
                                   return imageUrl ? (
                                     <img 
                                       src={imageUrl} 
-                                      alt={product.nombre}
+                                      alt={product.nombre || product.name || 'Producto'}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
@@ -1427,8 +1455,12 @@ const HomeScreen: NextPage = () => {
                                 </div>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
-                                <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                <h5 className="text-white text-sm font-medium truncate">
+                                  {product.nombre || product.name || 'Producto sin nombre'}
+                                </h5>
+                                <p className="text-gray-300 text-xs truncate">
+                                  {product.descripcion || product.description || 'Sin descripción disponible'}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2294,7 +2326,7 @@ const HomeScreen: NextPage = () => {
                               ))}
                             </div>
                           ) : searchResults.length > 0 ? (
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                            <div className="space-y-3 max-h-60 overflow-y-auto">
                               {searchResults.map((product) => (
                                 <div
                                   key={product.id}
@@ -2305,8 +2337,9 @@ const HomeScreen: NextPage = () => {
                                     setSearchTerm('');
                                   }}
                                 >
-                                  <div className="flex gap-3">
-                                    <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                  <div className="flex flex-col gap-3">
+                                    {/* Imagen que ocupa todo el ancho */}
+                                    <div className="w-full h-32 bg-gray-400 rounded-lg overflow-hidden">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
                                         let imageUrl = null;
@@ -2337,7 +2370,7 @@ const HomeScreen: NextPage = () => {
                                         return imageUrl ? (
                                           <img 
                                             src={imageUrl} 
-                                            alt={product.nombre}
+                                            alt={product.nombre || product.name || 'Producto'}
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                               const target = e.target as HTMLImageElement;
@@ -2360,9 +2393,15 @@ const HomeScreen: NextPage = () => {
                                         </svg>
                                       </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
-                                      <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                    
+                                    {/* Información del producto debajo de la imagen */}
+                                    <div className="w-full text-center">
+                                      <h5 className="text-white text-sm font-medium truncate mb-1">
+                                        {product.nombre || product.name || 'Producto sin nombre'}
+                                      </h5>
+                                      <p className="text-gray-300 text-xs truncate">
+                                        {product.descripcion || product.description || 'Sin descripción disponible'}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
