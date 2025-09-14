@@ -2410,7 +2410,7 @@ const HomeScreen: NextPage = () => {
                                 <div className="pt-2 border-t border-white/20">
                                   <button
                                     onClick={handleSearch}
-                                    className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                                    className="w-full text-center text-white text-sm bg-transparent hover:bg-white-200 hover:text-blue-300 transition-colors duration-200"
                                   >
                                     {t('Ver todos los resultados')}
                                   </button>
