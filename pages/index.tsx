@@ -2340,7 +2340,7 @@ const HomeScreen: NextPage = () => {
                                 >
                                   <div className="flex flex-col gap-3">
                                     {/* Imagen que ocupa todo el ancho */}
-                                    <div className="w-full h-32 bg-gray-400 rounded-lg overflow-hidden">
+                                    <div className="w-full h-32 bg-gray-400 rounded-lg overflow-hidden flex items-center justify-center">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
                                         let imageUrl = null;
@@ -2372,7 +2372,7 @@ const HomeScreen: NextPage = () => {
                                           <img 
                                             src={imageUrl} 
                                             alt={product.nombre || product.name || 'Producto'}
-                                            className="w-full h-full object-cover"
+                                            className="max-w-full max-h-full object-contain"
                                             onError={(e) => {
                                               const target = e.target as HTMLImageElement;
                                               target.style.display = 'none';
