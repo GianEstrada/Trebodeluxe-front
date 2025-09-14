@@ -446,7 +446,8 @@ const HomeScreen: NextPage = () => {
   // Búsqueda en tiempo real
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchTerm && showSearchDropdown) {
+      const isSearchActive = showSearchDropdown || (showMobileSidebar && mobileSidebarContent === 'search');
+      if (searchTerm && isSearchActive) {
         searchProducts(searchTerm);
       } else {
         setSearchResults([]);
@@ -454,7 +455,7 @@ const HomeScreen: NextPage = () => {
     }, 300); // Debounce de 300ms
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, showSearchDropdown]);
+  }, [searchTerm, showSearchDropdown, showMobileSidebar, mobileSidebarContent]);
 
   // Función para cambiar manualmente el texto
   const handleDotClick = (index: number) => {
@@ -1341,25 +1342,80 @@ const HomeScreen: NextPage = () => {
                           >
                             <div className="flex gap-3">
                               <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
-                                {product.imagenes && product.imagenes.length > 0 ? (
-                                  <img 
-                                    src={product.imagenes[0].url} 
-                                    alt={product.nombre}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                )}
+                                {(() => {
+                                  // Buscar imagen en diferentes estructuras
+                                  let imageUrl = null;
+                                  
+                                  // Intentar diferentes propiedades de imagen
+                                  if (product.imagen_principal) {
+                                    imageUrl = product.imagen_principal;
+                                  } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                    imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                  } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                                    imageUrl = product.images[0].url || product.images[0];
+                                  } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                    // Buscar imagen en las variantes
+                                    const firstVariant = product.variantes[0];
+                                    if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                      imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                    } else if (firstVariant.imagen_url) {
+                                      imageUrl = firstVariant.imagen_url;
+                                    }
+                                  } else if (product.imagen_url) {
+                                    imageUrl = product.imagen_url;
+                                  } else if (product.image) {
+                                    imageUrl = product.image;
+                                  } else if (product.foto) {
+                                    imageUrl = product.foto;
+                                  }
+                                  
+                                  return imageUrl ? (
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={product.nombre}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                      <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  );
+                                })()}
+                                {/* Fallback icon (hidden by default, shown when image fails) */}
+                                <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                  <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                 <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
                                 <p className="text-green-400 text-sm font-medium">
-                                  ${product.precio?.toFixed(2) || '0.00'}
+                                  {(() => {
+                                    // Obtener el precio del producto
+                                    let basePrice = 0;
+                                    
+                                    // Buscar precio en diferentes estructuras
+                                    if (product.variantes && product.variantes.length > 0) {
+                                      const firstVariant = product.variantes[0];
+                                      basePrice = firstVariant.precio || basePrice;
+                                    }
+                                    
+                                    // Si aún no hay precio, buscar en otros campos
+                                    if (basePrice === 0) {
+                                      basePrice = product.precio || product.price || 0;
+                                    }
+                                    
+                                    return formatPrice(basePrice, currentCurrency, 'MXN');
+                                  })()}
                                 </p>
                               </div>
                             </div>
@@ -2239,25 +2295,80 @@ const HomeScreen: NextPage = () => {
                                 >
                                   <div className="flex gap-3">
                                     <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
-                                      {product.imagenes && product.imagenes.length > 0 ? (
-                                        <img 
-                                          src={product.imagenes[0].url} 
-                                          alt={product.nombre}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full bg-gray-500 flex items-center justify-center">
-                                          <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                          </svg>
-                                        </div>
-                                      )}
+                                      {(() => {
+                                        // Buscar imagen en diferentes estructuras
+                                        let imageUrl = null;
+                                        
+                                        // Intentar diferentes propiedades de imagen
+                                        if (product.imagen_principal) {
+                                          imageUrl = product.imagen_principal;
+                                        } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                          imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                        } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                                          imageUrl = product.images[0].url || product.images[0];
+                                        } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                          // Buscar imagen en las variantes
+                                          const firstVariant = product.variantes[0];
+                                          if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                            imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                          } else if (firstVariant.imagen_url) {
+                                            imageUrl = firstVariant.imagen_url;
+                                          }
+                                        } else if (product.imagen_url) {
+                                          imageUrl = product.imagen_url;
+                                        } else if (product.image) {
+                                          imageUrl = product.image;
+                                        } else if (product.foto) {
+                                          imageUrl = product.foto;
+                                        }
+                                        
+                                        return imageUrl ? (
+                                          <img 
+                                            src={imageUrl} 
+                                            alt={product.nombre}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                            </svg>
+                                          </div>
+                                        );
+                                      })()}
+                                      {/* Fallback icon (hidden by default, shown when image fails) */}
+                                      <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                        <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                       <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
                                       <p className="text-green-400 text-sm font-medium">
-                                        ${product.precio?.toFixed(2) || '0.00'}
+                                        {(() => {
+                                          // Obtener el precio del producto
+                                          let basePrice = 0;
+                                          
+                                          // Buscar precio en diferentes estructuras
+                                          if (product.variantes && product.variantes.length > 0) {
+                                            const firstVariant = product.variantes[0];
+                                            basePrice = firstVariant.precio || basePrice;
+                                          }
+                                          
+                                          // Si aún no hay precio, buscar en otros campos
+                                          if (basePrice === 0) {
+                                            basePrice = product.precio || product.price || 0;
+                                          }
+                                          
+                                          return formatPrice(basePrice, currentCurrency, 'MXN');
+                                        })()}
                                       </p>
                                     </div>
                                   </div>
