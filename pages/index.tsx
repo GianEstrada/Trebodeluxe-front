@@ -727,7 +727,7 @@ const HomeScreen: NextPage = () => {
   };
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
+    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
@@ -744,7 +744,7 @@ const HomeScreen: NextPage = () => {
           {/* Botón de Menú (izquierda) */}
           <button 
             onClick={() => setShowMobileMenu(true)}
-            className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+            className="p-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
             type="button"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -752,8 +752,12 @@ const HomeScreen: NextPage = () => {
             </svg>
           </button>
           
-          {/* Espacio central */}
-          <div className="flex-1"></div>
+          {/* Texto central TREBOLUXE */}
+          <div className="flex-1 text-center">
+            <h1 className="text-white text-xl font-bold tracking-[4px]">
+              TREBOLUXE
+            </h1>
+          </div>
           
           {/* Botón de Opciones (derecha) */}
           <button 
@@ -761,7 +765,7 @@ const HomeScreen: NextPage = () => {
               setShowMobileSidebar(true);
               setMobileSidebarContent('cart');
             }}
-            className="p-2 text-white hover:bg-white/20 rounded-md transition-colors relative"
+            className="p-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
             type="button"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -773,6 +777,34 @@ const HomeScreen: NextPage = () => {
               </span>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* Textos Promocionales Móviles */}
+      <div className="block md:hidden bg-gradient-to-r from-green-700 to-green-900 text-white py-2 z-40">
+        <div className="overflow-hidden relative w-full h-full">
+          <div 
+            className="flex transition-transform duration-500 ease-in-out h-full"
+            style={{ transform: `translateX(-${currentTextIndex * 100}%)` }}
+          >
+            {promoTexts.map((text, index) => (
+              <div 
+                key={index}
+                className="w-full h-full flex-shrink-0 flex items-center justify-center min-h-[36px]"
+              >
+                <div className="w-full flex items-center justify-center px-2">
+                  <span 
+                    className="font-medium text-center leading-tight w-full block"
+                    style={{
+                      fontSize: `clamp(12px, 3.5vw, 16px)`
+                    }}
+                  >
+                    {text}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -788,7 +820,7 @@ const HomeScreen: NextPage = () => {
             </div>
             <button 
               onClick={() => setShowMobileMenu(false)}
-              className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -850,7 +882,7 @@ const HomeScreen: NextPage = () => {
             </div>
             <button 
               onClick={() => setShowMobileSidebar(false)}
-              className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1546,7 +1578,7 @@ const HomeScreen: NextPage = () => {
               {mobileSidebarContent !== 'language' && (
                 <button
                   onClick={() => setMobileSidebarContent('language')}
-                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
                 >
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
@@ -1557,7 +1589,7 @@ const HomeScreen: NextPage = () => {
               {mobileSidebarContent !== 'profile' && (
                 <button
                   onClick={() => setMobileSidebarContent('profile')}
-                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
                 >
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -1568,7 +1600,7 @@ const HomeScreen: NextPage = () => {
               {mobileSidebarContent !== 'search' && (
                 <button
                   onClick={() => setMobileSidebarContent('search')}
-                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
                 >
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1579,7 +1611,7 @@ const HomeScreen: NextPage = () => {
               {mobileSidebarContent !== 'cart' && (
                 <button
                   onClick={() => setMobileSidebarContent('cart')}
-                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors relative"
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
                 >
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
@@ -2415,6 +2447,7 @@ const HomeScreen: NextPage = () => {
                                     {t('Ver todos los resultados')}
                                   </button>
                                 </div>
+
                               </div>
                             </div>
                           ) : (

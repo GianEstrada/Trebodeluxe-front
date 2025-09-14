@@ -48,7 +48,7 @@ export const SiteSettingsProvider: React.FC<SiteSettingsProviderProps> = ({ chil
       // Cliente
       return process.env.NODE_ENV === 'production'
         ? 'https://trebodeluxe-backend.onrender.com'
-        : 'http://localhost:5000';
+        : 'https://trebodeluxe-backend.onrender.com';
     } else {
       // Servidor (SSR)
       return 'https://trebodeluxe-backend.onrender.com';

@@ -11,6 +11,8 @@ import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../../utils/roles';
 import { productsApi } from '../../utils/productsApi';
 import { promotionsApi } from '../../utils/promotionsApi';
+import MobileHeader from '../../components/MobileHeader';
+import Footer from '../../components/Footer';
 
 // Interfaces para la nueva estructura de datos
 interface ImagenVariante {
@@ -94,6 +96,11 @@ const ProductPage: NextPage = () => {
   
   // Estados para animación del carrusel
   const [isImageTransitioning, setIsImageTransitioning] = useState(false);
+  
+  // Estados para móvil
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState('cart');
   
   // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -568,22 +575,48 @@ const ProductPage: NextPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
-        <div className="text-white text-xl">Cargando producto...</div>
-      </div>
+      <>
+        <MobileHeader 
+          showMobileMenu={showMobileMenu}
+          setShowMobileMenu={setShowMobileMenu}
+          showMobileSidebar={showMobileSidebar}
+          setShowMobileSidebar={setShowMobileSidebar}
+          setMobileSidebarContent={setMobileSidebarContent}
+        />
+        <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
+          <div className="text-white text-xl">Cargando producto...</div>
+        </div>
+      </>
     );
   }
 
   if (error || !productData) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
-        <div className="text-white text-xl">{error || 'Producto no encontrado'}</div>
-      </div>
+      <>
+        <MobileHeader 
+          showMobileMenu={showMobileMenu}
+          setShowMobileMenu={setShowMobileMenu}
+          showMobileSidebar={showMobileSidebar}
+          setShowMobileSidebar={setShowMobileSidebar}
+          setMobileSidebarContent={setMobileSidebarContent}
+        />
+        <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
+          <div className="text-white text-xl">{error || 'Producto no encontrado'}</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
+    <>
+      <MobileHeader 
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        showMobileSidebar={showMobileSidebar}
+        setShowMobileSidebar={setShowMobileSidebar}
+        setMobileSidebarContent={setMobileSidebarContent}
+      />
+      <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
@@ -1979,6 +2012,8 @@ const ProductPage: NextPage = () => {
       </footer>
       
     </div>
+    <Footer />
+    </>
   );
 };
 

@@ -13,6 +13,8 @@ import { canAccessAdminPanel } from "../utils/roles";
 import { useCategories } from "../hooks/useCategories";
 import CategoryFilter from "../components/CategoryFilter";
 import VariantSizeSelector from "../components/VariantSizeSelector";
+import MobileHeader from "../components/MobileHeader";
+import Footer from "../components/Footer";
 
 // Imports para el sistema de productos y promociones
 import { productsApi, productUtils } from "../utils/productsApi";
@@ -97,6 +99,11 @@ const Catalogo: NextPage = () => {
   // Estados adicionales para navbar
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Estados para el móvil
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -801,7 +808,7 @@ const Catalogo: NextPage = () => {
   }, [filteredProducts, selectedCategory, isLoadingProducts]);
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
+    <div className="w-full max-w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
@@ -811,46 +818,52 @@ const Catalogo: NextPage = () => {
           <div className="h-full bg-white opacity-50 animate-pulse"></div>
         </div>
       )}
+
+      {/* Header Móvil */}
+      <MobileHeader 
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        showMobileSidebar={showMobileSidebar}
+        setShowMobileSidebar={setShowMobileSidebar}
+        setMobileSidebarContent={(content) => setMobileSidebarContent(content as 'cart' | 'language' | 'profile' | 'search')}
+      />
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
-            <span className="text-white">{t('TREBOLUXE')}</span>
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 hidden md:flex flex-row items-center justify-between !p-[5px] box-border overflow-x-hidden max-w-full">
+            <div className="w-full max-w-[200px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+            <span className="text-white text-sm">{t('TREBOLUXE')}</span>
           </div>
             
             {/* Contenido central - texto del carrusel */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
+            <div className="flex-1 flex flex-row items-center justify-center gap-2 text-white px-4 overflow-hidden">
               <Image
-                className="w-[12.2px] relative max-h-full object-contain"
+                className="w-[12.2px] relative max-h-full object-contain flex-shrink-0"
                 width={12.2}
                 height={10.9}
                 sizes="100vw"
                 alt=""
                 src="/petalo-1@2x.png"
               />
-              <div className={`relative tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out whitespace-nowrap ${
+              <div className={`relative tracking-[2px] md:tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out text-sm truncate max-w-full ${
                 isAnimating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
               }`}>
                 {t(promoTexts[currentTextIndex])}
               </div>
             </div>
 
-            <div className="flex-[-0.0187] [backdrop-filter:blur(40px)] rounded-[50px] flex flex-row items-center justify-end !pt-2 !pb-2 !pl-[402px] !pr-3 relative gap-2">
-              <div className="w-full absolute !!m-[0 important] h-full top-[0px] right-[0px] bottom-[0px] left-[0px] rounded-[100px] overflow-hidden hidden z-[0]">
-                <div className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] [backdrop-filter:blur(50px)] [background:linear-gradient(#0d0d0d,_#0d0d0d),_rgba(191,_191,_191,_0.44)]" />
-              </div>
-              <div className={`w-2 relative shadow-[0px_4px_4px_rgba(0,_0,_0,_0.25),_0px_-1px_1.3px_#fff_inset] rounded-[50px] h-2 z-[1] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 0 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
+            <div className="flex flex-row items-center justify-end gap-2 max-w-[60px] flex-shrink-0">
+              <div className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ease-in-out cursor-pointer ${
+                currentTextIndex === 0 ? 'bg-white' : 'bg-white opacity-30 hover:opacity-60'
               }`} 
               onClick={() => handleDotClick(0)} />
-              <div className={`w-2 relative shadow-[0px_2px_4px_#000_inset] rounded-[50px] h-2 z-[2] transition-all duration-500 ease-in-out cursor-pointer ${
-                currentTextIndex === 1 ? 'bg-white' : 'bg-white opacity-[0.3] hover:opacity-[0.6]'
+              <div className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ease-in-out cursor-pointer ${
+                currentTextIndex === 1 ? 'bg-white' : 'bg-white opacity-30 hover:opacity-60'
               }`}
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+          <div className="self-stretch hidden md:flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative overflow-x-hidden max-w-full">
             <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
                 className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
@@ -975,15 +988,15 @@ const Catalogo: NextPage = () => {
                 </div>
               </div>
               <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-green-600/30 bg-green-700/20 transition-colors duration-200 rounded cursor-pointer border border-green-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-blue-600/30 bg-blue-700/20 transition-colors duration-200 rounded cursor-pointer border border-blue-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('NUEVOS')}
                   </div>
                 </div>
@@ -1784,90 +1797,93 @@ const Catalogo: NextPage = () => {
         </div>
 
         {/* Contenido principal del catálogo */}
-        <div className="flex-1 w-full px-6 py-8">
+        <div className="flex-1 w-full px-2 sm:px-4 md:px-6 py-8 overflow-x-hidden max-w-full">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">Catálogo</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Catálogo</h1>
             <div className="h-1 w-32 bg-gradient-to-r from-green-500 to-green-300 rounded"></div>
           </div>
           
           {/* Barra de búsqueda y filtros */}
           <div className="mb-8">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8">
               {/* Controles de búsqueda y filtro */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="flex flex-col gap-4 mb-6">
                 {/* Barra de búsqueda */}
-                <div className="md:col-span-3">
+                <div className="w-full">
                   <div className="relative">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       placeholder={t("Buscar productos...")}
-                      className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent transition-all duration-200"
+                      className="w-full box-border bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-3 pr-10 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent transition-all duration-200 text-sm"
                     />
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
                   </div>
                 </div>
                 
-                {/* Filtro de categorías */}
-                <div className="md:col-span-1">
-                  <CategoryFilter
-                    className="w-full"
-                    t={t}
-                    onFilterChange={handleCategoryFilter}
-                    showProductCount={true}
-                    initialCategory={categoria as string || 'todas'}
-                  />
-                </div>
-                
-                {/* Dropdown de ordenamiento */}
-                <div className="md:col-span-1">
-                  <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => {
-                        setSortBy(e.target.value);
-                        setCurrentPage(1); // Reset to first page when sorting changes
-                      }}
-                      className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent appearance-none cursor-pointer hover:bg-white/30 transition-all duration-200"
-                    >
-                      <option value="nombre" className="bg-gray-800 text-white">{t('Nombre (A-Z)')}</option>
-                      <option value="precio_asc" className="bg-gray-800 text-white">{t('Precio: Menor a Mayor')}</option>
-                      <option value="precio_desc" className="bg-gray-800 text-white">{t('Precio: Mayor a Menor')}</option>
-                      <option value="recientes" className="bg-gray-800 text-white">{t('Más Recientes')}</option>
-                    </select>
-                    {/* Icono de dropdown personalizado */}
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                {/* Filtros en responsive grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {/* Filtro de categorías */}
+                  <div className="w-full">
+                    <CategoryFilter
+                      className="w-full"
+                      t={t}
+                      onFilterChange={handleCategoryFilter}
+                      showProductCount={true}
+                      initialCategory={categoria as string || 'todas'}
+                    />
+                  </div>
+                  
+                  {/* Dropdown de ordenamiento */}
+                  <div className="w-full">
+                    <div className="relative">
+                      <select
+                        value={sortBy}
+                        onChange={(e) => {
+                          setSortBy(e.target.value);
+                          setCurrentPage(1); // Reset to first page when sorting changes
+                        }}
+                        className="w-full box-border bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent appearance-none cursor-pointer hover:bg-white/30 transition-all duration-200"
+                      >
+                        <option value="nombre" className="bg-gray-800 text-white">{t('Nombre (A-Z)')}</option>
+                        <option value="precio_asc" className="bg-gray-800 text-white">{t('Precio: Menor a Mayor')}</option>
+                        <option value="precio_desc" className="bg-gray-800 text-white">{t('Precio: Mayor a Menor')}</option>
+                        <option value="recientes" className="bg-gray-800 text-white">{t('Más Recientes')}</option>
+                      </select>
+                      {/* Icono de dropdown personalizado */}
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
               
               {/* Información de filtros activos */}
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-300">
-                <p>
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-gray-300 w-full max-w-4xl mx-auto px-2">
+                <p className="text-center text-xs leading-tight">
                   {t('Busca por nombre, categoría o descripción del producto')}
                 </p>
                 {searchQuery && (
-                  <span className="bg-blue-600/20 px-3 py-1 rounded-full text-xs text-blue-300">
-                    {t('Buscando')}: <strong>"{searchQuery}"</strong>
+                  <span className="bg-blue-600/20 px-2 py-1 rounded-full text-xs text-blue-300 max-w-[140px] truncate">
+                    {t('Buscando')}: <strong>"{searchQuery.length > 8 ? searchQuery.substring(0, 8) + '...' : searchQuery}"</strong>
                   </span>
                 )}
                 {selectedCategory !== 'todas' && (
-                  <span className="bg-white/20 px-3 py-1 rounded-full text-xs">
-                    {t('Filtrando por categoría')}: <strong>{selectedCategory}</strong>
+                  <span className="bg-white/20 px-2 py-1 rounded-full text-xs max-w-[100px] truncate">
+                    {t('Categoría')}: <strong>{selectedCategory}</strong>
                   </span>
                 )}
                 {productsToShow.length > 0 && (
-                  <span className="bg-green-600/20 px-3 py-1 rounded-full text-xs text-green-300">
-                    {productsToShow.length} {t('productos encontrados')}
+                  <span className="bg-green-600/20 px-2 py-1 rounded-full text-xs text-green-300">
+                    {productsToShow.length} {t('productos')}
                   </span>
                 )}
               </div>
@@ -1886,16 +1902,16 @@ const Catalogo: NextPage = () => {
             
             if (productsToShow.length > 0 && !loading && !isLoadingProducts) {
               return (
-                <div className="self-stretch bg-transparent flex flex-col items-center justify-start py-16" style={{paddingLeft: '16pt', paddingRight: '16pt'}}>
-                  <div className="w-full">
+                <div className="w-full bg-transparent flex flex-col items-center justify-start py-8">
+                  <div className="max-w-6xl mx-auto px-6 sm:px-6 md:px-8 w-full">
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-6 md:gap-8 auto-rows-fr justify-items-center">
                       {productsToShow.slice(0, 500).map((product: any) => (
-                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
-                      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-                        <div className="relative mb-4">
+                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline p-2 sm:p-3 md:p-4 w-full max-w-[160px] sm:max-w-xs">
+                      <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300 group w-full h-full flex flex-col">
+                        <div className="relative mb-4 flex-1 min-h-[200px] sm:min-h-[220px] md:min-h-[240px] lg:min-h-[260px] p-3 sm:p-4">
                           <Image
-                            className="w-full h-64 object-cover rounded-lg"
+                            className="w-full h-full object-contain rounded-lg"
                             width={300}
                             height={256}
                             src={product.image}
@@ -1916,37 +1932,40 @@ const Catalogo: NextPage = () => {
                           {renderPromotions(product.id)}
                         </div>
                         
-                        <h3 className="text-white font-semibold text-lg mb-2">{t(product.name)}</h3>
-                        <p className="text-gray-300 text-sm mb-2">{t('Categoría')}: {t(product.category)}</p>
-                        <p className="text-gray-300 text-sm mb-2">{t('Marca')}: {product.brand}</p>
-                        <p className="text-gray-300 text-sm mb-2">{t('Color')}: {t(product.color)}</p>
-                        <p className="text-gray-300 text-sm mb-4">{t('Talla')}: {product.size}</p>
-                        
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white font-bold text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
-                            {product.originalPrice > product.price && (
-                              <span className="text-gray-400 line-through text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
-                            )}
+                        {/* Contenido de la card - altura fija */}
+                        <div className="flex flex-col flex-shrink-0 p-3 sm:p-4 md:p-6">
+                          <h3 className="text-white font-semibold text-base sm:text-lg mb-2 line-clamp-2">{t(product.name)}</h3>
+                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Categoría')}: {t(product.category)}</p>
+                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Marca')}: {product.brand}</p>
+                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Color')}: {t(product.color)}</p>
+                          <p className="text-gray-300 text-xs sm:text-sm mb-3">{t('Talla')}: {product.size}</p>
+                          
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-white font-bold text-sm sm:text-base md:text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                              {product.originalPrice > product.price && (
+                                <span className="text-gray-400 line-through text-xs sm:text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                              )}
+                            </div>
                           </div>
+                          
+                          <button
+                            disabled={!product.inStock}
+                            className={`w-full py-2 sm:py-3 rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base mt-auto ${
+                              product.inStock 
+                                ? 'bg-white text-black hover:bg-gray-100' 
+                                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            }`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (product.inStock) {
+                                handleAddToCart(product);
+                              }
+                            }}
+                          >
+                            {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                          </button>
                         </div>
-                        
-                        <button
-                          disabled={!product.inStock}
-                          className={`w-full py-3 rounded-lg font-medium transition-colors duration-200 ${
-                            product.inStock 
-                              ? 'bg-white text-black hover:bg-gray-100' 
-                              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                          }`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (product.inStock) {
-                              handleAddToCart(product);
-                            }
-                          }}
-                        >
-                          {product.inStock ? t('Añadir al carrito') : t('Agotado')}
-                        </button>
                       </div>
                     </Link>
                   ))}
@@ -1990,216 +2009,7 @@ const Catalogo: NextPage = () => {
         </div>
 
         {/* Footer completo */}
-        <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
-          <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
-            {/* Logo y redes sociales */}
-            <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
-              <Image
-                className="w-[50px] h-[50px]"
-                width={50}
-                height={50}
-                sizes="100vw"
-                alt="Logo Treboluxe"
-                src="/sin-ttulo1-2@2x.png"
-              />
-              <div className="flex flex-col items-start justify-start gap-4">
-                <p className="text-white text-sm leading-relaxed">
-                  {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
-                </p>
-                <div className="flex flex-row items-center justify-start gap-4">
-                  <a 
-                    href="https://www.facebook.com/profile.php?id=61576338298512"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      className="w-6 relative h-6"
-                      width={24}
-                      height={24}
-                      sizes="100vw"
-                      alt="Facebook"
-                      src="/facebook-icon.svg"
-                    />
-                  </a>
-                  <a 
-                    href="https://www.instagram.com/treboluxe"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      className="w-6 relative h-6 overflow-hidden shrink-0"
-                      width={24}
-                      height={24}
-                      sizes="100vw"
-                      alt="Instagram"
-                      src="/logo-instagram.svg"
-                    />
-                  </a>
-                  <a 
-                    href="https://www.tiktok.com/@treboluxe5"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      className="w-6 relative h-6 overflow-hidden shrink-0"
-                      width={24}
-                      height={24}
-                      sizes="100vw"
-                      alt="TikTok"
-                      src="/tiktok-icon.svg"
-                    />
-                  </a>
-                  <a 
-                    href="https://twitter.com/treboluxe?s=21"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      className="w-6 relative h-6 overflow-hidden shrink-0"
-                      width={24}
-                      height={24}
-                      sizes="100vw"
-                      alt="Twitter/X"
-                      src="/x-logo.svg"
-                    />
-                  </a>
-                </div>
-              </div>
-            </div>
-            
-            {/* Columna Compras */}
-            <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-              <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Compras')}
-                </h3>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Cómo comprar')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Métodos de pago')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Tabla de tallas')}
-                </div>
-              </div>
-            </div>
-            
-            {/* Columna Categorías */}
-            <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-              <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Categorías')}
-                </h3>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Mujer')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Hombre')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Niños')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Accesorios')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Calzado')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Nueva colección')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Ofertas especiales')}
-                </div>
-              </div>
-            </div>
-            
-            {/* Columna Atención al cliente */}
-            <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-              <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Atención al cliente')}
-                </h3>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Contacto')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Preguntas frecuentes')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Reportar un problema')}
-                </div>
-              </div>
-            </div>
-            
-            {/* Columna Legal */}
-            <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-              <div className="self-stretch flex flex-col items-start justify-start pb-4">
-                <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                  {t('Legal')}
-                </h3>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Términos y condiciones')}
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                  {t('Sobre nosotros')}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Copyright section */}
-          <div className="w-full pt-8 border-t border-white/20">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-gray-400 text-sm">
-                {t('© 2024 Treboluxe. Todos los derechos reservados.')}
-              </div>
-              <div className="flex items-center gap-6 text-gray-400 text-sm">
-                <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
-                <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
-                <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
-              </div>
-            </div>
-            <div className="mt-4 text-gray-400 text-xs">
-              {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
-            </div>
-          </div>
-        </footer>
+        <Footer />
 
       {/* Selector de Variantes y Tallas */}
       {selectedProduct && (
@@ -2211,6 +2021,416 @@ const Catalogo: NextPage = () => {
           currentLanguage={currentLanguage}
         />
       )}
+
+      {/* Menú Móvil Izquierdo (Categorías) */}
+      <div className={`fixed inset-y-0 left-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileMenu ? 'translate-x-0' : '-translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del menú con logo */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-xl font-bold tracking-[4px]">
+              {t('TREBOLUXE')}
+            </div>
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Categorías */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <h3 className="text-white text-lg font-semibold mb-4 tracking-[2px]">
+              {t('CATEGORÍAS')}
+            </h3>
+            <div className="space-y-2">
+              {/* Todas las categorías */}
+              <Link 
+                href="/catalogo?categoria=todas" 
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors border-b border-gray-600/30"
+              >
+                <span className="font-semibold">{t('Todas las categorías')}</span>
+              </Link>
+              
+              {/* Categorías dinámicas */}
+              {activeCategories.map((category) => (
+                <Link 
+                  key={category.id} 
+                  href={`/catalogo?categoria=${category.slug}`} 
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  {t(category.name)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay para cerrar menú móvil */}
+      {showMobileMenu && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
+      {/* Panel Lateral Móvil Derecho (Carrito/Opciones) */}
+      <div className={`fixed inset-y-0 right-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileSidebar ? 'translate-x-0' : 'translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del panel */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-lg font-semibold">
+              {mobileSidebarContent === 'cart' && t('Carrito')}
+              {mobileSidebarContent === 'language' && t('Idioma & Moneda')}
+              {mobileSidebarContent === 'profile' && t('Perfil')}
+              {mobileSidebarContent === 'search' && t('Buscar')}
+            </div>
+            <button 
+              onClick={() => setShowMobileSidebar(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Contenido del panel */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* Contenido del carrito */}
+            {mobileSidebarContent === 'cart' && (
+              <div className="space-y-4 flex-1 flex flex-col">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+                  <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
+                </div>
+                
+                {/* Lista de productos */}
+                <div className="space-y-4 flex-1 overflow-y-auto">
+                  {cartItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                      </svg>
+                      <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                      <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                    </div>
+                  ) : (
+                    cartItems.map((item) => (
+                      <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-14 h-14 bg-gray-400 rounded-lg flex-shrink-0">
+                            {item.image && (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                width={56}
+                                height={56}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-white text-sm truncate">{item.name}</h4>
+                            <p className="text-gray-300 text-xs">ID: {item.variantId}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 bg-gray-600 rounded text-white flex items-center justify-center"
+                                >
+                                  -
+                                </button>
+                                <span className="text-white text-sm">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                  className="w-6 h-6 bg-green-600 rounded text-white flex items-center justify-center"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <span className="text-white font-medium text-sm">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Botones de acción */}
+                {cartItems.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-white/20">
+                    <div className="flex items-center justify-between text-white">
+                      <span className="font-medium">{t('Total')}:</span>
+                      <span className="text-xl font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Link 
+                        href="/carrito" 
+                        className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-3 px-4 rounded-lg font-medium text-center block hover:from-green-700 hover:to-green-900 transition-colors"
+                        onClick={() => setShowMobileSidebar(false)}
+                      >
+                        {t('Ver Carrito Completo')}
+                      </Link>
+                      <button 
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                      >
+                        {t('Seguir Comprando')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contenido de idioma */}
+            {mobileSidebarContent === 'language' && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+                
+                {/* Language Section */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => changeLanguage('es')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇸</span>
+                          <span>Español</span>
+                        </div>
+                        {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('en')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>English</span>
+                        </div>
+                        {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Currency Section */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => changeCurrency('MXN')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">$</span>
+                          <span>MXN (Pesos Mexicanos)</span>
+                        </div>
+                        {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('USD')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">$</span>
+                          <span>USD (Dólares)</span>
+                        </div>
+                        {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('EUR')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">€</span>
+                          <span>EUR (Euros)</span>
+                        </div>
+                        {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contenido del panel de perfil */}
+            {mobileSidebarContent === 'profile' && (
+              <div className="space-y-6">
+                {isAuthenticated && user ? (
+                  <>
+                    {/* Usuario autenticado */}
+                    <div className="text-center border-b border-white/20 pb-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-green-800 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span className="text-white text-2xl font-bold">
+                          {user.nombres ? user.nombres.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                      </div>
+                      <h3 className="text-white text-xl font-bold">
+                        {user.nombres || t('Usuario')}
+                      </h3>
+                      <p className="text-gray-300 text-sm">{user.correo}</p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Link 
+                        href="/perfil" 
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {t('Mi Perfil')}
+                      </Link>
+                      
+                      <Link 
+                        href="/pedidos" 
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        {t('Mis Pedidos')}
+                      </Link>
+                      
+                      <button 
+                        onClick={() => {
+                          logout();
+                          setShowMobileSidebar(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/20 rounded-md transition-colors text-left"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        {t('Cerrar Sesión')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Usuario no autenticado */}
+                    <div className="text-center py-8">
+                      <div className="w-20 h-20 bg-gray-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-white text-lg font-semibold mb-2">{t('¡Hola!')}</h3>
+                      <p className="text-gray-300 text-sm mb-6">{t('Inicia sesión para acceder a tu cuenta')}</p>
+                      
+                      <div className="space-y-3">
+                        <Link 
+                          href="/login" 
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-900 transition-colors block text-center"
+                        >
+                          {t('Iniciar Sesión')}
+                        </Link>
+                        <Link 
+                          href="/register" 
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="w-full border border-white/30 text-white py-3 px-4 rounded-lg font-medium hover:bg-white/10 transition-colors block text-center"
+                        >
+                          {t('Crear Cuenta')}
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Botones de navegación inferior */}
+          <div className="border-t border-white/20 p-4">
+            <div className="grid grid-cols-3 gap-2">
+              {mobileSidebarContent !== 'language' && (
+                <button
+                  onClick={() => setMobileSidebarContent('language')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                  </svg>
+                  <span className="text-xs">{t('Idioma')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'profile' && (
+                <button
+                  onClick={() => setMobileSidebarContent('profile')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-xs">{t('Perfil')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'search' && (
+                <button
+                  onClick={() => setMobileSidebarContent('search')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-xs">{t('Buscar')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'cart' && (
+                <button
+                  onClick={() => setMobileSidebarContent('cart')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                  </svg>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                  <span className="text-xs">{t('Carrito')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
       
     </div>
   );

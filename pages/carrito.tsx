@@ -13,6 +13,8 @@ import { productsApi, productUtils } from '../utils/productsApi';
 import { categoriesApi } from '../utils/categoriesApi';
 import { promotionsApi } from '../utils/promotionsApi';
 import { useCategories } from '../hooks/useCategories';
+import MobileHeader from '../components/MobileHeader';
+import Footer from '../components/Footer';
 
 // Interfaces para cotizaciones de envío
 interface ShippingQuote {
@@ -64,6 +66,11 @@ const CarritoPage: NextPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  // Estados para el móvil
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState('cart');
 
   // Estados para cotizaciones de envío
   const [postalCode, setPostalCode] = useState('');
@@ -361,7 +368,7 @@ const CarritoPage: NextPage = () => {
   }, []);
 
   return (
-    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
+    <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
@@ -372,11 +379,20 @@ const CarritoPage: NextPage = () => {
           <div className="h-full bg-white opacity-50 animate-pulse"></div>
         </div>
       )}
+
+      {/* Header Móvil */}
+      <MobileHeader 
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        showMobileSidebar={showMobileSidebar}
+        setShowMobileSidebar={setShowMobileSidebar}
+        setMobileSidebarContent={setMobileSidebarContent}
+      />
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 hidden md:flex flex-row items-center justify-between !p-[5px] box-border">
+            <div className="w-full max-w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
             <span className="text-white">{t('TREBOLUXE')}</span>
           </div>
             
@@ -397,7 +413,7 @@ const CarritoPage: NextPage = () => {
               </div>
             </div>
 
-            <div className="flex-[-0.0187] [backdrop-filter:blur(40px)] rounded-[50px] flex flex-row items-center justify-end !pt-2 !pb-2 !pl-[402px] !pr-3 relative gap-2">
+            <div className="flex-[-0.0187] [backdrop-filter:blur(40px)] rounded-[50px] flex flex-row items-center justify-end !pt-2 !pb-2 !pl-2 md:!pl-[402px] !pr-3 relative gap-2">
               <div className="w-full absolute !!m-[0 important] h-full top-[0px] right-[0px] bottom-[0px] left-[0px] rounded-[100px] overflow-hidden hidden z-[0]">
                 <div className="absolute h-full w-full top-[0%] right-[0%] bottom-[0%] left-[0%] [backdrop-filter:blur(50px)] [background:linear-gradient(#0d0d0d,_#0d0d0d),_rgba(191,_191,_191,_0.44)]" />
               </div>
@@ -411,10 +427,10 @@ const CarritoPage: NextPage = () => {
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+          <div className="self-stretch hidden md:flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
             <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
-                className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
+                className="w-full max-w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
                 ref={dropdownRef}
                 onMouseEnter={() => setShowCategoriesDropdown(true)}
                 onMouseLeave={() => setShowCategoriesDropdown(false)}
@@ -1705,6 +1721,9 @@ const CarritoPage: NextPage = () => {
           )}
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
