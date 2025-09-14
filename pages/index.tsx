@@ -575,7 +575,11 @@ const HomeScreen: NextPage = () => {
           product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
           product.descripcion?.toLowerCase().includes(query.toLowerCase())
         );
-        setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+        
+        // Aplicar promociones a los productos filtrados
+        const productsWithPromotions = productUtils.applyPromotionDiscounts(filtered, promotions);
+        
+        setSearchResults(productsWithPromotions.slice(0, 5)); // Limitar a 5 resultados
       }
     } catch (error) {
       console.error('Error buscando productos:', error);
@@ -1398,25 +1402,51 @@ const HomeScreen: NextPage = () => {
                               <div className="flex-1 min-w-0">
                                 <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                 <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
-                                <p className="text-green-400 text-sm font-medium">
+                                <div className="mt-1">
                                   {(() => {
-                                    // Obtener el precio del producto
-                                    let basePrice = 0;
+                                    // Verificar si tiene descuento real
+                                    const hasRealDiscount = product.hasDiscount && 
+                                                          product.price && 
+                                                          product.originalPrice && 
+                                                          product.price < product.originalPrice;
                                     
-                                    // Buscar precio en diferentes estructuras
-                                    if (product.variantes && product.variantes.length > 0) {
-                                      const firstVariant = product.variantes[0];
-                                      basePrice = firstVariant.precio || basePrice;
+                                    if (hasRealDiscount) {
+                                      return (
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                          <span className="text-green-400 text-sm font-medium">
+                                            {formatPrice(product.price, currentCurrency, 'MXN')}
+                                          </span>
+                                          <span className="text-gray-400 text-xs line-through">
+                                            {formatPrice(product.originalPrice, currentCurrency, 'MXN')}
+                                          </span>
+                                          <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                            -{product.discountPercentage}%
+                                          </span>
+                                        </div>
+                                      );
+                                    } else {
+                                      // Obtener el precio base del producto
+                                      let basePrice = 0;
+                                      
+                                      // Buscar precio en diferentes estructuras
+                                      if (product.variantes && product.variantes.length > 0) {
+                                        const firstVariant = product.variantes[0];
+                                        basePrice = firstVariant.precio || basePrice;
+                                      }
+                                      
+                                      // Si aún no hay precio, buscar en otros campos
+                                      if (basePrice === 0) {
+                                        basePrice = product.precio || product.price || 0;
+                                      }
+                                      
+                                      return (
+                                        <span className="text-green-400 text-sm font-medium">
+                                          {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                        </span>
+                                      );
                                     }
-                                    
-                                    // Si aún no hay precio, buscar en otros campos
-                                    if (basePrice === 0) {
-                                      basePrice = product.precio || product.price || 0;
-                                    }
-                                    
-                                    return formatPrice(basePrice, currentCurrency, 'MXN');
                                   })()}
-                                </p>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2351,25 +2381,51 @@ const HomeScreen: NextPage = () => {
                                     <div className="flex-1 min-w-0">
                                       <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                       <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
-                                      <p className="text-green-400 text-sm font-medium">
+                                      <div className="mt-1">
                                         {(() => {
-                                          // Obtener el precio del producto
-                                          let basePrice = 0;
+                                          // Verificar si tiene descuento real
+                                          const hasRealDiscount = product.hasDiscount && 
+                                                                product.price && 
+                                                                product.originalPrice && 
+                                                                product.price < product.originalPrice;
                                           
-                                          // Buscar precio en diferentes estructuras
-                                          if (product.variantes && product.variantes.length > 0) {
-                                            const firstVariant = product.variantes[0];
-                                            basePrice = firstVariant.precio || basePrice;
+                                          if (hasRealDiscount) {
+                                            return (
+                                              <div className="flex items-center gap-1 flex-wrap">
+                                                <span className="text-green-400 text-sm font-medium">
+                                                  {formatPrice(product.price, currentCurrency, 'MXN')}
+                                                </span>
+                                                <span className="text-gray-400 text-xs line-through">
+                                                  {formatPrice(product.originalPrice, currentCurrency, 'MXN')}
+                                                </span>
+                                                <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                                  -{product.discountPercentage}%
+                                                </span>
+                                              </div>
+                                            );
+                                          } else {
+                                            // Obtener el precio base del producto
+                                            let basePrice = 0;
+                                            
+                                            // Buscar precio en diferentes estructuras
+                                            if (product.variantes && product.variantes.length > 0) {
+                                              const firstVariant = product.variantes[0];
+                                              basePrice = firstVariant.precio || basePrice;
+                                            }
+                                            
+                                            // Si aún no hay precio, buscar en otros campos
+                                            if (basePrice === 0) {
+                                              basePrice = product.precio || product.price || 0;
+                                            }
+                                            
+                                            return (
+                                              <span className="text-green-400 text-sm font-medium">
+                                                {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                              </span>
+                                            );
                                           }
-                                          
-                                          // Si aún no hay precio, buscar en otros campos
-                                          if (basePrice === 0) {
-                                            basePrice = product.precio || product.price || 0;
-                                          }
-                                          
-                                          return formatPrice(basePrice, currentCurrency, 'MXN');
                                         })()}
-                                      </p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
