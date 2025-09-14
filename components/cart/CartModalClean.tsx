@@ -149,28 +149,33 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, onGoToCheckout }
                     
                     {/* Precios */}
                     <div className="flex flex-col gap-1">
-                      {item.hasDiscount ? (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold text-green-600">
-                              {formatPrice(item.finalPrice)}
-                            </span>
-                            <span className="text-sm text-gray-500 line-through">
+                      <div className="text-sm text-gray-600 mb-1">
+                        Precio unitario: {formatPrice(item.hasDiscount ? item.finalPrice : item.price)}
+                        {item.hasDiscount && (
+                          <>
+                            <span className="text-gray-400 line-through ml-2">
                               {formatPrice(item.price)}
                             </span>
-                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded ml-2">
                               -{item.discountPercentage}%
                             </span>
-                          </div>
-                        </>
+                          </>
+                        )}
+                      </div>
+                      {item.hasDiscount ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold text-green-600">
+                            {formatPrice(item.totalItemPrice)}
+                          </span>
+                          <span className="text-sm text-gray-500 line-through">
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-lg font-semibold">
-                          {formatPrice(item.price)}
+                          {formatPrice(item.totalItemPrice)}
                         </span>
                       )}
-                      <span className="text-sm text-gray-600">
-                        Total: {formatPrice(item.totalItemPrice)}
-                      </span>
                     </div>
 
                     {/* Controles de cantidad */}
