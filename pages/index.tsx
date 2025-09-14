@@ -802,73 +802,129 @@ const HomeScreen: NextPage = () => {
           <div className="flex-1 overflow-y-auto p-4">
             {/* Contenido del carrito */}
             {mobileSidebarContent === 'cart' && (
-              <div className="space-y-4">
-                {cartItems.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
-                    </svg>
-                    <p>{t('Tu carrito está vacío')}</p>
-                  </div>
-                ) : (
-                  <>
-                    {cartItems.map((item: any) => (
-                      <div key={`${item.producto_id}-${item.variante_id}-${item.talla_id}`} className="flex items-center space-x-3 p-3 bg-white/10 rounded-md">
-                        <Image
-                          src={item.imagen || '/sin-ttulo1-2@2x.png'}
-                          alt={item.nombre || 'Producto'}
-                          width={60}
-                          height={60}
-                          className="rounded-md object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-white text-sm font-medium truncate">{item.nombre}</h4>
-                          <p className="text-gray-400 text-xs">{item.talla_nombre}</p>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-white text-sm">{formatPrice(item.precio_final_item, currentCurrency, 'MXN')}</span>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => updateQuantity(item.producto_id, item.variante_id, item.talla_id, Math.max(1, item.cantidad - 1))}
-                                className="w-6 h-6 bg-white/20 rounded text-white text-xs flex items-center justify-center"
-                              >
-                                -
-                              </button>
-                              <span className="text-white text-sm">{item.cantidad}</span>
-                              <button
-                                onClick={() => updateQuantity(item.producto_id, item.variante_id, item.talla_id, item.cantidad + 1)}
-                                className="w-6 h-6 bg-white/20 rounded text-white text-xs flex items-center justify-center"
-                              >
-                                +
-                              </button>
+              <div className="space-y-4 flex-1 flex flex-col">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+                  <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
+                </div>
+                
+                {/* Lista de productos */}
+                <div className="space-y-4 flex-1 overflow-y-auto">
+                  {cartItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                      </svg>
+                      <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                      <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                    </div>
+                  ) : (
+                    cartItems.map((item) => (
+                      <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-14 h-14 bg-gray-400 rounded-lg flex-shrink-0">
+                            {item.image && (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                width={56}
+                                height={56}
+                                className="w-full h-full object-cover rounded-lg"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-medium text-sm truncate">{item.name}</h4>
+                            <p className="text-gray-300 text-xs">{t('Talla')}: {item.tallaName}</p>
+                            {item.variantName && (
+                              <p className="text-gray-300 text-xs">{item.variantName}</p>
+                            )}
+                            <div className="flex items-center justify-between mt-2">
+                              {item.hasDiscount ? (
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-red-400 line-through">
+                                    {formatPrice(item.price, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-white font-bold text-sm">
+                                    {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-xs text-yellow-400">
+                                    -{item.discountPercentage}% OFF
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white font-bold text-sm">
+                                  {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  -
+                                </button>
+                                <span className="text-white text-sm w-6 text-center">{item.quantity}</span>
+                                <button 
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                  className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
+                          <button 
+                            onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                            disabled={isLoading}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                    ))}
-                    <div className="border-t border-white/20 pt-4 mt-4">
-                      <div className="flex justify-between text-white font-semibold">
-                        <span>{t('Total:')}</span>
-                        <span>{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
-                      </div>
-                      <Link
-                        href="/carrito"
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="block w-full bg-green-600 text-white text-center py-3 rounded-md mt-4 font-medium hover:bg-green-700 transition-colors"
-                      >
-                        {t('Ver Carrito')}
+                    ))
+                  )}
+                </div>
+                
+                {/* Resumen del carrito */}
+                {cartItems.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/20">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-gray-300">{t('Subtotal:')}</span>
+                      <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-gray-300">{t('Envío:')}</span>
+                      <span className="text-blue-400 font-medium">{t('Calculado al final')}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Link href="/checkout" className="block">
+                        <button 
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          {t('Finalizar Compra')}
+                        </button>
                       </Link>
-                      <Link
-                        href="/checkout"
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="block w-full bg-blue-600 text-white text-center py-3 rounded-md mt-2 font-medium hover:bg-blue-700 transition-colors"
-                      >
-                        {t('Checkout')}
+                      <Link href="/carrito" className="block">
+                        <button 
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200"
+                        >
+                          {t('Ver Carrito Completo')}
+                        </button>
                       </Link>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}
