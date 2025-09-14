@@ -2340,7 +2340,7 @@ const HomeScreen: NextPage = () => {
                                 >
                                   <div className="flex flex-col gap-2">
                                     {/* Imagen que ocupa TODO el ancho sin márgenes */}
-                                    <div className="w-full h-40 bg-gray-400 overflow-hidden flex items-center justify-center">
+                                    <div className="w-fill h-fill overflow-hidden flex items-center justify-center">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
                                         let imageUrl = null;
