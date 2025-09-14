@@ -85,6 +85,11 @@ const HomeScreen: NextPage = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   
+  // Estados para navegación móvil
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const loginDropdownRef = useRef<HTMLDivElement>(null);
@@ -673,10 +678,270 @@ const HomeScreen: NextPage = () => {
         </div>
       )}
       
-      <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
+      {/* Navbar Móvil - Solo visible en pantallas pequeñas */}
+      <div className="md:hidden bg-black/90 sticky top-0 z-50 backdrop-blur-lg border-b border-white/20">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Botón de Menú (izquierda) */}
+          <button 
+            onClick={() => setShowMobileMenu(true)}
+            className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
+          {/* Espacio central */}
+          <div className="flex-1"></div>
+          
+          {/* Botón de Opciones (derecha) */}
+          <button 
+            onClick={() => {
+              setShowMobileSidebar(true);
+              setMobileSidebarContent('cart');
+            }}
+            className="p-2 text-white hover:bg-white/20 rounded-md transition-colors relative"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Menú Móvil Izquierdo (Categorías) */}
+      <div className={`fixed inset-y-0 left-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileMenu ? 'translate-x-0' : '-translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del menú con logo */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-xl font-bold tracking-[4px]">
+              {t('TREBOLUXE')}
+            </div>
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Categorías */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <h3 className="text-white text-lg font-semibold mb-4 tracking-[2px]">
+              {t('CATEGORÍAS')}
+            </h3>
+            <div className="space-y-2">
+              {/* Todas las categorías */}
+              <Link 
+                href="/catalogo?categoria=todas" 
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors border-b border-gray-600/30"
+              >
+                <span className="font-semibold">{t('Todas las categorías')}</span>
+              </Link>
+              
+              {/* Categorías dinámicas */}
+              {activeCategories.map((category) => (
+                <Link 
+                  key={category.id} 
+                  href={`/catalogo?categoria=${category.slug}`} 
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  {t(category.name)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay para cerrar menú móvil */}
+      {showMobileMenu && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
+      {/* Panel Lateral Móvil Derecho (Carrito/Opciones) */}
+      <div className={`fixed inset-y-0 right-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileSidebar ? 'translate-x-0' : 'translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del panel */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-lg font-semibold">
+              {mobileSidebarContent === 'cart' && t('Carrito')}
+              {mobileSidebarContent === 'language' && t('Idioma & Moneda')}
+              {mobileSidebarContent === 'profile' && t('Perfil')}
+              {mobileSidebarContent === 'search' && t('Buscar')}
+            </div>
+            <button 
+              onClick={() => setShowMobileSidebar(false)}
+              className="p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Contenido del panel */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* Contenido del carrito */}
+            {mobileSidebarContent === 'cart' && (
+              <div className="space-y-4">
+                {cartItems.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                    </svg>
+                    <p>{t('Tu carrito está vacío')}</p>
+                  </div>
+                ) : (
+                  <>
+                    {cartItems.map((item: any) => (
+                      <div key={`${item.producto_id}-${item.variante_id}-${item.talla_id}`} className="flex items-center space-x-3 p-3 bg-white/10 rounded-md">
+                        <Image
+                          src={item.imagen || '/placeholder.jpg'}
+                          alt={item.nombre}
+                          width={60}
+                          height={60}
+                          className="rounded-md object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white text-sm font-medium truncate">{item.nombre}</h4>
+                          <p className="text-gray-400 text-xs">{item.talla_nombre}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-white text-sm">{formatPrice(item.precio_final_item, currentCurrency, 'MXN')}</span>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => updateQuantity(item.producto_id, item.variante_id, item.talla_id, Math.max(1, item.cantidad - 1))}
+                                className="w-6 h-6 bg-white/20 rounded text-white text-xs flex items-center justify-center"
+                              >
+                                -
+                              </button>
+                              <span className="text-white text-sm">{item.cantidad}</span>
+                              <button
+                                onClick={() => updateQuantity(item.producto_id, item.variante_id, item.talla_id, item.cantidad + 1)}
+                                className="w-6 h-6 bg-white/20 rounded text-white text-xs flex items-center justify-center"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border-t border-white/20 pt-4 mt-4">
+                      <div className="flex justify-between text-white font-semibold">
+                        <span>{t('Total:')}</span>
+                        <span>{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                      </div>
+                      <Link
+                        href="/carrito"
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="block w-full bg-green-600 text-white text-center py-3 rounded-md mt-4 font-medium hover:bg-green-700 transition-colors"
+                      >
+                        {t('Ver Carrito')}
+                      </Link>
+                      <Link
+                        href="/checkout"
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="block w-full bg-blue-600 text-white text-center py-3 rounded-md mt-2 font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        {t('Checkout')}
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Aquí iría el contenido de otros paneles (language, profile, search) */}
+          </div>
+          
+          {/* Botones de navegación inferior */}
+          <div className="border-t border-white/20 p-4">
+            <div className="grid grid-cols-3 gap-2">
+              {mobileSidebarContent !== 'language' && (
+                <button
+                  onClick={() => setMobileSidebarContent('language')}
+                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                  </svg>
+                  <span className="text-xs">{t('Idioma')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'profile' && (
+                <button
+                  onClick={() => setMobileSidebarContent('profile')}
+                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-xs">{t('Perfil')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'search' && (
+                <button
+                  onClick={() => setMobileSidebarContent('search')}
+                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-xs">{t('Buscar')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'cart' && (
+                <button
+                  onClick={() => setMobileSidebarContent('cart')}
+                  className="flex flex-col items-center py-3 px-2 text-white hover:bg-white/20 rounded-md transition-colors relative"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                  </svg>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                  <span className="text-xs">{t('Carrito')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay para cerrar panel lateral móvil */}
+      {showMobileSidebar && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
+      
+      {/* Navbar Desktop - Oculta en móvil */}
+      <div className="hidden md:flex self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
+            {/* Logo TREBOLUXE - oculto en tablet */}
+            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] hidden md:block lg:block">
             <span className="text-white">{t('TREBOLUXE')}</span>
           </div>
             
@@ -1650,7 +1915,7 @@ const HomeScreen: NextPage = () => {
             <>
               {leftImage && (
                 <Image
-                  className="flex-1 relative max-w-full h-full object-cover"
+                  className="flex-1 relative max-w-full h-full object-cover md:flex-1"
                   width={960}
                   height={904}
                   sizes="100vw"
@@ -1658,9 +1923,10 @@ const HomeScreen: NextPage = () => {
                   src={leftImage.url}
                 />
               )}
+              {/* Imagen derecha: visible solo en desktop */}
               {rightImage && (
                 <Image
-                  className="flex-1 relative max-w-full h-full object-cover"
+                  className="hidden lg:block flex-1 relative max-w-full h-full object-cover"
                   width={960}
                   height={904}
                   sizes="100vw"
@@ -1738,8 +2004,12 @@ const HomeScreen: NextPage = () => {
             <h2 className="text-3xl font-bold text-white mb-4 tracking-[2px]">{t('AGREGADOS RECIENTEMENTE')}</h2>
             <p className="text-gray-300 text-lg">{t('Descubre nuestros productos más nuevos')}</p>
           </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {featuredProducts.slice(0, 6).map((product) => (
+            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+            {/* En móvil: mostrar máximo 9 productos (3x3), en otras pantallas: 6 */}
+            {(typeof window !== 'undefined' && window.innerWidth <= 600 
+              ? featuredProducts.slice(0, 9) 
+              : featuredProducts.slice(0, 6)
+            ).map((product) => (
               <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                   <div className="relative mb-4">
@@ -1855,8 +2125,12 @@ const HomeScreen: NextPage = () => {
           )}
           
           {!loading && !error && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {getFilteredProducts().slice(0, 6).map((product) => (
+            <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+            {/* En móvil: mostrar máximo 9 productos (3x3), en otras pantallas: 6 */}
+            {(typeof window !== 'undefined' && window.innerWidth <= 600 
+              ? getFilteredProducts().slice(0, 9) 
+              : getFilteredProducts().slice(0, 6)
+            ).map((product) => (
               <Link key={product.id} href={`/producto/${product.id}`} className="no-underline">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
                   <div className="relative mb-4">
@@ -2017,8 +2291,112 @@ const HomeScreen: NextPage = () => {
         </div>
       </div>
 
-      {/* Footer completo */}
-      <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family">
+      {/* Footer con versiones responsive */}
+      <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start text-Text-Default-Tertiary font-Body-Font-Family">
+        
+        {/* Footer Minimalista - Solo Móvil */}
+        <div className="md:hidden w-full px-4 py-8">
+          <div className="text-center space-y-6">
+            {/* Logo */}
+            <div className="flex justify-center">
+              <Image
+                className="w-12 h-12"
+                width={48}
+                height={48}
+                sizes="100vw"
+                alt="Logo Treboluxe"
+                src="/sin-ttulo1-2@2x.png"
+              />
+            </div>
+            
+            {/* Redes Sociales */}
+            <div className="flex justify-center items-center gap-6">
+              <a 
+                href="https://www.facebook.com/profile.php?id=61576338298512"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  className="w-6 h-6"
+                  width={24}
+                  height={24}
+                  sizes="100vw"
+                  alt="Facebook"
+                  src="/facebook-icon.svg"
+                />
+              </a>
+              <a 
+                href="https://www.instagram.com/treboluxe"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  className="w-6 h-6"
+                  width={24}
+                  height={24}
+                  sizes="100vw"
+                  alt="Instagram"
+                  src="/logo-instagram.svg"
+                />
+              </a>
+              <a 
+                href="https://www.tiktok.com/@treboluxe5"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  className="w-6 h-6"
+                  width={24}
+                  height={24}
+                  sizes="100vw"
+                  alt="TikTok"
+                  src="/tiktok-icon.svg"
+                />
+              </a>
+              <a 
+                href="https://twitter.com/treboluxe?s=21"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  className="w-6 h-6"
+                  width={24}
+                  height={24}
+                  sizes="100vw"
+                  alt="Twitter/X"
+                  src="/x-logo.svg"
+                />
+              </a>
+            </div>
+            
+            {/* Enlaces principales */}
+            <div className="flex justify-center items-center gap-4 text-sm">
+              <Link href="/catalogo" className="text-gray-300 hover:text-white transition-colors">
+                {t('Catálogo')}
+              </Link>
+              <span className="text-gray-500">•</span>
+              <Link href="/carrito" className="text-gray-300 hover:text-white transition-colors">
+                {t('Carrito')}
+              </Link>
+              <span className="text-gray-500">•</span>
+              <Link href="/checkout" className="text-gray-300 hover:text-white transition-colors">
+                {t('Checkout')}
+              </Link>
+            </div>
+            
+            {/* Copyright */}
+            <div className="text-center text-gray-400 text-xs">
+              <p>© {new Date().getFullYear()} Treboluxe. {t('Todos los derechos reservados.')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Completo - Desktop/Tablet */}
+        <div className="hidden md:flex w-full flex-col pt-16 pb-8 px-8">
         <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
           {/* Logo y redes sociales */}
           <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
@@ -2226,6 +2604,7 @@ const HomeScreen: NextPage = () => {
           <div className="mt-4 text-gray-400 text-xs">
             {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
           </div>
+        </div>
         </div>
       </footer>
 
