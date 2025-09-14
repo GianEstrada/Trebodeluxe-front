@@ -932,19 +932,16 @@ const HomeScreen: NextPage = () => {
             {/* Contenido del panel de idioma/moneda */}
             {mobileSidebarContent === 'language' && (
               <div className="space-y-6">
-                {/* Sección de idioma */}
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-4">{t('Idioma')}</h3>
-                  <div className="space-y-2">
+                <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+                
+                {/* Language Section */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                  <div className="space-y-1">
                     <button 
-                      onClick={() => {
-                        changeLanguage('es');
-                        setShowLanguageDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
-                        currentLanguage === 'es' 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white/10 text-white hover:bg-white/20'
+                      onClick={() => changeLanguage('es')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -952,18 +949,13 @@ const HomeScreen: NextPage = () => {
                           <span className="text-2xl">🇪🇸</span>
                           <span>Español</span>
                         </div>
-                        {currentLanguage === 'es' && <span className="font-bold">✓</span>}
+                        {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                     <button 
-                      onClick={() => {
-                        changeLanguage('en');
-                        setShowLanguageDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
-                        currentLanguage === 'en' 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white/10 text-white hover:bg-white/20'
+                      onClick={() => changeLanguage('en')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -971,74 +963,79 @@ const HomeScreen: NextPage = () => {
                           <span className="text-2xl">🇺🇸</span>
                           <span>English</span>
                         </div>
-                        {currentLanguage === 'en' && <span className="font-bold">✓</span>}
+                        {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('fr')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">��</span>
+                          <span>Français</span>
+                        </div>
+                        {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                   </div>
                 </div>
-
-                {/* Sección de moneda */}
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-4">{t('Moneda')}</h3>
-                  <div className="space-y-2">
+                
+                {/* Currency Section */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                  <div className="space-y-1">
                     <button 
-                      onClick={() => {
-                        changeCurrency('MXN');
-                        setShowLanguageDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
-                        currentCurrency === 'MXN' 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white/10 text-white hover:bg-white/20'
+                      onClick={() => changeCurrency('MXN')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇲🇽</span>
+                          <span className="font-bold text-white">$</span>
                           <span>MXN - Peso Mexicano</span>
                         </div>
-                        {currentCurrency === 'MXN' && <span className="font-bold">✓</span>}
+                        {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                     <button 
-                      onClick={() => {
-                        changeCurrency('USD');
-                        setShowLanguageDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
-                        currentCurrency === 'USD' 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white/10 text-white hover:bg-white/20'
+                      onClick={() => changeCurrency('USD')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇺🇸</span>
-                          <span>USD - US Dollar</span>
+                          <span className="font-bold text-white">$</span>
+                          <span>USD - Dólar</span>
                         </div>
-                        {currentCurrency === 'USD' && <span className="font-bold">✓</span>}
+                        {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                     <button 
-                      onClick={() => {
-                        changeCurrency('EUR');
-                        setShowLanguageDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
-                        currentCurrency === 'EUR' 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white/10 text-white hover:bg-white/20'
+                      onClick={() => changeCurrency('EUR')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇪🇺</span>
+                          <span className="font-bold text-white">€</span>
                           <span>EUR - Euro</span>
                         </div>
-                        {currentCurrency === 'EUR' && <span className="font-bold">✓</span>}
+                        {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                   </div>
+                </div>
+                
+                <div className="mt-auto pt-6 border-t border-gray-600">
+                  <p className="text-gray-300 text-sm">
+                    {t('Selecciona tu idioma preferido y la moneda para ver los precios actualizados.')}
+                  </p>
                 </div>
               </div>
             )}
@@ -1046,104 +1043,245 @@ const HomeScreen: NextPage = () => {
             {/* Contenido del panel de perfil */}
             {mobileSidebarContent === 'profile' && (
               <div className="space-y-6">
-                {isAuthenticated ? (
+                {isAuthenticated && user ? (
                   <>
                     {/* Usuario autenticado */}
-                    <div className="text-center pb-6 border-b border-white/20">
-                      <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span className="text-white text-xl font-bold">
+                          {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
                       </div>
-                      <h3 className="text-white font-semibold text-lg mb-2">
-                        {user?.nombres || t('Usuario')}
-                      </h3>
-                      <p className="text-gray-400 text-sm">{user?.correo}</p>
+                      <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                      <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                     </div>
 
-                    {/* Opciones de usuario */}
-                    <div className="space-y-2">
-                      <Link
-                        href="/perfil"
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    {/* Información de Envío */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-4">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        {t('Mi Perfil')}
-                      </Link>
-                      <Link
-                        href="/pedidos"
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                        </svg>
-                        {t('Mis Pedidos')}
-                      </Link>
-                      <Link
-                        href="/favoritos"
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="flex items-center px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                        {t('Favoritos')}
-                      </Link>
-                      {user?.rol && canAccessAdminPanel(user.rol) && (
-                        <Link
-                          href="/admin"
-                          onClick={() => setShowMobileSidebar(false)}
-                          className="flex items-center px-4 py-3 text-green-400 hover:bg-green-600/20 rounded-md transition-colors"
-                        >
-                          <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {t('Panel Admin')}
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          logout();
-                          setShowMobileSidebar(false);
-                        }}
-                        className="w-full flex items-center px-4 py-3 text-red-400 hover:bg-red-600/20 rounded-md transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        {t('Cerrar Sesión')}
-                      </button>
+                        {t('Información de Envío')}
+                      </h4>
+                      <div className="space-y-2 text-sm text-gray-300">
+                        <div className="flex justify-between">
+                          <span>{t('Envíos salen:')}</span>
+                          <span className="text-green-400">{t('Al día siguiente')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega estándar:')}</span>
+                          <span>{t('3-5 días')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega express:')}</span>
+                          <span>{t('24-48 horas')}</span>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Recomendación de Producto */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-6">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        {t('Producto Recomendado')}
+                      </h4>
+                      {loadingRecommendation ? (
+                        <div className="animate-pulse">
+                          <div className="bg-white/20 h-20 rounded mb-2"></div>
+                          <div className="bg-white/20 h-4 rounded mb-1"></div>
+                          <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                        </div>
+                      ) : recommendedProduct ? (
+                        <div 
+                          className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                          onClick={() => {
+                            const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                            console.log('🔗 Navegando al producto con ID:', productId);
+                            if (productId) {
+                              router.push(`/producto/${productId}`);
+                              setShowMobileSidebar(false);
+                            } else {
+                              console.error('❌ No se puede navegar: ID de producto no válido');
+                            }
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                              {(() => {
+                                // Buscar imagen en diferentes estructuras
+                                let imageUrl = null;
+                                
+                                console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                
+                                // Intentar diferentes propiedades de imagen
+                                if (recommendedProduct.imagen_principal) {
+                                  imageUrl = recommendedProduct.imagen_principal;
+                                } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                  imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                  imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                  // Buscar imagen en las variantes
+                                  const firstVariant = recommendedProduct.variantes[0];
+                                  if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                    imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                  } else if (firstVariant.imagen_url) {
+                                    imageUrl = firstVariant.imagen_url;
+                                  }
+                                } else if (recommendedProduct.imagen_url) {
+                                  imageUrl = recommendedProduct.imagen_url;
+                                } else if (recommendedProduct.image) {
+                                  imageUrl = recommendedProduct.image;
+                                } else if (recommendedProduct.foto) {
+                                  imageUrl = recommendedProduct.foto;
+                                }
+                                
+                                console.log('🖼️ URL de imagen detectada:', imageUrl);
+                                
+                                return imageUrl ? (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      console.log('❌ Error cargando imagen:', imageUrl);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              })()}
+                              {/* Fallback icon (hidden by default, shown when image fails) */}
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="text-white text-sm font-medium truncate">
+                                {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                              </h5>
+                              <p className="text-gray-300 text-xs line-clamp-2">
+                                {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  // Obtener el precio base del producto
+                                  let basePrice = 0;
+                                  
+                                  // Buscar precio en diferentes estructuras
+                                  if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                    const firstVariant = recommendedProduct.variantes[0];
+                                    basePrice = firstVariant.precio || basePrice;
+                                  }
+                                  
+                                  // Si aún no hay precio, buscar en otros campos
+                                  if (basePrice === 0) {
+                                    basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                  }
+                                  
+                                  // Verificar si tiene descuento real
+                                  const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                        recommendedProduct.price && 
+                                                        recommendedProduct.originalPrice && 
+                                                        recommendedProduct.price < recommendedProduct.originalPrice;
+                                  
+                                  if (hasRealDiscount) {
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-400 text-sm font-medium">
+                                          {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                          -{recommendedProduct.discountPercentage}%
+                                        </span>
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-green-400 text-sm font-medium">
+                                        {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                      </span>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          <p className="text-gray-400 text-sm">
+                            {Object.keys(promotions).length === 0 
+                              ? t('Cargando productos...')
+                              : t('No hay productos en promoción disponibles')
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await logout();
+                          setShowMobileSidebar(false);
+                        } catch (error) {
+                          console.error('Error al cerrar sesión:', error);
+                        }
+                      }}
+                      className="w-full bg-transparent border-2 border-red-400 text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-400 hover:text-white transition-colors duration-200"
+                    >
+                      {t('Cerrar sesión')}
+                    </button>
                   </>
                 ) : (
                   <>
-                    {/* Usuario no autenticado */}
-                    <div className="text-center py-8">
-                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <h3 className="text-white font-semibold text-lg mb-2">{t('Inicia Sesión')}</h3>
-                      <p className="text-gray-400 text-sm mb-6">{t('Accede a tu cuenta para ver tus pedidos y favoritos')}</p>
-                      <div className="space-y-3">
-                        <Link
+                    {/* Usuario no logueado */}
+                    <div className="text-center">
+                      <div className="mb-6">
+                        <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
+                        <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu cuenta')}</p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <Link 
                           href="/login"
+                          className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
-                          className="block w-full bg-green-600 text-white text-center py-3 rounded-md font-medium hover:bg-green-700 transition-colors"
                         >
-                          {t('Iniciar Sesión')}
+                          {t('Iniciar sesión')}
                         </Link>
-                        <Link
+                        <Link 
                           href="/register"
+                          className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
-                          className="block w-full bg-transparent border-2 border-white text-white text-center py-3 rounded-md font-medium hover:bg-white hover:text-black transition-colors"
                         >
                           {t('Registrarse')}
                         </Link>
+                      </div>
+                      
+                      <div className="mt-8 pt-6 border-t border-white/20">
+                        <p className="text-gray-300 text-xs text-center">
+                          {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
+                        </p>
                       </div>
                     </div>
                   </>
@@ -1154,94 +1292,148 @@ const HomeScreen: NextPage = () => {
             {/* Contenido del panel de búsqueda */}
             {mobileSidebarContent === 'search' && (
               <div className="space-y-4">
+                <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                
                 {/* Barra de búsqueda */}
-                <div className="relative">
+                <div className="flex gap-2 mb-4">
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearch();
-                      }
-                    }}
-                    placeholder={t('Buscar productos...')}
-                    className="w-full bg-white/10 border border-white/20 rounded-md px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    onKeyPress={handleSearchKeyPress}
+                    placeholder={t('¿Qué estás buscando?')}
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
                   />
-                  <button
+                  <button 
                     onClick={handleSearch}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-md transition-colors"
+                    className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    {t('Buscar')}
                   </button>
                 </div>
 
                 {/* Resultados de búsqueda */}
-                {searchLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-                    <p className="text-gray-400 mt-4">{t('Buscando...')}</p>
-                  </div>
-                ) : searchResults.length > 0 ? (
-                  <div className="space-y-3">
-                    <h4 className="text-white font-semibold">{t('Resultados')}</h4>
-                    {searchResults.slice(0, 5).map((product) => (
-                      <Link
-                        key={product.id}
-                        href={`/producto/${product.id}`}
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="block bg-white/10 rounded-md p-3 hover:bg-white/20 transition-colors"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gray-600 rounded-md flex-shrink-0 overflow-hidden">
-                            {product.image && (
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                width={48}
-                                height={48}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
-                                }}
-                              />
-                            )}
+                {searchTerm && (
+                  <div className="mt-4">
+                    {searchLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-white/20 rounded mb-2"></div>
+                              <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h5 className="text-white font-medium text-sm truncate">{product.name}</h5>
-                            <p className="text-gray-400 text-xs">{product.category}</p>
-                            <p className="text-green-400 font-semibold text-sm">
-                              {formatPrice(product.price, currentCurrency, 'MXN')}
-                            </p>
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                            onClick={() => {
+                              router.push(`/producto/${product.id}`);
+                              setShowMobileSidebar(false);
+                              setSearchTerm('');
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                {product.imagenes && product.imagenes.length > 0 ? (
+                                  <img 
+                                    src={product.imagenes[0].url} 
+                                    alt={product.nombre}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
+                                <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                                <p className="text-green-400 text-sm font-medium">
+                                  ${product.precio?.toFixed(2) || '0.00'}
+                                </p>
+                              </div>
+                            </div>
                           </div>
+                        ))}
+                        <div className="pt-2 border-t border-white/20">
+                          <button
+                            onClick={() => {
+                              handleSearch();
+                              setShowMobileSidebar(false);
+                            }}
+                            className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                          >
+                            {t('Ver todos los resultados')}
+                          </button>
                         </div>
-                      </Link>
-                    ))}
-                    {searchResults.length > 5 && (
-                      <Link
-                        href={`/catalogo?search=${encodeURIComponent(searchTerm)}`}
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="block text-center text-green-400 hover:text-green-300 font-medium py-2"
-                      >
-                        {t('Ver todos los resultados')} ({searchResults.length})
-                      </Link>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                      </div>
                     )}
                   </div>
-                ) : searchTerm ? (
-                  <div className="text-center py-8">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <p className="text-gray-400">{t('No se encontraron resultados')}</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <p className="text-gray-400">{t('Escribe algo para buscar productos')}</p>
+                )}
+                
+                {!searchTerm && (
+                  <div className="mt-4">
+                    <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Camisas');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Camisas')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Pantalones');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Pantalones')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Vestidos');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Vestidos')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Zapatos');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Zapatos')}
+                      </button>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-white/20">
+                      <p className="text-gray-300 text-sm">
+                        {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
