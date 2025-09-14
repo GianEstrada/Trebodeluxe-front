@@ -455,7 +455,7 @@ const HomeScreen: NextPage = () => {
     }, 300); // Debounce de 300ms
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, showSearchDropdown, showMobileSidebar, mobileSidebarContent]);
+  }, [searchTerm, showSearchDropdown, showMobileSidebar, mobileSidebarContent, featuredProducts, recentByCategory, promotions]);
 
   // Función para cambiar manualmente el texto
   const handleDotClick = (index: number) => {
@@ -569,18 +569,45 @@ const HomeScreen: NextPage = () => {
 
     try {
       setSearchLoading(true);
-      const response = await productsApi.getAll() as any;
-      if (response.success && response.products && response.products.length > 0) {
-        const filtered = response.products.filter((product: any) =>
-          product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
-          product.descripcion?.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        // Aplicar promociones a los productos filtrados
-        const productsWithPromotions = productUtils.applyPromotionDiscounts(filtered, promotions);
-        
-        setSearchResults(productsWithPromotions.slice(0, 5)); // Limitar a 5 resultados
+      
+      // Usar los productos que ya están cargados y procesados con promociones
+      let allProducts: any[] = [];
+      
+      // Combinar featuredProducts con productos de categorías
+      allProducts = [...featuredProducts];
+      
+      // Agregar productos de todas las categorías
+      Object.values(recentByCategory).forEach((categoryProducts: any) => {
+        if (Array.isArray(categoryProducts)) {
+          categoryProducts.forEach((product: any) => {
+            // Evitar duplicados comparando por id
+            if (!allProducts.find(existing => existing.id === product.id)) {
+              allProducts.push(product);
+            }
+          });
+        }
+      });
+
+      // Si no hay productos cargados aún, hacer llamada a la API
+      if (allProducts.length === 0) {
+        const response = await productsApi.getAll() as any;
+        if (response.success && response.products && response.products.length > 0) {
+          // Aplicar promociones a los productos de la API
+          const productsWithPromotions = productUtils.applyPromotionDiscounts(response.products, promotions);
+          allProducts = productsWithPromotions;
+        }
       }
+
+      // Filtrar productos por el término de búsqueda
+      const filtered = allProducts.filter((product: any) =>
+        product.nombre?.toLowerCase().includes(query.toLowerCase()) ||
+        product.descripcion?.toLowerCase().includes(query.toLowerCase()) ||
+        product.description?.toLowerCase().includes(query.toLowerCase()) ||
+        product.categoria?.toLowerCase().includes(query.toLowerCase()) ||
+        product.category?.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
     } catch (error) {
       console.error('Error buscando productos:', error);
       setSearchResults([]);
@@ -1402,51 +1429,6 @@ const HomeScreen: NextPage = () => {
                               <div className="flex-1 min-w-0">
                                 <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                 <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
-                                <div className="mt-1">
-                                  {(() => {
-                                    // Verificar si tiene descuento real
-                                    const hasRealDiscount = product.hasDiscount && 
-                                                          product.price && 
-                                                          product.originalPrice && 
-                                                          product.price < product.originalPrice;
-                                    
-                                    if (hasRealDiscount) {
-                                      return (
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                          <span className="text-green-400 text-sm font-medium">
-                                            {formatPrice(product.price, currentCurrency, 'MXN')}
-                                          </span>
-                                          <span className="text-gray-400 text-xs line-through">
-                                            {formatPrice(product.originalPrice, currentCurrency, 'MXN')}
-                                          </span>
-                                          <span className="bg-red-500 text-white text-xs px-1 rounded">
-                                            -{product.discountPercentage}%
-                                          </span>
-                                        </div>
-                                      );
-                                    } else {
-                                      // Obtener el precio base del producto
-                                      let basePrice = 0;
-                                      
-                                      // Buscar precio en diferentes estructuras
-                                      if (product.variantes && product.variantes.length > 0) {
-                                        const firstVariant = product.variantes[0];
-                                        basePrice = firstVariant.precio || basePrice;
-                                      }
-                                      
-                                      // Si aún no hay precio, buscar en otros campos
-                                      if (basePrice === 0) {
-                                        basePrice = product.precio || product.price || 0;
-                                      }
-                                      
-                                      return (
-                                        <span className="text-green-400 text-sm font-medium">
-                                          {formatPrice(basePrice, currentCurrency, 'MXN')}
-                                        </span>
-                                      );
-                                    }
-                                  })()}
-                                </div>
                               </div>
                             </div>
                           </div>
@@ -2381,51 +2363,6 @@ const HomeScreen: NextPage = () => {
                                     <div className="flex-1 min-w-0">
                                       <h5 className="text-white text-sm font-medium truncate">{product.nombre}</h5>
                                       <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
-                                      <div className="mt-1">
-                                        {(() => {
-                                          // Verificar si tiene descuento real
-                                          const hasRealDiscount = product.hasDiscount && 
-                                                                product.price && 
-                                                                product.originalPrice && 
-                                                                product.price < product.originalPrice;
-                                          
-                                          if (hasRealDiscount) {
-                                            return (
-                                              <div className="flex items-center gap-1 flex-wrap">
-                                                <span className="text-green-400 text-sm font-medium">
-                                                  {formatPrice(product.price, currentCurrency, 'MXN')}
-                                                </span>
-                                                <span className="text-gray-400 text-xs line-through">
-                                                  {formatPrice(product.originalPrice, currentCurrency, 'MXN')}
-                                                </span>
-                                                <span className="bg-red-500 text-white text-xs px-1 rounded">
-                                                  -{product.discountPercentage}%
-                                                </span>
-                                              </div>
-                                            );
-                                          } else {
-                                            // Obtener el precio base del producto
-                                            let basePrice = 0;
-                                            
-                                            // Buscar precio en diferentes estructuras
-                                            if (product.variantes && product.variantes.length > 0) {
-                                              const firstVariant = product.variantes[0];
-                                              basePrice = firstVariant.precio || basePrice;
-                                            }
-                                            
-                                            // Si aún no hay precio, buscar en otros campos
-                                            if (basePrice === 0) {
-                                              basePrice = product.precio || product.price || 0;
-                                            }
-                                            
-                                            return (
-                                              <span className="text-green-400 text-sm font-medium">
-                                                {formatPrice(basePrice, currentCurrency, 'MXN')}
-                                              </span>
-                                            );
-                                          }
-                                        })()}
-                                      </div>
                                     </div>
                                   </div>
                                 </div>
