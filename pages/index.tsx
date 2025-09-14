@@ -2291,7 +2291,7 @@ const HomeScreen: NextPage = () => {
                   showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    <div className="p-6">
+                    <div className="p-6 flex-1 flex flex-col">
                       <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
                       <div className="flex gap-2 mb-4">
                         <input
@@ -2310,9 +2310,9 @@ const HomeScreen: NextPage = () => {
                         </button>
                       </div>
                       
-                      {/* Resultados de búsqueda */}
+                      {/* Resultados de búsqueda - flex-1 para ocupar espacio restante */}
                       {searchTerm && (
-                        <div className="mt-4">
+                        <div className="flex-1 flex flex-col min-h-0">{/* min-h-0 permite que el contenido se contraiga */}
                           {searchLoading ? (
                             <div className="space-y-3">
                               {[1, 2, 3].map((i) => (
@@ -2326,8 +2326,9 @@ const HomeScreen: NextPage = () => {
                               ))}
                             </div>
                           ) : searchResults.length > 0 ? (
-                            <div className="space-y-3 max-h-60 overflow-y-auto">
-                              {searchResults.map((product) => (
+                            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-2">
+                              <div className="space-y-3">
+                                {searchResults.map((product) => (
                                 <div
                                   key={product.id}
                                   className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
@@ -2405,14 +2406,15 @@ const HomeScreen: NextPage = () => {
                                     </div>
                                   </div>
                                 </div>
-                              ))}
-                              <div className="pt-2 border-t border-white/20">
-                                <button
-                                  onClick={handleSearch}
-                                  className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
-                                >
-                                  {t('Ver todos los resultados')}
-                                </button>
+                                ))}
+                                <div className="pt-2 border-t border-white/20">
+                                  <button
+                                    onClick={handleSearch}
+                                    className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                                  >
+                                    {t('Ver todos los resultados')}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ) : (
