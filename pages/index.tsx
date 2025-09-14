@@ -1262,13 +1262,13 @@ const HomeScreen: NextPage = () => {
         <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
           <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
-            {/* Logo TREBOLUXE - oculto en tablet */}
-            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] hidden md:block lg:block">
-            <span className="text-white">{t('TREBOLUXE')}</span>
+            {/* Logo TREBOLUXE - visible desde tablet */}
+            <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] hidden md:block">
+            <span className="text-white font-bold">{t('TREBOLUXE')}</span>
           </div>
             
-            {/* Contenido central - texto del carrusel */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white">
+            {/* Contenido central - texto del carrusel promocional */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-row items-center gap-2 text-white z-10">
               <Image
                 className="w-[12.2px] relative max-h-full object-contain"
                 width={12.2}
@@ -1277,7 +1277,7 @@ const HomeScreen: NextPage = () => {
                 alt=""
                 src="/petalo-1@2x.png"
               />
-              <div className={`relative tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out whitespace-nowrap ${
+              <div className={`relative tracking-[4px] leading-6 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)] transition-all duration-300 ease-in-out whitespace-nowrap font-semibold ${
                 isAnimating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
               }`}>
                 {t(promoTexts[currentTextIndex])}
@@ -1423,15 +1423,15 @@ const HomeScreen: NextPage = () => {
                 </div>
               </div>
               <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-green-600/30 bg-green-700/20 transition-colors duration-200 rounded cursor-pointer border border-green-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-blue-600/30 bg-blue-700/20 transition-colors duration-200 rounded cursor-pointer border border-blue-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('NUEVOS')}
                   </div>
                 </div>
