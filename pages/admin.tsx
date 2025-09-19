@@ -395,7 +395,7 @@ const AdminPage: NextPage = () => {
     loadSizeSystems();
     loadDashboardStats();
     loadHomeImages(); // Cargar imágenes principales
-    loadCategorias(); // Cargar categorías
+    // loadCategorias(); // Esta se carga en un useEffect separado
     loadIndexImages(); // Cargar imágenes del index
   }, []);
 
@@ -460,6 +460,11 @@ const AdminPage: NextPage = () => {
       setCategoriasLoading(false);
     }
   }, [API_BASE_URL, getToken]);
+
+  // Cargar categorías después de que la función esté definida
+  useEffect(() => {
+    loadCategorias();
+  }, [loadCategorias]);
 
   // Función para cargar imágenes del index - Memoizada
   const loadIndexImages = useCallback(async () => {
@@ -1622,10 +1627,12 @@ const AdminPage: NextPage = () => {
       }
     }, [showVariantForm, formType, sizeSystems.length, loadSizeSystems]);
 
-    // useEffect para debug - monitorear cambios en singleVariantData.tallas
+    // useEffect para debug - monitorear cambios en singleVariantData.tallas (solo en desarrollo)
     useEffect(() => {
-      console.log('🔍 [DEBUG] singleVariantData.tallas changed:', singleVariantData.tallas);
-      console.log('🔍 [DEBUG] singleVariantData.tallas.length:', singleVariantData.tallas.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [DEBUG] singleVariantData.tallas changed:', singleVariantData.tallas);
+        console.log('🔍 [DEBUG] singleVariantData.tallas.length:', singleVariantData.tallas.length);
+      }
     }, [singleVariantData.tallas]);
 
     // Función para obtener las tallas del producto seleccionado directamente
@@ -2706,8 +2713,12 @@ const AdminPage: NextPage = () => {
     additionalVariants, 
     sizeSystems, 
     products, 
+    categorias, // Agregamos categorias a las dependencias
     t,
-    user
+    user,
+    getToken,
+    makeAuthenticatedRequest,
+    API_BASE_URL
   ]);
 
   // Función para formatear la fecha y hora
