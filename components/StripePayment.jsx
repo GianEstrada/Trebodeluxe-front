@@ -11,14 +11,17 @@ import { StripeService } from '../services/stripeService';
 // Validar variable de entorno y cargar Stripe
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-console.log('🔍 Debug de variables de entorno de Stripe:');
-console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', stripePublishableKey ? `${stripePublishableKey.substring(0, 20)}...` : 'undefined');
-console.log('Tipo:', typeof stripePublishableKey);
-console.log('Es undefined:', stripePublishableKey === undefined);
-console.log('Es null:', stripePublishableKey === null);
-console.log('Es string vacío:', stripePublishableKey === '');
+// Solo mostrar debug en desarrollo o cliente
+if (typeof window !== 'undefined' || process.env.NODE_ENV === 'development') {
+  console.log('🔍 Debug de variables de entorno de Stripe:');
+  console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', stripePublishableKey ? `${stripePublishableKey.substring(0, 20)}...` : 'undefined');
+  console.log('Tipo:', typeof stripePublishableKey);
+  console.log('Es undefined:', stripePublishableKey === undefined);
+  console.log('Es null:', stripePublishableKey === null);
+  console.log('Es string vacío:', stripePublishableKey === '');
+}
 
-if (!stripePublishableKey) {
+if (!stripePublishableKey && typeof window !== 'undefined') {
   console.error('❌ CRÍTICO: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no está definida');
   console.log('📋 Para solucionarlo en Render:');
   console.log('1. Ve a https://dashboard.render.com');

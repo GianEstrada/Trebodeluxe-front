@@ -37,10 +37,6 @@ const nextConfig = {
   
   // Configuración específica para Render.com
   trailingSlash: false,
-  experimental: {
-    optimizeCss: true,
-    gzipSize: true,
-  },
   
   // Configuración optimizada para Render (sin standalone para ahorrar espacio)
   // output: 'standalone', // Comentado para ahorrar espacio en disco
