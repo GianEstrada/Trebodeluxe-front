@@ -11,7 +11,21 @@ import { StripeService } from '../services/stripeService';
 // Validar variable de entorno y cargar Stripe
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
+console.log('🔍 Debug de variables de entorno de Stripe:');
+console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', stripePublishableKey ? `${stripePublishableKey.substring(0, 20)}...` : 'undefined');
+console.log('Tipo:', typeof stripePublishableKey);
+console.log('Es undefined:', stripePublishableKey === undefined);
+console.log('Es null:', stripePublishableKey === null);
+console.log('Es string vacío:', stripePublishableKey === '');
+
 if (!stripePublishableKey) {
+  console.error('❌ CRÍTICO: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no está definida');
+  console.log('📋 Para solucionarlo en Render:');
+  console.log('1. Ve a https://dashboard.render.com');
+  console.log('2. Busca el servicio trebodeluxe-front');
+  console.log('3. Ve a la pestaña "Environment"');
+  console.log('4. Agrega: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = tu_clave_publica');
+  console.log('5. Haz "Manual Deploy" para reiniciar');
   console.error('❌ STRIPE ERROR: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no está definida en las variables de entorno');
   console.log('🔧 Solución: Configurar NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY en Render');
 }
@@ -210,7 +224,12 @@ const StripePayment = ({
             <div className="text-red-300 font-semibold">Error de configuración de Stripe</div>
             <div className="text-red-400 text-sm mt-1">
               La clave pública de Stripe no está configurada. 
-              Contacta al administrador para configurar NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+            </div>
+            <div className="text-red-300 text-xs mt-2">
+              <strong>Para Render:</strong> Configura NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY en Environment Variables
+            </div>
+            <div className="text-red-300 text-xs mt-1">
+              <strong>Para desarrollo local:</strong> Agrega la variable en .env.local
             </div>
           </div>
         </div>
