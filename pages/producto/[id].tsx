@@ -8,10 +8,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/NewCartContext';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../../hooks/useExchangeRates';
+import { useCategories } from '../../hooks/useCategories';
 import { canAccessAdminPanel } from '../../utils/roles';
 import { productsApi } from '../../utils/productsApi';
 import { promotionsApi } from '../../utils/promotionsApi';
-import MobileHeader from '../../components/MobileHeader';
 import Footer from '../../components/Footer';
 
 // Interfaces para la nueva estructura de datos
@@ -59,7 +59,13 @@ const ProductPage: NextPage = () => {
   const router = useRouter();
   const { id, variante } = router.query;
   const { user, isAuthenticated, logout } = useAuth();
-  const { addToCart } = useCart();
+  const { items: cartItems, addToCart, removeFromCart, clearCart, totalItems, totalFinal, updateQuantity, isLoading } = useCart();
+  
+  // Categories hook - exact same as catalog
+  const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
+  
+  // Exchange rates and formatting - exact same as catalog
+  const { formatPrice } = useExchangeRates();
   
   // Estados para idioma
   const [currentLanguage, setCurrentLanguage] = useState("es");
@@ -100,7 +106,13 @@ const ProductPage: NextPage = () => {
   // Estados para móvil
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [mobileSidebarContent, setMobileSidebarContent] = useState('cart');
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
+  
+  // Estados para búsqueda móvil - exact same as catalog
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   
   // Referencias para dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -116,6 +128,29 @@ const ProductPage: NextPage = () => {
       loadProductData();
     }
   }, [id]);
+
+  // useEffect para cargar producto recomendado cuando el usuario está autenticado - EXACTO COMO EN CATÁLOGO
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('👤 Usuario autenticado detectado, cargando producto recomendado...');
+      loadRandomProduct();
+    }
+  }, [isAuthenticated, user]);
+
+  // useEffect para búsqueda en tiempo real - EXACTO COMO EN CATÁLOGO
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      console.log('🔍 Iniciando búsqueda en tiempo real para:', searchTerm);
+      const debounceTimer = setTimeout(() => {
+        searchProducts(searchTerm);
+      }, 300); // Debounce de 300ms
+      
+      return () => clearTimeout(debounceTimer);
+    } else {
+      setSearchResults([]);
+      setSearchLoading(false);
+    }
+  }, [searchTerm]);
 
   // Seleccionar variante cuando cambie la URL o se carguen los datos
   useEffect(() => {
@@ -454,25 +489,6 @@ const ProductPage: NextPage = () => {
     }, 1000); // Dar más tiempo para que se complete la operación
   };
 
-  const formatPrice = (price: number | string | null | undefined) => {
-    let numPrice: number;
-    
-    if (typeof price === 'string') {
-      numPrice = parseFloat(price);
-    } else if (typeof price === 'number') {
-      numPrice = price;
-    } else {
-      numPrice = 0;
-    }
-    
-    // Validar que sea un número válido
-    if (isNaN(numPrice) || !isFinite(numPrice)) {
-      numPrice = 0;
-    }
-    
-    return `$${numPrice.toFixed(2)}`;
-  };
-
   // Funciones para el header
   const promoTexts = headerSettings?.promoTexts || [
     'Envío gratis en compras superiores a $50',
@@ -491,7 +507,7 @@ const ProductPage: NextPage = () => {
     localStorage.setItem('preferred-currency', currency);
   };
 
-  // Función para manejar la búsqueda
+  // Función para manejar la búsqueda (redirige al catálogo)
   const handleSearch = () => {
     if (searchTerm.trim()) {
       router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
@@ -503,6 +519,124 @@ const ProductPage: NextPage = () => {
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  // Función para buscar productos en tiempo real - EXACTO COMO EN CATÁLOGO
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      console.log('🔍 Iniciando búsqueda con query:', query);
+      
+      // Buscar productos usando la API
+      const response = await productsApi.getAll() as any;
+      let allProducts = [];
+      
+      console.log('📦 Respuesta de API completa:', response);
+      
+      if (response.success && response.products) {
+        allProducts = response.products;
+        console.log('✅ Productos encontrados en response.products:', allProducts.length);
+      } else if (response.success && response.data) {
+        allProducts = response.data;
+        console.log('✅ Productos encontrados en response.data:', allProducts.length);
+      }
+      
+      console.log('🔍 Primer producto para debug:', allProducts[0]);
+      
+      // Filtrar productos que coincidan con la búsqueda
+      const filtered = allProducts.filter((product: any) => {
+        const searchInName = product.nombre?.toLowerCase().includes(query.toLowerCase());
+        const searchInDescription = product.descripcion?.toLowerCase().includes(query.toLowerCase());
+        const searchInCategory = product.categoria_nombre?.toLowerCase().includes(query.toLowerCase());
+        
+        console.log('🔍 Buscando en producto:', {
+          nombre: product.nombre,
+          descripcion: product.descripcion,
+          categoria: product.categoria_nombre,
+          matchName: searchInName,
+          matchDescription: searchInDescription,
+          matchCategory: searchInCategory
+        });
+        
+        return searchInName || searchInDescription || searchInCategory;
+      });
+
+      console.log(`🎯 Encontrados ${filtered.length} productos para "${query}"`);
+      
+      // Procesar productos para agregar imágenes
+      const processedResults = filtered.map((product: any) => {
+        let imageUrl = null;
+        
+        // Intentar diferentes estructuras de imagen
+        if (product.variantes && product.variantes[0]) {
+          const firstVariant = product.variantes[0];
+          
+          // Nueva estructura: variantes[0].imagenes[0].url
+          if (firstVariant.imagenes && firstVariant.imagenes[0] && firstVariant.imagenes[0].url) {
+            imageUrl = firstVariant.imagenes[0].url;
+          }
+          // Estructura anterior: variantes[0].imagenes_variante[0].url
+          else if (firstVariant.imagenes_variante && firstVariant.imagenes_variante[0] && firstVariant.imagenes_variante[0].url) {
+            imageUrl = firstVariant.imagenes_variante[0].url;
+          }
+        }
+        
+        return {
+          ...product,
+          image: imageUrl,
+          // Asegurar que tenga un ID consistente
+          id: product.id_producto || product.id
+        };
+      });
+      
+      setSearchResults(processedResults.slice(0, 10)); // Limitar a 10 resultados
+      
+    } catch (error) {
+      console.error('❌ Error en búsqueda:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Función para cargar producto recomendado - EXACTO COMO EN CATÁLOGO
+  const loadRandomProduct = async () => {
+    try {
+      setLoadingRecommendation(true);
+      console.log('🎲 Cargando producto recomendado...');
+      
+      const response = await productsApi.getAll() as any;
+      if (response.success && response.data && response.data.length > 0) {
+        const randomIndex = Math.floor(Math.random() * response.data.length);
+        const randomProduct = response.data[randomIndex];
+        
+        // Agregar imagen si está disponible
+        if (randomProduct.variantes && randomProduct.variantes[0]) {
+          const firstVariant = randomProduct.variantes[0];
+          
+          // Nueva estructura: variantes[0].imagenes[0].url
+          if (firstVariant.imagenes && firstVariant.imagenes[0] && firstVariant.imagenes[0].url) {
+            randomProduct.image = firstVariant.imagenes[0].url;
+          }
+          // Estructura anterior: variantes[0].imagenes_variante[0].url
+          else if (firstVariant.imagenes_variante && firstVariant.imagenes_variante[0] && firstVariant.imagenes_variante[0].url) {
+            randomProduct.image = firstVariant.imagenes_variante[0].url;
+          }
+        }
+        
+        setRecommendedProduct(randomProduct);
+        console.log('✅ Producto recomendado cargado:', randomProduct.nombre);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando producto recomendado:', error);
+    } finally {
+      setLoadingRecommendation(false);
     }
   };
 
@@ -576,13 +710,6 @@ const ProductPage: NextPage = () => {
   if (loading) {
     return (
       <>
-        <MobileHeader 
-          showMobileMenu={showMobileMenu}
-          setShowMobileMenu={setShowMobileMenu}
-          showMobileSidebar={showMobileSidebar}
-          setShowMobileSidebar={setShowMobileSidebar}
-          setMobileSidebarContent={setMobileSidebarContent}
-        />
         <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
           <div className="text-white text-xl">Cargando producto...</div>
         </div>
@@ -593,13 +720,6 @@ const ProductPage: NextPage = () => {
   if (error || !productData) {
     return (
       <>
-        <MobileHeader 
-          showMobileMenu={showMobileMenu}
-          setShowMobileMenu={setShowMobileMenu}
-          showMobileSidebar={showMobileSidebar}
-          setShowMobileSidebar={setShowMobileSidebar}
-          setMobileSidebarContent={setMobileSidebarContent}
-        />
         <div className="min-h-screen bg-gradient-to-b from-gray-800 to-black flex items-center justify-center">
           <div className="text-white text-xl">{error || 'Producto no encontrado'}</div>
         </div>
@@ -608,22 +728,93 @@ const ProductPage: NextPage = () => {
   }
 
   return (
-    <>
-      <MobileHeader 
-        showMobileMenu={showMobileMenu}
-        setShowMobileMenu={setShowMobileMenu}
-        showMobileSidebar={showMobileSidebar}
-        setShowMobileSidebar={setShowMobileSidebar}
-        setMobileSidebarContent={setMobileSidebarContent}
-      />
-      <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
+    <>      
+      {/* Navbar Móvil - Solo visible en pantallas pequeñas */}
+      <div className="block md:hidden w-full bg-black/90 sticky top-0 z-50 backdrop-blur-lg border-b border-white/20">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Botón de Menú (izquierda) */}
+          <button 
+            onClick={() => setShowMobileMenu(true)}
+            className="p-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+            type="button"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
+          {/* Texto central TREBOLUXE con botón home */}
+          <div className="flex-1 flex items-center justify-center gap-3">
+            <Link 
+              href="/"
+              className="p-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md hover:from-green-700 hover:to-green-900 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </Link>
+            <h1 className="text-white text-xl font-bold tracking-[4px]">
+              TREBOLUXE
+            </h1>
+          </div>
+          
+          {/* Botón de Opciones (derecha) */}
+          <button 
+            onClick={() => {
+              setShowMobileSidebar(true);
+              setMobileSidebarContent('cart');
+            }}
+            className="p-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
+            type="button"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {totalItems}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Textos Promocionales Móviles */}
+      <div className="block md:hidden bg-gradient-to-r from-green-700 to-green-900 text-white py-2 z-40">
+        <div className="overflow-hidden relative w-full h-full">
+          <div 
+            className="flex transition-transform duration-500 ease-in-out h-full"
+            style={{ transform: `translateX(-${currentTextIndex * 100}%)` }}
+          >
+            {promoTexts.map((text, index) => (
+              <div 
+                key={index}
+                className="w-full h-full flex-shrink-0 flex items-center justify-center min-h-[36px]"
+              >
+                <div className="w-full flex items-center justify-center px-2">
+                  <span 
+                    className="font-medium text-center leading-tight w-full block"
+                    style={{
+                      fontSize: `clamp(12px, 3.5vw, 16px)`
+                    }}
+                  >
+                    {t(text)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <div className="w-full max-w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
            background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
          }}>
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
         <div className="self-stretch flex flex-col items-start justify-start text-center text-white font-salsa">
-          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 flex flex-row items-center justify-between !p-[5px] box-border">
+          <div className="self-stretch [background:linear-gradient(90deg,_#1a6b1a,_#0e360e)] h-10 hidden md:flex flex-row items-center justify-between !p-[5px] box-border">
             <div className="w-[278px] relative tracking-[4px] leading-6 flex items-center justify-center h-[27px] shrink-0 [text-shadow:0px_4px_4px_rgba(0,_0,_0,_0.25)]">
             <span className="text-white">{t('TREBOLUXE')}</span>
           </div>
@@ -659,7 +850,7 @@ const ProductPage: NextPage = () => {
               onClick={() => handleDotClick(1)} />
             </div>
           </div>
-          <div className="self-stretch flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
+          <div className="self-stretch hidden md:flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
             <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
                 className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
@@ -692,60 +883,94 @@ const ProductPage: NextPage = () => {
                             <span className="text-gray-400">→</span>
                           </div>
                         </Link>
-                        <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Camisas')}</span>
-                            <span className="text-gray-400">→</span>
+
+                        {/* Renderizar categorías dinámicas - EXACTO COMO EN CATÁLOGO */}
+                        {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
+                          <Link 
+                            key={category.id} 
+                            href={`/catalogo?categoria=${category.slug}`} 
+                            className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{t(category.name)}</span>
+                              <span className="text-gray-400">→</span>
+                            </div>
+                          </Link>
+                        ))}
+
+                        {/* Fallback con categorías estáticas si no hay categorías dinámicas - EXACTO COMO EN CATÁLOGO */}
+                        {!categoriesLoading && !categoriesError && activeCategories.length === 0 && (
+                          <>
+                            <Link href="/catalogo?categoria=camisas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Camisas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Pantalones')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Vestidos')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Abrigos y Chaquetas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Faldas')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Jeans')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Ropa Interior')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Trajes de Baño')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                            <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
+                              <div className="flex items-center justify-between">
+                                <span>{t('Accesorios de Moda')}</span>
+                                <span className="text-gray-400">→</span>
+                              </div>
+                            </Link>
+                          </>
+                        )}
+
+                        {/* Loading state - EXACTO COMO EN CATÁLOGO */}
+                        {categoriesLoading && (
+                          <div className="block px-4 py-3 text-gray-400">
+                            <span>{t('Cargando categorías...')}</span>
                           </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=pantalones" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Pantalones')}</span>
-                            <span className="text-gray-400">→</span>
+                        )}
+
+                        {/* Error state - EXACTO COMO EN CATÁLOGO */}
+                        {categoriesError && (
+                          <div className="block px-4 py-3 text-red-400">
+                            <span>{t('Error al cargar categorías')}</span>
                           </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=vestidos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Vestidos')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=abrigos" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Abrigos y Chaquetas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=faldas" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Faldas')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=jeans" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Jeans')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=ropa-interior" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Ropa Interior')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=trajes-baño" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Trajes de Baño')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
-                        <Link href="/catalogo?categoria=accesorios-moda" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
-                          <div className="flex items-center justify-between">
-                            <span>{t('Accesorios de Moda')}</span>
-                            <span className="text-gray-400">→</span>
-                          </div>
-                        </Link>
+                        )}
                         <Link href="/catalogo?categoria=calzado" className="block px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-200 no-underline rounded-md">
                           <div className="flex items-center justify-between">
                             <span>{t('Calzado')}</span>
@@ -1042,25 +1267,186 @@ const ProductPage: NextPage = () => {
                           <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                         </div>
                         
-                        <div className="space-y-3 mb-6">
-                          <Link 
-                            href="/profile"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
+                        {/* Información de Envío */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-4">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            {t('Mi perfil')}
-                          </Link>
-                          <Link 
-                            href="/orders"
-                            className="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
+                            {t('Información de Envío')}
+                          </h4>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <div className="flex justify-between">
+                              <span>{t('Envíos salen:')}</span>
+                              <span className="text-green-400">{t('Al día siguiente')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega estándar:')}</span>
+                              <span>{t('3-5 días')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{t('Entrega express:')}</span>
+                              <span>{t('24-48 horas')}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recomendación de Producto */}
+                        <div className="bg-white/10 rounded-lg p-4 mb-6">
+                          <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            {t('Mis pedidos')}
-                          </Link>
+                            {t('Producto Recomendado')}
+                          </h4>
+                          {loadingRecommendation ? (
+                            <div className="animate-pulse">
+                              <div className="bg-white/20 h-20 rounded mb-2"></div>
+                              <div className="bg-white/20 h-4 rounded mb-1"></div>
+                              <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                            </div>
+                          ) : recommendedProduct ? (
+                            <div 
+                              className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                              onClick={() => {
+                                const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                                console.log('🔗 Navegando al producto con ID:', productId);
+                                if (productId) {
+                                  router.push(`/producto/${productId}`);
+                                  setShowLoginDropdown(false);
+                                } else {
+                                  console.error('❌ No se puede navegar: ID de producto no válido');
+                                }
+                              }}
+                            >
+                              <div className="flex gap-3">
+                                <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                                  {(() => {
+                                    // Buscar imagen en diferentes estructuras
+                                    let imageUrl = null;
+                                    
+                                    console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                    
+                                    // Intentar diferentes propiedades de imagen
+                                    if (recommendedProduct.imagen_principal) {
+                                      imageUrl = recommendedProduct.imagen_principal;
+                                    } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                      imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                    } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                      imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                    } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                      // Buscar imagen en las variantes
+                                      const firstVariant = recommendedProduct.variantes[0];
+                                      if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                        imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                      } else if (firstVariant.imagen_url) {
+                                        imageUrl = firstVariant.imagen_url;
+                                      }
+                                    } else if (recommendedProduct.imagen_url) {
+                                      imageUrl = recommendedProduct.imagen_url;
+                                    } else if (recommendedProduct.image) {
+                                      imageUrl = recommendedProduct.image;
+                                    } else if (recommendedProduct.foto) {
+                                      imageUrl = recommendedProduct.foto;
+                                    }
+                                    
+                                    console.log('🖼️ URL de imagen detectada:', imageUrl);
+                                    
+                                    return imageUrl ? (
+                                      <img 
+                                        src={imageUrl} 
+                                        alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          console.log('❌ Error cargando imagen:', imageUrl);
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* Fallback icon (hidden by default, shown when image fails) */}
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-white text-sm font-medium truncate">
+                                    {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                                  </h5>
+                                  <p className="text-gray-300 text-xs line-clamp-2">
+                                    {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                                  </p>
+                                  <div className="mt-1">
+                                    {(() => {
+                                      // Obtener el precio base del producto
+                                      let basePrice = 0;
+                                      
+                                      // Buscar precio en diferentes estructuras
+                                      if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                        const firstVariant = recommendedProduct.variantes[0];
+                                        basePrice = firstVariant.precio || basePrice;
+                                      }
+                                      
+                                      // Si aún no hay precio, buscar en otros campos
+                                      if (basePrice === 0) {
+                                        basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                      }
+                                      
+                                      // Verificar si tiene descuento real
+                                      const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                            recommendedProduct.price && 
+                                                            recommendedProduct.originalPrice && 
+                                                            recommendedProduct.price < recommendedProduct.originalPrice;
+                                      
+                                      if (hasRealDiscount) {
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-green-400 text-sm font-medium">
+                                              {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="text-gray-400 text-xs line-through">
+                                              {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                              -{recommendedProduct.discountPercentage}%
+                                            </span>
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="text-green-400 text-sm font-medium">
+                                            {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                          </span>
+                                        );
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">
+                                {Object.keys(promotions).length === 0 
+                                  ? t('Cargando productos...')
+                                  : t('No hay productos en promoción disponibles')
+                                }
+                              </p>
+                            </div>
+                          )}
                         </div>
                         
                         <button 
@@ -1130,71 +1516,192 @@ const ProductPage: NextPage = () => {
                   showSearchDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
                 } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
                   <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    <div className="p-6">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('BÚSQUEDA')}</h3>
-                        <p className="text-gray-300 text-sm">{t('Encuentra los productos que buscas')}</p>
+                    <div className="p-6 flex-1 flex flex-col">
+                      <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onKeyPress={handleSearchKeyPress}
+                          placeholder={t('¿Qué estás buscando?')}
+                          className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                        />
+                        <button 
+                          onClick={handleSearch}
+                          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          {t('Buscar')}
+                        </button>
                       </div>
                       
-                      <div className="space-y-4">
-                        <div className="flex justify-center">
-                          <input
-                            type="text"
-                            placeholder={t('¿Qué estás buscando?')}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={handleSearchKeyPress}
-                            className="w-4/5 bg-white/20 border border-white/30 rounded-lg py-3 px-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
-                          />
+                      {/* Resultados de búsqueda - flex-1 para ocupar espacio restante */}
+                      {searchTerm && (
+                        <div className="flex-1 flex flex-col min-h-0">{/* min-h-0 permite que el contenido se contraiga */}
+                          {searchLoading ? (
+                            <div className="space-y-3">
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse flex gap-3">
+                                  <div className="w-12 h-12 bg-white/20 rounded"></div>
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-white/20 rounded mb-2"></div>
+                                    <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : searchResults.length > 0 ? (
+                            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-2">
+                              <div className="space-y-3">
+                                {searchResults.map((product) => (
+                                <div
+                                  key={product.id}
+                                  className="cursor-pointer hover:bg-white/20 rounded-lg transition-colors duration-200 overflow-hidden"
+                                  onClick={() => {
+                                    router.push(`/producto/${product.id}`);
+                                    setShowSearchDropdown(false);
+                                    setSearchTerm('');
+                                  }}
+                                >
+                                  <div className="flex flex-col gap-2">
+                                    {/* Imagen que ocupa TODO el ancho sin márgenes */}
+                                    <div className="w-fill h-fill overflow-hidden flex items-center justify-center">
+                                      {(() => {
+                                        // Buscar imagen en diferentes estructuras
+                                        let imageUrl = null;
+                                        
+                                        // Intentar diferentes propiedades de imagen
+                                        if (product.imagen_principal) {
+                                          imageUrl = product.imagen_principal;
+                                        } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                          imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                        } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                                          imageUrl = product.images[0].url || product.images[0];
+                                        } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                          // Buscar imagen en las variantes
+                                          const firstVariant = product.variantes[0];
+                                          if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                            imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                          } else if (firstVariant.imagen_url) {
+                                            imageUrl = firstVariant.imagen_url;
+                                          }
+                                        } else if (product.imagen_url) {
+                                          imageUrl = product.imagen_url;
+                                        } else if (product.image) {
+                                          imageUrl = product.image;
+                                        } else if (product.foto) {
+                                          imageUrl = product.foto;
+                                        }
+                                        
+                                        return imageUrl ? (
+                                          <img 
+                                            src={imageUrl} 
+                                            alt={product.nombre || product.name || 'Producto'}
+                                            className="w-full h-full object-contain"
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                            </svg>
+                                          </div>
+                                        );
+                                      })()}
+                                      {/* Fallback icon (hidden by default, shown when image fails) */}
+                                      <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                        <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Información del producto debajo de la imagen */}
+                                    <div className="w-full text-center px-3 pb-2">
+                                      <h5 className="text-white text-sm font-medium truncate mb-1">
+                                        {product.nombre || product.name || 'Producto sin nombre'}
+                                      </h5>
+                                      <p className="text-gray-300 text-xs truncate">
+                                        {product.descripcion || product.description || 'Sin descripción disponible'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                ))}
+                                <div className="pt-2 border-t border-white/20">
+                                  <button
+                                    onClick={handleSearch}
+                                    className="w-full text-center text-white text-sm bg-transparent hover:bg-white-200 hover:text-blue-300 transition-colors duration-200"
+                                  >
+                                    {t('Ver todos los resultados')}
+                                  </button>
+                                </div>
+
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex justify-center">
-                          <button 
-                            onClick={handleSearch}
-                            className="w-4/5 bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            {t('Buscar')}
-                          </button>
-                        </div>
-                      </div>
+                      )}
                       
-                      <div className="mt-8 pt-6 border-t border-white/20">
-                        <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <button 
-                            onClick={() => router.push('/catalogo?busqueda=Camisas')}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Camisas')}
-                          </button>
-                          <button 
-                            onClick={() => router.push('/catalogo?busqueda=Pantalones')}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Pantalones')}
-                          </button>
-                          <button 
-                            onClick={() => router.push('/catalogo?busqueda=Vestidos')}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Vestidos')}
-                          </button>
-                          <button 
-                            onClick={() => router.push('/catalogo?busqueda=Zapatos')}
-                            className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
-                          >
-                            {t('Zapatos')}
-                          </button>
+                      {!searchTerm && (
+                        <div className="mt-4">
+                          <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Camisas');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Camisas')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Pantalones');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Pantalones')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Vestidos');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Vestidos')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                router.push('/catalogo?busqueda=Zapatos');
+                                setShowSearchDropdown(false);
+                              }}
+                              className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                            >
+                              {t('Zapatos')}
+                            </button>
+                          </div>
+                          <div className="mt-6 pt-4 border-t border-white/20">
+                            <p className="text-gray-300 text-sm">
+                              {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-auto p-6 border-t border-white/20">
-                      <p className="text-gray-300 text-xs text-center">
-                        {t('Utiliza filtros para encontrar exactamente lo que necesitas.')}
-                      </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1213,41 +1720,129 @@ const ProductPage: NextPage = () => {
                     src="/icon3.svg"
                   />
                   {/* Badge de cantidad */}
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                    0
-                  </span>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {totalItems}
+                    </span>
+                  )}
                 </button>
                 
                 {/* Cart Dropdown */}
-                <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
-                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-                } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
-                  <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
-                    <div className="p-6 flex-1 flex flex-col">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
-                        <p className="text-gray-300 text-sm">{t('Tu carrito está vacío')}</p>
-                      </div>
-                      
-                      <div className="flex-1 flex items-center justify-center">
-                        <p className="text-gray-400 text-center">{t('Agrega productos para ver tu carrito')}</p>
-                      </div>
-                      
-                      {/* Botones del carrito */}
-                      <div className="space-y-3">
-                        <Link href="/catalogo" className="block">
-                          <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                            {t('Explorar Productos')}
-                          </button>
-                        </Link>
-                        <Link href="/carrito" className="block">
-                          <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
-                            {t('Ver Carrito Completo')}
-                          </button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
+                                <div className={`fixed top-[82px] right-0 bg-black/30 backdrop-blur-md z-[100] transition-all duration-300 ${
+                                  showCartDropdown ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+                                } w-80 max-w-[90vw] sm:w-96 h-[calc(100vh-82px)] overflow-hidden`}>
+                                  <div className="w-full h-full bg-white/10 backdrop-blur-lg border border-white/20 flex flex-col">
+                                    <div className="p-6 flex-1 flex flex-col">
+                                      <div className="mb-6">
+                                        <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+                                        <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
+                                      </div>
+                                      
+                                      {/* Lista de productos */}
+                                      <div className="space-y-4 flex-1 overflow-y-auto">
+                                        {cartItems.length === 0 ? (
+                                          <div className="text-center py-8">
+                                            <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                                            <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                                          </div>
+                                        ) : (
+                                          cartItems.map((item) => (
+                                            <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                                              <div className="flex items-start gap-3">
+                                                <div className="w-16 h-16 bg-gray-400 rounded-lg flex-shrink-0">
+                                                  {item.image && (
+                                                    <Image
+                                                      src={item.image}
+                                                      alt={item.name}
+                                                      width={64}
+                                                      height={64}
+                                                      className="w-full h-full object-cover rounded-lg"
+                                                    />
+                                                  )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="text-white font-medium truncate">{item.name}</h4>
+                                                  <p className="text-gray-300 text-sm">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
+                                                  <div className="flex items-center justify-between mt-2">
+                                                    {item.hasDiscount ? (
+                                                      <div className="flex flex-col">
+                                                        <span className="text-xs text-red-400 line-through">
+                                                          {formatPrice(item.price, currentCurrency, 'MXN')}
+                                                        </span>
+                                                        <span className="text-white font-bold">
+                                                          {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                                        </span>
+                                                        <span className="text-xs text-yellow-400">
+                                                          -{item.discountPercentage}% OFF
+                                                        </span>
+                                                      </div>
+                                                    ) : (
+                                                      <span className="text-white font-bold">
+                                                        {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                                      </span>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                      <button 
+                                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                                        className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                                        disabled={isLoading}
+                                                      >
+                                                        -
+                                                      </button>
+                                                      <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
+                                                      <button 
+                                                        onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                                        className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                                        disabled={isLoading}
+                                                      >
+                                                        +
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                                <button 
+                                                  onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                                                  className="text-red-400 hover:text-red-300 transition-colors"
+                                                  disabled={isLoading}
+                                                >
+                                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                  </svg>
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                      
+                                      {/* Resumen del carrito */}
+                                      {cartItems.length > 0 && (
+                                        <div className="mt-6 pt-4 border-t border-white/20">
+                                          <div className="flex justify-between items-center mb-4">
+                                            <span className="text-gray-300">{t('Subtotal:')}</span>
+                                            <span className="text-white font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center mb-6">
+                                            <span className="text-gray-300">{t('Envío:')}</span>
+                                            <span className="text-blue-400 font-medium">{t('Calculado al final')}</span>
+                                          </div>
+                                          
+                                          <div className="space-y-3">
+                                            <Link href="/checkout" className="block">
+                                              <button className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200">
+                                                {t('Finalizar Compra')}
+                                              </button>
+                                            </Link>
+                                            <Link href="/carrito" className="block">
+                                              <button className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200">
+                                                {t('Ver Carrito Completo')}
+                                              </button>
+                                            </Link>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                   </div>
                 </div>
               </div>
             </div>
@@ -1255,8 +1850,8 @@ const ProductPage: NextPage = () => {
         </div>
       </div>
 
-      {/* Breadcrumb */}
-      <div className="px-8 py-4">
+      {/* Breadcrumb - Solo visible en desktop */}
+      <div className="hidden md:block px-8 py-4">
         <nav className="text-sm text-gray-400">
           <Link href="/" className="hover:text-white">Inicio</Link>
           <span className="mx-2">/</span>
@@ -1267,11 +1862,11 @@ const ProductPage: NextPage = () => {
       </div>
 
       {/* Contenido principal */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="w-full max-w-full container mx-auto px-2 sm:px-4 md:px-8 py-4 md:py-8 overflow-x-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-12 max-w-[350px] md:max-w-full mx-auto">
           {/* Columna izquierda - Carrusel de imágenes */}
-          <div className="space-y-4">
-            <div className="relative aspect-square bg-white/10 rounded-lg overflow-hidden">
+          <div className="space-y-2 sm:space-y-4 w-full">
+            <div className="relative aspect-square bg-white/10 rounded-lg overflow-hidden w-full max-w-[320px] md:max-w-none mx-auto">
               {selectedVariant && selectedVariant.imagenes && selectedVariant.imagenes.length > 0 ? (
                 <>
                   <div className={`transition-opacity duration-300 ${isImageTransitioning ? 'opacity-0' : 'opacity-100'}`}>
@@ -1332,7 +1927,7 @@ const ProductPage: NextPage = () => {
             
             {/* Thumbnails del carrusel */}
             {selectedVariant && selectedVariant.imagenes && selectedVariant.imagenes.length > 1 && (
-              <div className="flex space-x-2 overflow-x-auto">
+              <div className="flex space-x-1 sm:space-x-2 overflow-x-auto px-2 mx-auto max-w-[320px] md:max-w-none md:px-0">
                 {selectedVariant.imagenes.map((imagen, index) => (
                   <button
                     key={imagen.id_imagen}
@@ -1361,23 +1956,23 @@ const ProductPage: NextPage = () => {
           </div>
 
           {/* Columna derecha - Información del producto */}
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{productData.nombre}</h1>
-              <p className="text-gray-400">{productData.categoria_nombre} • {productData.marca}</p>
+          <div className="space-y-4 sm:space-y-6 px-1 sm:px-2 md:px-0 w-full">
+            <div className="text-center md:text-left">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 leading-tight">{productData.nombre}</h1>
+              <p className="text-gray-400 text-sm sm:text-base">{productData.categoria_nombre} • {productData.marca}</p>
             </div>
 
             {/* Botones de variantes */}
             {productData.variantes.length > 1 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">{t('Colores disponibles')}:</h3>
-                <div className="flex flex-wrap gap-3">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-center md:text-left">{t('Colores disponibles')}:</h3>
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center md:justify-start">
                   {productData.variantes.map((variant) => (
                     <button
                       key={variant.id_variante}
                       onClick={() => handleVariantChange(variant)}
                       disabled={!variant.disponible || variant.stock_total <= 0}
-                      className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 font-medium ${
+                      className={`px-3 sm:px-4 md:px-6 py-2 md:py-3 rounded-lg border-2 transition-all duration-200 font-medium text-xs sm:text-sm md:text-base ${
                         selectedVariant?.id_variante === variant.id_variante
                           ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg'
                           : variant.disponible && variant.stock_total > 0
@@ -1396,10 +1991,10 @@ const ProductPage: NextPage = () => {
             {/* Botones de tallas */}
             {variantStock && variantStock.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-center md:text-left">
                   {t('Tallas disponibles')} ({productData.sistema_talla_nombre || t('Sistema estándar')}):
                 </h3>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-2 md:gap-3 justify-center md:justify-start">
                   {variantStock.map((size) => {
                     const hasStock = size.cantidad && size.cantidad > 0;
                     const isSelected = selectedSize?.id_talla === size.id_talla;
@@ -1409,26 +2004,26 @@ const ProductPage: NextPage = () => {
                         key={size.id_talla}
                         onClick={() => hasStock ? handleSizeChange(size) : null}
                         disabled={!hasStock}
-                        className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium min-w-[60px] text-center ${
+                        className={`px-2 sm:px-3 md:px-4 py-2 md:py-3 rounded-lg border-2 transition-all duration-200 font-medium min-w-[45px] sm:min-w-[50px] md:min-w-[60px] text-center text-xs sm:text-sm md:text-base ${
                           isSelected && hasStock
                             ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg transform scale-105'
                             : hasStock
-                            ? 'border-white/30 hover:border-white/50 hover:bg-white/10 hover:transform hover:scale-105 text-white'
+                            ? 'border-white/30 hover:border-white/50 hover:bg-grey/10 hover:transform hover:scale-105 text-black '
                             : 'border-gray-600 bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'
                         }`}
                         title={
                           hasStock 
-                            ? `${size.nombre_talla} - Stock: ${size.cantidad}${size.precio ? ` - Precio: ${formatPrice(size.precio)}` : ''}` 
+                            ? `${size.nombre_talla} - Stock: ${size.cantidad}${size.precio ? ` - Precio: ${formatPrice(size.precio, currentCurrency, 'MXN')}` : ''}` 
                             : `${size.nombre_talla} - Agotado`
                         }
                       >
-                        <div className="text-sm font-bold">{size.nombre_talla}</div>
+                        <div className="text-xs md:text-sm font-bold">{size.nombre_talla}</div>
                         <div className="text-xs mt-1">
                           {hasStock ? `Stock: ${size.cantidad}` : t('Agotado')}
                         </div>
                         {size.precio && hasStock && (
-                          <div className="text-xs mt-1 text-green-300 font-semibold">
-                            {formatPrice(size.precio)}
+                          <div className="text-xs mt-1 text-black-800 font-semibold">
+                            {formatPrice(size.precio, currentCurrency, 'MXN')}
                           </div>
                         )}
                       </button>
@@ -1442,8 +2037,8 @@ const ProductPage: NextPage = () => {
             )}
 
             {/* Precio */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-4">
+            <div className="space-y-2 text-center md:text-left">
+              <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
                 {(() => {
                   // Si hay una talla seleccionada, usar su precio específico
                   if (selectedSize && variantStock) {
@@ -1454,21 +2049,21 @@ const ProductPage: NextPage = () => {
                       return (
                         <div className="flex flex-col">
                           {priceInfo.hasDiscount ? (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-2xl text-gray-400 line-through">
-                                {formatPrice(priceInfo.originalPrice)}
+                            <div className="flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2">
+                              <span className="text-lg sm:text-2xl text-gray-400 line-through">
+                                {formatPrice(priceInfo.originalPrice, currentCurrency, 'MXN')}
                               </span>
-                              <span className="text-3xl font-bold text-green-400">
-                                {formatPrice(priceInfo.finalPrice)}
+                              <span className="text-2xl sm:text-3xl font-bold text-green-400">
+                                {formatPrice(priceInfo.finalPrice, currentCurrency, 'MXN')}
                               </span>
-                              <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
+                              <span className="text-xs sm:text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
                                 -{priceInfo.discountPercentage}% OFF
                               </span>
                             </div>
                           ) : (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-3xl font-bold text-green-400">
-                                {formatPrice(priceInfo.finalPrice)}
+                            <div className="flex items-center justify-center md:justify-start">
+                              <span className="text-2xl sm:text-3xl font-bold text-green-400">
+                                {formatPrice(priceInfo.finalPrice, currentCurrency, 'MXN')}
                               </span>
                             </div>
                           )}
@@ -1496,14 +2091,14 @@ const ProductPage: NextPage = () => {
                             <div className="flex items-center space-x-2">
                               <span className="text-2xl text-gray-400 line-through">
                                 {minPrice === maxPrice 
-                                  ? formatPrice(minPriceInfo.originalPrice)
-                                  : `${formatPrice(minPriceInfo.originalPrice)} - ${formatPrice(maxPriceInfo.originalPrice)}`
+                                  ? formatPrice(minPriceInfo.originalPrice, currentCurrency, 'MXN')
+                                  : `${formatPrice(minPriceInfo.originalPrice, currentCurrency, 'MXN')} - ${formatPrice(maxPriceInfo.originalPrice, currentCurrency, 'MXN')}`
                                 }
                               </span>
                               <span className="text-3xl font-bold text-green-400">
                                 {minPrice === maxPrice 
-                                  ? formatPrice(minPriceInfo.finalPrice) 
-                                  : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
+                                  ? formatPrice(minPriceInfo.finalPrice, currentCurrency, 'MXN') 
+                                  : `${formatPrice(minPriceInfo.finalPrice, currentCurrency, 'MXN')} - ${formatPrice(maxPriceInfo.finalPrice, currentCurrency, 'MXN')}`
                                 }
                               </span>
                               <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
@@ -1514,8 +2109,8 @@ const ProductPage: NextPage = () => {
                             <div className="flex items-center space-x-2">
                               <span className="text-3xl font-bold text-green-400">
                                 {minPrice === maxPrice 
-                                  ? formatPrice(minPriceInfo.finalPrice) 
-                                  : `${formatPrice(minPriceInfo.finalPrice)} - ${formatPrice(maxPriceInfo.finalPrice)}`
+                                  ? formatPrice(minPriceInfo.finalPrice, currentCurrency, 'MXN') 
+                                  : `${formatPrice(minPriceInfo.finalPrice, currentCurrency, 'MXN')} - ${formatPrice(maxPriceInfo.finalPrice, currentCurrency, 'MXN')}`
                                 }
                               </span>
                             </div>
@@ -1534,10 +2129,10 @@ const ProductPage: NextPage = () => {
                         {priceInfo.hasDiscount ? (
                           <div className="flex items-center space-x-2">
                             <span className="text-2xl text-gray-400 line-through">
-                              {formatPrice(priceInfo.originalPrice)}
+                              {formatPrice(priceInfo.originalPrice, currentCurrency, 'MXN')}
                             </span>
                             <span className="text-3xl font-bold text-green-400">
-                              {formatPrice(priceInfo.finalPrice)}
+                              {formatPrice(priceInfo.finalPrice, currentCurrency, 'MXN')}
                             </span>
                             <span className="text-sm bg-yellow-500 text-black px-2 py-1 rounded-full font-bold">
                               -{priceInfo.discountPercentage}% OFF
@@ -1546,7 +2141,7 @@ const ProductPage: NextPage = () => {
                         ) : (
                           <div className="flex items-center space-x-2">
                             <span className="text-3xl font-bold text-green-400">
-                              {formatPrice(priceInfo.finalPrice)}
+                              {formatPrice(priceInfo.finalPrice, currentCurrency, 'MXN')}
                             </span>
                           </div>
                         )}
@@ -1570,19 +2165,19 @@ const ProductPage: NextPage = () => {
             </div>
 
             {/* Cantidad */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">{t('Cantidad')}:</h3>
-              <div className="flex items-center space-x-4">
+            <div className="text-center md:text-left">
+              <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">{t('Cantidad')}:</h3>
+              <div className="flex items-center space-x-3 sm:space-x-4 justify-center md:justify-start">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 rounded-lg border border-white/30 hover:border-white/50 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border border-white/30 hover:border-white/50 flex items-center justify-center transition-colors text-sm sm:text-base"
                 >
                   -
                 </button>
-                <span className="text-xl font-semibold w-8 text-center">{quantity}</span>
+                <span className="text-lg sm:text-xl font-semibold w-6 sm:w-8 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 rounded-lg border border-white/30 hover:border-white/50 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border border-white/30 hover:border-white/50 flex items-center justify-center transition-colors text-sm sm:text-base"
                 >
                   +
                 </button>
@@ -1590,11 +2185,11 @@ const ProductPage: NextPage = () => {
             </div>
 
             {/* Botones de acción */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3 px-1 sm:px-2 md:px-0">
               <button
                 onClick={handleBuyNow}
                 disabled={!selectedSize || selectedSize.cantidad === 0}
-                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-green-600 text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
               >
                 {selectedSize && selectedSize.cantidad === 0 
                   ? t('Sin stock') 
@@ -1605,7 +2200,7 @@ const ProductPage: NextPage = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={!selectedSize || selectedSize.cantidad === 0}
-                className="w-full bg-white text-black py-3 px-6 rounded-lg font-semibold hover:bg-gray-100 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-white text-black py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-gray-100 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
               >
                 {selectedSize && selectedSize.cantidad === 0 
                   ? t('Sin stock') 
@@ -1615,18 +2210,18 @@ const ProductPage: NextPage = () => {
             </div>
 
             {/* Información adicional */}
-            <div className="space-y-4 pt-4 border-t border-white/20">
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <span></span>
+            <div className="space-y-4 pt-4 border-t border-white/20 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start space-x-2 text-sm text-gray-300">
+                <span>🔒</span>
                 <span>Compra 100% segura</span>
               </div>
             </div>
 
             {/* Descripción */}
             {productData.descripcion && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">{t('Descripción')}:</h3>
-                <p className="text-gray-300 leading-relaxed">{productData.descripcion}</p>
+              <div className="text-center md:text-left">
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">{t('Descripción')}:</h3>
+                <p className="text-gray-300 leading-relaxed text-sm sm:text-base">{productData.descripcion}</p>
               </div>
             )}
           </div>
@@ -1634,17 +2229,17 @@ const ProductPage: NextPage = () => {
 
         {/* Productos Recomendados */}
         {relatedProducts.length > 0 && (
-          <div className="mt-16">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-white mb-2">
+          <div className="mt-8 sm:mt-12 md:mt-16 max-w-[350px] md:max-w-full mx-auto">
+            <div className="mb-6 sm:mb-8 text-center md:text-left">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
                 {t('Productos Recomendados')}
               </h2>
-              <p className="text-gray-400">
+              <p className="text-gray-400 text-sm sm:text-base">
                 {t('Productos recientes de la misma categoría')}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {relatedProducts.map((product) => {
                 // Obtener la primera variante disponible
                 const firstVariant = product.variantes.find(v => v.disponible) || product.variantes[0];
@@ -1676,9 +2271,9 @@ const ProductPage: NextPage = () => {
                   <Link 
                     key={product.id_producto} 
                     href={`/producto/${product.id_producto}?variante=${firstVariant.id_variante}`}
-                    className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group no-underline transform hover:scale-105"
+                    className="bg-white/5 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group no-underline transform hover:scale-105"
                   >
-                    <div className="relative aspect-square mb-4 rounded-lg overflow-hidden bg-white/5">
+                    <div className="relative aspect-square mb-3 sm:mb-4 rounded-lg overflow-hidden bg-white/5">
                       <Image
                         src={firstImage}
                         alt={`${product.nombre} - ${firstVariant.nombre}`}
@@ -1703,24 +2298,24 @@ const ProductPage: NextPage = () => {
                       )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <h3 className="text-white font-semibold text-base group-hover:text-green-300 transition-colors line-clamp-2 min-h-[48px]">
+                    <div className="space-y-1 sm:space-y-2">
+                      <h3 className="text-white font-semibold text-sm sm:text-base group-hover:text-green-300 transition-colors line-clamp-2 min-h-[40px] sm:min-h-[48px]">
                         {product.nombre}
                       </h3>
                       
                       <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>{product.marca}</span>
-                        <span>{t(product.categoria_nombre)}</span>
+                        <span className="truncate">{product.marca}</span>
+                        <span className="truncate">{t(product.categoria_nombre)}</span>
                       </div>
                       
                       <div className="flex items-center space-x-2">
                         {finalPrice > 0 && (
                           <>
-                            <span className="text-green-400 font-bold text-lg">
+                            <span className="text-green-400 font-bold text-base sm:text-lg">
                               {formatPrice(finalPrice)}
                             </span>
                             {hasRealDiscount && originalPrice > finalPrice && (
-                              <span className="text-gray-400 line-through text-sm">
+                              <span className="text-gray-400 line-through text-xs sm:text-sm">
                                 {formatPrice(originalPrice)}
                               </span>
                             )}
@@ -1728,7 +2323,7 @@ const ProductPage: NextPage = () => {
                         )}
                       </div>
                       
-                      <button className={`w-full py-2 rounded-lg font-medium text-sm transition-all duration-200 mt-3 ${
+                      <button className={`w-full py-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 mt-2 sm:mt-3 ${
                         hasStock 
                           ? 'bg-white text-black hover:bg-green-400 hover:text-white transform hover:scale-105' 
                           : 'bg-gray-700 text-gray-400 cursor-not-allowed'
@@ -1754,264 +2349,705 @@ const ProductPage: NextPage = () => {
         )}
       </div>
       
-      {/* Footer completo */}
-      <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start pt-16 pb-8 px-8 text-Text-Default-Tertiary font-Body-Font-Family mt-16">
-        <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
-          {/* Logo y redes sociales */}
-          <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
-            <Image
-              className="w-[50px] h-[50px]"
-              width={50}
-              height={50}
-              sizes="100vw"
-              alt="Logo Treboluxe"
-              src="/sin-ttulo1-2@2x.png"
-            />
-            <div className="flex flex-col items-start justify-start gap-4">
-              <p className="text-white text-sm leading-relaxed">
-                {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
-              </p>
-              <div className="flex flex-row items-center justify-start gap-4">
-                <Image
-                  className="w-6 relative h-6 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Facebook"
-                  src="/figma.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Instagram"
-                  src="/logo-instagram.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Twitter/X"
-                  src="/x-logo.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="YouTube"
-                  src="/logo-youtube.svg"
-                />
-                <Image
-                  className="w-6 relative h-6 overflow-hidden shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="LinkedIn"
-                  src="/linkedin.svg"
-                />
-              </div>
-            </div>
+    </div>
+    
+    {/* Menú Móvil Izquierdo (Categorías) */}
+    <div className={`fixed inset-y-0 left-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+      showMobileMenu ? 'translate-x-0' : '-translate-x-full'
+    } md:hidden`}>
+      <div className="flex flex-col h-full">
+        {/* Header del menú con logo */}
+        <div className="flex items-center justify-between p-4 border-b border-white/20">
+          <div className="text-white text-xl font-bold tracking-[4px]">
+            {t('TREBOLUXE')}
           </div>
-          
-          {/* Columna Compras */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Compras')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cómo comprar')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Métodos de pago')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Envíos y entregas')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cambios y devoluciones')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Tabla de tallas')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Gift cards')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Programa de fidelidad')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Categorías */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Categorías')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Mujer')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Hombre')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Niños')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Accesorios')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Calzado')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Nueva colección')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ofertas especiales')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Atención al cliente */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Atención al cliente')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Contacto')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Preguntas frecuentes')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Centro de ayuda')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Chat en vivo')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Seguimiento de pedidos')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Reportar un problema')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ubicación de tiendas')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Legal */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Legal')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Términos y condiciones')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de privacidad')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Política de cookies')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Aviso legal')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sobre nosotros')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Trabaja con nosotros')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sostenibilidad')}
-              </div>
-            </div>
-          </div>
+          <button 
+            onClick={() => setShowMobileMenu(false)}
+            className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         
-        {/* Copyright section */}
-        <div className="w-full pt-8 border-t border-white/20">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-gray-400 text-sm">
-              {t('© 2024 Treboluxe. Todos los derechos reservados.')}
-            </div>
-            <div className="flex items-center gap-6 text-gray-400 text-sm">
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
-            </div>
-          </div>
-          <div className="mt-4 text-gray-400 text-xs">
-            {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
+        {/* Categorías */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <h3 className="text-white text-lg font-semibold mb-4 tracking-[2px]">
+            {t('CATEGORÍAS')}
+          </h3>
+          <div className="space-y-2">
+            {/* Todas las categorías */}
+            <Link 
+              href="/catalogo?categoria=todas" 
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors border-b border-gray-600/30"
+            >
+              <span className="font-semibold">{t('Todas las categorías')}</span>
+            </Link>
+            
+            {/* Categorías dinámicas - EXACTO COMO EN CATÁLOGO */}
+            {activeCategories.map((category) => (
+              <Link 
+                key={category.id} 
+                href={`/catalogo?categoria=${category.slug}`} 
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+              >
+                {t(category.name)}
+              </Link>
+            ))}
+
+            {/* Loading state para categorías móviles */}
+            {categoriesLoading && (
+              <div className="block px-4 py-3 text-gray-400">
+                <span>{t('Cargando categorías...')}</span>
+              </div>
+            )}
+
+            {/* Error state para categorías móviles */}
+            {categoriesError && (
+              <div className="block px-4 py-3 text-red-400">
+                <span>{t('Error al cargar categorías')}</span>
+              </div>
+            )}
           </div>
         </div>
-      </footer>
-      
+      </div>
     </div>
+
+    {/* Overlay para cerrar menú móvil */}
+    {showMobileMenu && (
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        onClick={() => setShowMobileMenu(false)}
+      />
+    )}
+
+    {/* Panel Lateral Móvil Derecho (Carrito/Opciones) - EXACTO COMO CATÁLOGO */}
+    <div className={`fixed inset-y-0 right-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+      showMobileSidebar ? 'translate-x-0' : 'translate-x-full'
+    } md:hidden`}>
+      <div className="flex flex-col h-full">
+        {/* Header del panel */}
+        <div className="flex items-center justify-between p-4 border-b border-white/20">
+          <div className="text-white text-lg font-semibold">
+            {mobileSidebarContent === 'cart' && t('Carrito')}
+            {mobileSidebarContent === 'language' && t('Idioma & Moneda')}
+            {mobileSidebarContent === 'profile' && t('Perfil')}
+            {mobileSidebarContent === 'search' && t('Buscar')}
+          </div>
+          <button 
+            onClick={() => setShowMobileSidebar(false)}
+            className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Contenido del panel */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Contenido del carrito */}
+          {mobileSidebarContent === 'cart' && (
+            <div className="flex flex-col h-full">
+              <div className="p-4 pb-2">
+                <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+                <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
+              </div>
+              
+              {/* Lista de productos - SCROLLEABLE */}
+              <div className="flex-1 overflow-y-auto px-4">
+                {cartItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                    </svg>
+                    <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                    <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cartItems.map((item) => (
+                    <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                      <div className="flex items-start gap-3">
+                        <div className="w-14 h-14 bg-gray-400 rounded-lg flex-shrink-0">
+                          {item.image && (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              width={56}
+                              height={56}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-white text-sm truncate">{item.name}</h4>
+                          <p className="text-gray-300 text-xs">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            {item.hasDiscount ? (
+                              <div className="flex flex-col">
+                                <span className="text-xs text-red-400 line-through">
+                                  {formatPrice(item.price, currentCurrency, 'MXN')}
+                                </span>
+                                <span className="text-white font-bold text-sm">
+                                  {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                </span>
+                                <span className="text-xs text-yellow-400">
+                                  -{item.discountPercentage}% OFF
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-white font-bold text-sm">
+                                {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                className="w-6 h-6 bg-white/20 rounded text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+                                disabled={isLoading}
+                              >
+                                -
+                              </button>
+                              <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
+                              <button
+                                onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                className="w-6 h-6 bg-white/20 rounded text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+                                disabled={isLoading}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                          className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0 bg-transparent p-1 rounded"
+                          disabled={isLoading}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Botones de acción - SIEMPRE VISIBLES */}
+              {cartItems.length > 0 && (
+                <div className="p-4 pt-2 border-t border-white/20 bg-black/95">
+                  <div className="flex items-center justify-between text-white mb-3">
+                    <span className="font-medium">{t('Total')}:</span>
+                    <span className="text-xl font-bold">{formatPrice(totalFinal, currentCurrency, 'MXN')}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Link 
+                      href="/carrito" 
+                      className="bg-gradient-to-r from-green-600 to-green-800 text-white py-3 px-4 rounded-lg font-medium text-center block hover:from-green-700 hover:to-green-900 transition-colors"
+                      onClick={() => setShowMobileSidebar(false)}
+                    >
+                      {t('Ver Carrito Completo')}
+                    </Link>
+                    <button 
+                      onClick={() => setShowMobileSidebar(false)}
+                      className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                    >
+                      {t('Seguir Comprando')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contenido de idioma - EXACTO COMO EN CATÁLOGO */}
+          {mobileSidebarContent === 'language' && (
+            <div className="flex flex-col h-full">
+              <div className="p-4 pb-2">
+                <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto px-4 space-y-6">
+              {/* Language Section */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                <div className="space-y-1">
+                  <button 
+                    onClick={() => changeLanguage('es')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🇪🇸</span>
+                        <span>Español</span>
+                      </div>
+                      {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => changeLanguage('en')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🇺🇸</span>
+                        <span>English</span>
+                      </div>
+                      {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => changeLanguage('fr')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🇫🇷</span>
+                        <span>Français</span>
+                      </div>
+                      {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Currency Section */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                <div className="space-y-1">
+                  <button 
+                    onClick={() => changeCurrency('MXN')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-white">$</span>
+                        <span>MXN - Peso Mexicano</span>
+                      </div>
+                      {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => changeCurrency('USD')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-white">$</span>
+                        <span>USD - Dólar</span>
+                      </div>
+                      {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => changeCurrency('EUR')}
+                    className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                      currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-white">€</span>
+                        <span>EUR - Euro</span>
+                      </div>
+                      {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Información adicional */}
+              <div className="text-center border-t border-white/20 pt-6">
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {t('Los cambios se aplicarán automáticamente a todos los precios mostrados en la tienda.')}
+                </p>
+              </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contenido del panel de perfil - SOLO ENVÍOS Y PRODUCTOS RECOMENDADOS */}
+          {mobileSidebarContent === 'profile' && (
+            <div className="flex flex-col h-full">
+              <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-6">
+              {isAuthenticated && user ? (
+                <>
+                  {/* Usuario autenticado */}
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-white text-xl font-bold">
+                        {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                    <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                    <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
+                  </div>
+
+                  {/* Información de Envío */}
+                  <div className="bg-white/10 rounded-lg p-4 mb-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      {t('Información de Envío')}
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div className="flex justify-between">
+                        <span>{t('Envíos salen:')}</span>
+                        <span className="text-green-400">{t('Al día siguiente')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('Entrega estándar:')}</span>
+                        <span>{t('3-5 días')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('Entrega express:')}</span>
+                        <span>{t('24-48 horas')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recomendación de Producto - EXACTO COMO EN CATÁLOGO */}
+                  <div className="bg-white/10 rounded-lg p-4 mb-6">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      {t('Producto Recomendado')}
+                    </h4>
+                    {loadingRecommendation ? (
+                      <div className="animate-pulse">
+                        <div className="bg-white/20 h-20 rounded mb-2"></div>
+                        <div className="bg-white/20 h-4 rounded mb-1"></div>
+                        <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                      </div>
+                    ) : recommendedProduct ? (
+                      <div 
+                        className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                        onClick={() => {
+                          const productId = recommendedProduct.id_producto || recommendedProduct.id || recommendedProduct.producto_id;
+                          console.log('🔗 Navegando al producto con ID:', productId);
+                          if (productId) {
+                            router.push(`/producto/${productId}`);
+                            setShowMobileSidebar(false);
+                          }
+                        }}
+                      >
+                        <div className="flex gap-3">
+                          <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                            {recommendedProduct.image ? (
+                              <Image
+                                src={recommendedProduct.image}
+                                alt={recommendedProduct.nombre || 'Producto'}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-white text-sm font-medium truncate">
+                              {recommendedProduct.nombre || 'Producto sin nombre'}
+                            </h5>
+                            <p className="text-gray-300 text-xs line-clamp-2">
+                              {recommendedProduct.descripcion || 'Sin descripción disponible'}
+                            </p>
+                            <div className="mt-1">
+                              <span className="text-green-400 text-sm font-medium">
+                                {formatPrice(recommendedProduct.precio || 0, currentCurrency, 'MXN')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm">{t('Cargando productos...')}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Usuario no autenticado */}
+                  <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
+                    <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu perfil')}</p>
+                  </div>
+
+                  {/* Botones de acceso */}
+                  <div className="space-y-3">
+                    <Link 
+                      href="/login"
+                      className="bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
+                    >
+                      {t('Iniciar sesión')}
+                    </Link>
+                    <Link 
+                      href="/register"
+                      className="bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
+                    >
+                      {t('Registrarse')}
+                    </Link>
+                  </div>
+                  
+                  <div className="mt-8 pt-6 border-t border-white/20">
+                    <p className="text-gray-300 text-xs text-center">
+                      {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
+                    </p>
+                  </div>
+                </>
+              )}
+              </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contenido del panel de búsqueda - EXACTO COMO EN CATÁLOGO */}
+          {mobileSidebarContent === 'search' && (
+            <div className="flex flex-col h-full">
+              <div className="p-4 pb-2">
+                <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+              </div>
+              
+              <div className="flex-1 px-4">
+              <div className="space-y-4">
+              {/* Barra de búsqueda */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  placeholder={t('¿Qué estás buscando?')}
+                  className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                />
+                <button 
+                  onClick={handleSearch}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                >
+                  {t('Buscar')}
+                </button>
+              </div>
+
+              {/* Resultados de búsqueda */}
+              {searchTerm && (
+                <div className="mt-4">
+                  {searchLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse flex gap-3">
+                          <div className="w-12 h-12 bg-white/20 rounded"></div>
+                          <div className="flex-1">
+                            <div className="h-4 bg-white/20 rounded mb-2"></div>
+                            <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {searchResults.map((product) => (
+                        <div
+                          key={product.id || product.id_producto}
+                          className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                          onClick={() => {
+                            const productId = product.id || product.id_producto;
+                            router.push(`/producto/${productId}`);
+                            setShowMobileSidebar(false);
+                            setSearchTerm('');
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                              {(() => {
+                                let imageUrl = null;
+                                
+                                // Primero intentar usar la imagen procesada
+                                if (product.image) {
+                                  imageUrl = product.image;
+                                }
+                                // Fallback: buscar directamente en las variantes
+                                else if (product.variantes && product.variantes[0]) {
+                                  const firstVariant = product.variantes[0];
+                                  
+                                  // Nueva estructura: variantes[0].imagenes[0].url
+                                  if (firstVariant.imagenes && firstVariant.imagenes[0] && firstVariant.imagenes[0].url) {
+                                    imageUrl = firstVariant.imagenes[0].url;
+                                  }
+                                  // Estructura anterior: variantes[0].imagenes_variante[0].url
+                                  else if (firstVariant.imagenes_variante && firstVariant.imagenes_variante[0] && firstVariant.imagenes_variante[0].url) {
+                                    imageUrl = firstVariant.imagenes_variante[0].url;
+                                  }
+                                }
+                                
+                                return imageUrl ? (
+                                  <Image
+                                    src={imageUrl}
+                                    alt={product.nombre || 'Producto'}
+                                    width={48}
+                                    height={48}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-white text-sm truncate">{product.nombre}</h4>
+                              <p className="text-gray-300 text-xs truncate">{product.descripcion}</p>
+                              <p className="text-white text-sm font-bold mt-1">
+                                {formatPrice(product.precio || (product.variantes && product.variantes[0] ? product.variantes[0].precio : 0), currentCurrency, 'MXN')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-white/20">
+                        <button
+                          onClick={() => {
+                            handleSearch();
+                            setShowMobileSidebar(false);
+                          }}
+                          className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                        >
+                          {t('Ver todos los resultados')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : searchTerm.length > 2 ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p className="text-gray-300">{t('No se encontraron productos')}</p>
+                      <p className="text-gray-400 text-sm mt-1">{t('Prueba con otros términos de búsqueda')}</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Categorías rápidas */}
+              <div className="border-t border-white/20 pt-6">
+                <h4 className="text-lg text-white font-medium mb-4">{t('Buscar por categoría')}</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeCategories.slice(0, 6).map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/catalogo?categoria=${category.slug}`}
+                      onClick={() => setShowMobileSidebar(false)}
+                      className="p-3 bg-white/10 rounded-lg text-center text-white hover:bg-white/20 transition-colors"
+                    >
+                      <span className="text-sm">{t(category.name)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Botones de navegación inferior - EXACTO COMO EN CATÁLOGO */}
+        <div className="border-t border-white/20 p-4">
+          <div className="grid grid-cols-3 gap-2">
+            {mobileSidebarContent !== 'language' && (
+              <button
+                onClick={() => setMobileSidebarContent('language')}
+                className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+              >
+                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                <span className="text-xs">{t('Idioma')}</span>
+              </button>
+            )}
+            {mobileSidebarContent !== 'profile' && (
+              <button
+                onClick={() => setMobileSidebarContent('profile')}
+                className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+              >
+                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="text-xs">{t('Perfil')}</span>
+              </button>
+            )}
+            {mobileSidebarContent !== 'search' && (
+              <button
+                onClick={() => setMobileSidebarContent('search')}
+                className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+              >
+                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className="text-xs">{t('Buscar')}</span>
+              </button>
+            )}
+            {mobileSidebarContent !== 'cart' && (
+              <button
+                onClick={() => setMobileSidebarContent('cart')}
+                className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
+              >
+                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                </svg>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
+                <span className="text-xs">{t('Carrito')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Overlay para cerrar sidebar móvil */}
+    {showMobileSidebar && (
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        onClick={() => setShowMobileSidebar(false)}
+      />
+    )}
+    
     <Footer />
     </>
   );

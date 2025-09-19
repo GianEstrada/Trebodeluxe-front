@@ -11,7 +11,6 @@ import { useIndexImages } from "../hooks/useIndexImages";
 import { useExchangeRates } from "../hooks/useExchangeRates";
 import { canAccessAdminPanel } from "../utils/roles";
 import { useCategories } from "../hooks/useCategories";
-import CategoryFilter from "../components/CategoryFilter";
 import VariantSizeSelector from "../components/VariantSizeSelector";
 import MobileHeader from "../components/MobileHeader";
 import Footer from "../components/Footer";
@@ -78,7 +77,49 @@ const Catalogo: NextPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('nombre'); // 'nombre', 'precio_asc', 'precio_desc', 'recientes'
   const [allCategoryProducts, setAllCategoryProducts] = useState<any[]>([]);
-  const productsPerPage = 30; // 6 columnas x 5 filas = 30 productos por página
+
+  // Estados locales para los parámetros de URL que se sincronizan
+  const [urlCategoria, setUrlCategoria] = useState<string>('');
+  const [urlFilter, setUrlFilter] = useState<string>('');
+  const [urlBusqueda, setUrlBusqueda] = useState<string>('');
+
+  // Syncronizar con router.query cuando el router esté listo (con timeout fallback)
+  useEffect(() => {
+    const syncParams = () => {
+      console.log('🔄 Syncing params - Router ready:', router.isReady);
+      console.log('🔄 Router query:', router.query);
+      setUrlCategoria((router.query.categoria as string) || '');
+      setUrlFilter((router.query.filter as string) || '');
+      setUrlBusqueda((router.query.busqueda as string) || '');
+    };
+
+    if (router.isReady) {
+      syncParams();
+    } else {
+      // Fallback: sincronizar después de un delay si router no está ready
+      const timer = setTimeout(() => {
+        console.log('⚠️ Timeout fallback - forcing sync');
+        syncParams();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [router.isReady, router.query.categoria, router.query.filter, router.query.busqueda]);
+
+  // También escuchar cambios en la URL
+  useEffect(() => {
+    const handleRouteChange = () => {
+      console.log('🛣️ Route changed, syncing params');
+      setUrlCategoria((router.query.categoria as string) || '');
+      setUrlFilter((router.query.filter as string) || '');
+      setUrlBusqueda((router.query.busqueda as string) || '');
+    };
+
+    router.events?.on('routeChangeComplete', handleRouteChange);
+    return () => {
+      router.events?.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [router]);
 
   // Estados del sistema de productos del index
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
@@ -137,15 +178,31 @@ const Catalogo: NextPage = () => {
   // Usar tasas de cambio dinámicas desde Open Exchange Rates
   const { formatPrice } = useExchangeRates();
 
-  // Funciones de interacción
+  // Función para cambiar idioma
   const changeLanguage = (lang: string) => {
     setCurrentLanguage(lang);
-    setShowLanguageDropdown(false);
+    localStorage.setItem('preferred-language', lang);
   };
 
+  // Función para cambiar moneda
   const changeCurrency = (currency: string) => {
     setCurrentCurrency(currency);
-    setShowLanguageDropdown(false);
+    localStorage.setItem('preferred-currency', currency);
+  };
+
+  // Función para manejar la búsqueda
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
+      setShowSearchDropdown(false);
+      setSearchTerm('');
+    }
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const handleDotClick = (index: number) => {
@@ -155,19 +212,6 @@ const Catalogo: NextPage = () => {
         setCurrentTextIndex(index);
         setIsAnimating(false);
       }, 150);
-    }
-  };
-
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
-      setShowSearchDropdown(false);
-    }
-  };
-
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
     }
   };
 
@@ -196,6 +240,173 @@ const Catalogo: NextPage = () => {
     setSearchQuery(value);
     // Resetear página cuando se hace una nueva búsqueda
     setCurrentPage(1);
+  };
+
+  // Función para cargar producto aleatorio
+  const loadRandomProduct = async () => {
+    try {
+      setLoadingRecommendation(true);
+      console.log('🔍 Iniciando carga de producto recomendado...');
+      
+      // Usar getRecent que suele ser más confiable
+      const response = await productsApi.getRecent(50) as any;
+      console.log('📦 Respuesta getRecent:', response);
+      
+      if (response.success && response.products && response.products.length > 0) {
+        console.log('🎯 Productos encontrados:', response.products.length);
+        console.log('💰 Estado de promociones:', Object.keys(promotions).length > 0 ? 'Cargadas' : 'No cargadas');
+        
+        // Seleccionar un producto aleatorio
+        const randomIndex = Math.floor(Math.random() * response.products.length);
+        let selectedProduct = response.products[randomIndex];
+        console.log('🎲 Producto base seleccionado:', selectedProduct);
+        console.log('🔍 Propiedades del producto:', Object.keys(selectedProduct));
+        console.log('🆔 ID disponibles:', {
+          id: selectedProduct.id,
+          producto_id: selectedProduct.producto_id,
+          productId: selectedProduct.productId,
+          _id: selectedProduct._id,
+          id_producto: selectedProduct.id_producto
+        });
+        
+        // Verificar que el producto tenga ID válido - más flexible
+        let productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id || selectedProduct.id_producto;
+        
+        if (!productId) {
+          console.log('❌ Producto sin ID válido, estructura completa:', selectedProduct);
+          // En lugar de fallar, intentemos con otro producto
+          if (response.products.length > 1) {
+            const fallbackIndex = (randomIndex + 1) % response.products.length;
+            selectedProduct = response.products[fallbackIndex];
+            productId = selectedProduct.id || selectedProduct.producto_id || selectedProduct.productId || selectedProduct._id || selectedProduct.id_producto;
+            console.log('🔄 Intentando producto fallback:', selectedProduct);
+          }
+          
+          if (!productId) {
+            console.log('❌ No se encontró producto con ID válido');
+            setRecommendedProduct(null);
+            return;
+          }
+        }
+        
+        // Asegurar que el producto tenga un ID normalizado
+        if (!selectedProduct.id && productId) {
+          selectedProduct.id = productId;
+        }
+        
+        console.log('✅ ID del producto confirmado:', selectedProduct.id);
+        
+        // Si hay promociones disponibles, aplicarlas
+        if (Object.keys(promotions).length > 0 && promotions[selectedProduct.id]) {
+          console.log('✅ Aplicando promociones al producto:', selectedProduct.id);
+          selectedProduct = productUtils.applyPromotionDiscounts([selectedProduct], promotions)[0];
+          console.log('💸 Producto con promoción aplicada:', selectedProduct);
+        }
+        
+        setRecommendedProduct(selectedProduct);
+        console.log('✅ Producto recomendado establecido exitosamente');
+      } else {
+        console.log('❌ No se encontraron productos en la respuesta');
+        setRecommendedProduct(null);
+      }
+    } catch (error) {
+      console.error('❌ Error completo cargando producto:', error);
+      setRecommendedProduct(null);
+    } finally {
+      setLoadingRecommendation(false);
+      console.log('🏁 Finalizó la carga del producto recomendado');
+    }
+  };
+
+  // Función para buscar productos en tiempo real
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      console.log('🔍 Iniciando búsqueda con query:', query);
+      
+      // Usar los productos que ya están cargados y procesados con promociones
+      let allProducts: any[] = [];
+      
+      // Combinar featuredProducts con productos de categorías
+      allProducts = [...featuredProducts];
+      console.log('📦 Productos destacados:', allProducts.length);
+      
+      // Agregar productos de todas las categorías si están disponibles
+      if (typeof recentByCategory !== 'undefined') {
+        Object.values(recentByCategory).forEach((categoryProducts: any) => {
+          if (Array.isArray(categoryProducts)) {
+            categoryProducts.forEach((product: any) => {
+              // Evitar duplicados comparando por id
+              if (!allProducts.find(existing => existing.id === product.id)) {
+                allProducts.push(product);
+              }
+            });
+          }
+        });
+      }
+      console.log('📦 Total productos después de combinar:', allProducts.length);
+
+      // Si no hay productos cargados aún, usar los productos filtrados o hacer llamada a la API
+      if (allProducts.length === 0) {
+        if (filteredProducts.length > 0) {
+          allProducts = [...filteredProducts];
+          console.log('📦 Usando productos filtrados:', allProducts.length);
+        } else {
+          console.log('⚠️ No hay productos cargados, consultando API...');
+          const response = await productsApi.getAll() as any;
+          if (response.success && response.products && response.products.length > 0) {
+            // Aplicar promociones a los productos de la API
+            const productsWithPromotions = productUtils.applyPromotionDiscounts(response.products, promotions);
+            allProducts = productsWithPromotions;
+            console.log('📦 Productos de API:', allProducts.length);
+          }
+        }
+      }
+
+      // Mostrar estructura del primer producto para debugging
+      if (allProducts.length > 0) {
+        console.log('🔍 Ejemplo de producto para debugging:', {
+          id: allProducts[0].id,
+          nombre: allProducts[0].nombre,
+          name: allProducts[0].name,
+          descripcion: allProducts[0].descripcion,
+          description: allProducts[0].description,
+          categoria: allProducts[0].categoria,
+          category: allProducts[0].category,
+          availableFields: Object.keys(allProducts[0])
+        });
+      }
+
+      // Filtrar productos por el término de búsqueda con más campos
+      const filtered = allProducts.filter((product: any) => {
+        const searchTerm = query.toLowerCase();
+        const matches = [
+          product.nombre?.toLowerCase().includes(searchTerm),
+          product.name?.toLowerCase().includes(searchTerm),
+          product.descripcion?.toLowerCase().includes(searchTerm),
+          product.description?.toLowerCase().includes(searchTerm),
+          product.categoria?.toLowerCase().includes(searchTerm),
+          product.category?.toLowerCase().includes(searchTerm),
+          product.marca?.toLowerCase().includes(searchTerm),
+          product.brand?.toLowerCase().includes(searchTerm)
+        ];
+        
+        return matches.some(match => match === true);
+      });
+      
+      console.log('🎯 Productos filtrados:', filtered.length, 'de', allProducts.length);
+      setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+    } catch (error) {
+      console.error('Error buscando productos:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   // Función para obtener los productos a mostrar (filtrados o destacados)
@@ -360,23 +571,28 @@ const Catalogo: NextPage = () => {
   
   // Función principal de carga de productos basada en filtros de URL
   const loadProductsByFilter = async () => {
-    console.log('🚀 loadProductsByFilter iniciado:', { categoria, filter, busqueda });
+    console.log('🚀 loadProductsByFilter iniciado:', { urlCategoria, urlFilter, urlBusqueda, selectedCategory });
+    console.log('🚀 router.query completo:', router.query);
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Loading products by filters...', { categoria, filter, busqueda });
+      console.log('🔄 Loading products by filters...', { urlCategoria, urlFilter, urlBusqueda, selectedCategory });
       
       // Determinar el tipo de filtro basado en los parámetros de URL
-      if (busqueda && typeof busqueda === 'string') {
+      if (urlBusqueda && typeof urlBusqueda === 'string') {
         // Busqueda por texto usando getAll con filtro
-        console.log('🔍 Loading products by search:', busqueda);
-        const searchResponse = await productsApi.getAll({ busqueda, limit: 500 }) as any;
+        console.log('🔍 Loading products by search:', urlBusqueda);
+        const searchResponse = await productsApi.getAll({ busqueda: urlBusqueda, limit: 500 }) as any;
         console.log('📡 Search response:', searchResponse);
         if (searchResponse.success) {
           const transformedProducts = searchResponse.products.map(productUtils.transformToLegacyFormat);
-          console.log('✅ Search transformed products:', transformedProducts);
-          setFeaturedProducts(transformedProducts);
+          // Aplicar promociones si están disponibles
+          const productsWithPromotions = Object.keys(promotions).length > 0 
+            ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+            : transformedProducts;
+          console.log('✅ Search transformed products:', productsWithPromotions);
+          setFeaturedProducts(productsWithPromotions);
         } else {
           console.log('❌ Search failed:', searchResponse);
           // Si falla la búsqueda, mostrar productos destacados como fallback
@@ -384,7 +600,39 @@ const Catalogo: NextPage = () => {
           const featuredResponse = await productsApi.getFeatured(500) as any;
           if (featuredResponse.success) {
             const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-            setFeaturedProducts(transformedProducts);
+            // Aplicar promociones si están disponibles
+            const productsWithPromotions = Object.keys(promotions).length > 0 
+              ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+              : transformedProducts;
+            setFeaturedProducts(productsWithPromotions);
+          }
+        }
+        
+      } else if ((urlCategoria && urlCategoria !== 'todas') || (selectedCategory && selectedCategory !== 'todas')) {
+        // Filtrar por categoría específica - usar urlCategoria desde URL o selectedCategory desde dropdown
+        const categoryToFilter = urlCategoria || selectedCategory;
+        console.log('📂 Loading products by category:', categoryToFilter);
+        const categoryResponse = await productsApi.getAll({ categoria: categoryToFilter, limit: 500 }) as any;
+        console.log('📡 Category response:', categoryResponse);
+        if (categoryResponse.success) {
+          const transformedProducts = categoryResponse.products.map(productUtils.transformToLegacyFormat);
+          // Aplicar promociones si están disponibles
+          const productsWithPromotions = Object.keys(promotions).length > 0 
+            ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+            : transformedProducts;
+          console.log('✅ Category transformed products:', productsWithPromotions);
+          setFeaturedProducts(productsWithPromotions);
+        } else {
+          console.log('❌ Category failed:', categoryResponse);
+          // Fallback a productos destacados
+          const featuredResponse = await productsApi.getFeatured(500) as any;
+          if (featuredResponse.success) {
+            const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
+            // Aplicar promociones si están disponibles
+            const productsWithPromotions = Object.keys(promotions).length > 0 
+              ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+              : transformedProducts;
+            setFeaturedProducts(productsWithPromotions);
           }
         }
         
@@ -400,15 +648,23 @@ const Catalogo: NextPage = () => {
             console.log('📡 Popular response:', popularResponse);
             if (popularResponse.success) {
               const transformedProducts = popularResponse.products.map(productUtils.transformToLegacyFormat);
-              console.log('✅ Popular transformed products:', transformedProducts);
-              setFeaturedProducts(transformedProducts);
+              // Aplicar promociones si están disponibles
+              const productsWithPromotions = Object.keys(promotions).length > 0 
+                ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                : transformedProducts;
+              console.log('✅ Popular transformed products:', productsWithPromotions);
+              setFeaturedProducts(productsWithPromotions);
             } else {
               console.log('❌ Popular failed, using fallback');
               // Fallback a productos destacados
               const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-                setFeaturedProducts(transformedProducts);
+                // Aplicar promociones si están disponibles
+                const productsWithPromotions = Object.keys(promotions).length > 0 
+                  ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                  : transformedProducts;
+                setFeaturedProducts(productsWithPromotions);
               }
             }
             break;
@@ -420,15 +676,23 @@ const Catalogo: NextPage = () => {
             console.log('📡 New response:', newResponse);
             if (newResponse.success) {
               const transformedProducts = newResponse.products.map(productUtils.transformToLegacyFormat);
-              console.log('✅ New transformed products:', transformedProducts);
-              setFeaturedProducts(transformedProducts);
+              // Aplicar promociones si están disponibles
+              const productsWithPromotions = Object.keys(promotions).length > 0 
+                ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                : transformedProducts;
+              console.log('✅ New transformed products:', productsWithPromotions);
+              setFeaturedProducts(productsWithPromotions);
             } else {
               console.log('❌ New failed, using fallback');
               // Fallback a productos destacados
               const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-                setFeaturedProducts(transformedProducts);
+                // Aplicar promociones si están disponibles
+                const productsWithPromotions = Object.keys(promotions).length > 0 
+                  ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                  : transformedProducts;
+                setFeaturedProducts(productsWithPromotions);
               }
             }
             break;
@@ -440,15 +704,23 @@ const Catalogo: NextPage = () => {
             console.log('📡 Basic response:', basicResponse);
             if (basicResponse.success) {
               const transformedProducts = basicResponse.products.map(productUtils.transformToLegacyFormat);
-              console.log('✅ Basic transformed products:', transformedProducts);
-              setFeaturedProducts(transformedProducts);
+              // Aplicar promociones si están disponibles
+              const productsWithPromotions = Object.keys(promotions).length > 0 
+                ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                : transformedProducts;
+              console.log('✅ Basic transformed products:', productsWithPromotions);
+              setFeaturedProducts(productsWithPromotions);
             } else {
               console.log('❌ Basic failed, using fallback');
               // Fallback a productos destacados
               const featuredResponse = await productsApi.getFeatured(500) as any;
               if (featuredResponse.success) {
                 const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-                setFeaturedProducts(transformedProducts);
+                // Aplicar promociones si están disponibles
+                const productsWithPromotions = Object.keys(promotions).length > 0 
+                  ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                  : transformedProducts;
+                setFeaturedProducts(productsWithPromotions);
               }
             }
             break;
@@ -460,8 +732,12 @@ const Catalogo: NextPage = () => {
             console.log('📡 Featured response:', featuredResponse);
             if (featuredResponse.success) {
               const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-              console.log('✅ Featured transformed products:', transformedProducts);
-              setFeaturedProducts(transformedProducts);
+              // Aplicar promociones si están disponibles
+              const productsWithPromotions = Object.keys(promotions).length > 0 
+                ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+                : transformedProducts;
+              console.log('✅ Featured transformed products:', productsWithPromotions);
+              setFeaturedProducts(productsWithPromotions);
             } else {
               console.log('❌ Featured failed:', featuredResponse);
             }
@@ -474,8 +750,12 @@ const Catalogo: NextPage = () => {
         console.log('📡 Default featured response:', featuredResponse);
         if (featuredResponse.success) {
           const transformedProducts = featuredResponse.products.map(productUtils.transformToLegacyFormat);
-          console.log('✅ Default featured transformed products:', transformedProducts);
-          setFeaturedProducts(transformedProducts);
+          // Aplicar promociones si están disponibles
+          const productsWithPromotions = Object.keys(promotions).length > 0 
+            ? productUtils.applyPromotionDiscounts(transformedProducts, promotions)
+            : transformedProducts;
+          console.log('✅ Default featured transformed products:', productsWithPromotions);
+          setFeaturedProducts(productsWithPromotions);
         } else {
           console.log('❌ Default featured failed:', featuredResponse);
         }
@@ -588,6 +868,27 @@ const Catalogo: NextPage = () => {
         
         if (validVariantes.length > 0) {
           console.log('✅ Found valid variants, opening selector');
+          
+          // Preservar información de promociones del producto original de la card
+          if (product.originalPrice && product.originalPrice > product.price) {
+            fullProduct.hasDiscount = true;
+            fullProduct.originalPrice = product.originalPrice;
+            fullProduct.discountedPrice = product.price;
+            
+            // Si hay información de promoción aplicada, preservarla
+            const productPromotion = promotions[product.id];
+            if (productPromotion) {
+              fullProduct.appliedPromotion = productPromotion;
+            }
+            
+            console.log('💰 Preserved promotion data:', {
+              hasDiscount: fullProduct.hasDiscount,
+              originalPrice: fullProduct.originalPrice,
+              discountedPrice: fullProduct.discountedPrice,
+              appliedPromotion: fullProduct.appliedPromotion
+            });
+          }
+          
           // Asegurar que el producto tenga el array de variantes filtrado
           fullProduct.variantes = validVariantes;
           handleOpenVariantSelector(fullProduct);
@@ -634,19 +935,41 @@ const Catalogo: NextPage = () => {
     console.log('🧪 TEST useEffect sin dependencias - esto SIEMPRE debe ejecutarse');
   }, []);
 
-  // Cargar productos al montar el componente y cuando cambien los filtros de URL (excepto categoria)
+  // Sincronizar selectedCategory con la categoria de la URL
   useEffect(() => {
-    if (!router.isReady) return; // Solo ejecutar cuando el router esté listo
+    if (!router.isReady) return;
     
-    console.log('🎯🎯🎯 useEffect EJECUTADO - loadProductsByFilter triggered:', { 
-      categoria, 
-      filter, 
-      busqueda,
-      isReady: router.isReady
+    if (urlCategoria && typeof urlCategoria === 'string') {
+      console.log('🔄 Sincronizando selectedCategory con urlCategoria:', urlCategoria);
+      setSelectedCategory(urlCategoria);
+    } else {
+      console.log('🔄 Resetear selectedCategory a "todas" - no hay categoria en URL');
+      setSelectedCategory('todas');
+    }
+  }, [router.isReady, urlCategoria]);
+
+  // Cargar productos al montar el componente y cuando cambien los filtros de URL
+  useEffect(() => {
+    console.log('🎯🎯🎯 useEffect EJECUTADO - values:', { 
+      'router.isReady': router.isReady,
+      urlCategoria, 
+      urlFilter, 
+      urlBusqueda,
+      selectedCategory,
     });
+    
+    if (!router.isReady) {
+      console.log('⏳ Router not ready yet, skipping loadProductsByFilter');
+      return; 
+    }
+    
+    console.log('✅ Router is ready, executing loadProductsByFilter');
+    console.log('📋 router.query:', router.query);
+    console.log('📋 Current values:', { urlCategoria, urlFilter, urlBusqueda, selectedCategory });
+    
     loadProductsByFilter();
     
-  }, [router.isReady, filter, busqueda]); // Remover categoria de las dependencias
+  }, [router.isReady, urlCategoria, urlFilter, urlBusqueda, selectedCategory]); // Usar los nuevos estados locales
 
   // Cargar promociones para todos los productos featured al cargar
   useEffect(() => {
@@ -807,6 +1130,29 @@ const Catalogo: NextPage = () => {
     }
   }, [filteredProducts, selectedCategory, isLoadingProducts]);
 
+  // useEffect para cargar producto recomendado cuando el usuario está autenticado
+  useEffect(() => {
+    if (isAuthenticated && user && Object.keys(promotions).length > 0) {
+      console.log('👤 Usuario autenticado detectado, cargando producto recomendado...');
+      loadRandomProduct();
+    }
+  }, [isAuthenticated, user, promotions]);
+
+  // useEffect para búsqueda en tiempo real
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      console.log('🔍 Iniciando búsqueda en tiempo real para:', searchTerm);
+      const debounceTimer = setTimeout(() => {
+        searchProducts(searchTerm);
+      }, 300); // Debounce de 300ms
+      
+      return () => clearTimeout(debounceTimer);
+    } else {
+      setSearchResults([]);
+      setSearchLoading(false);
+    }
+  }, [searchTerm, featuredProducts, filteredProducts, promotions]);
+
   return (
     <div className="w-full max-w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
@@ -826,6 +1172,7 @@ const Catalogo: NextPage = () => {
         showMobileSidebar={showMobileSidebar}
         setShowMobileSidebar={setShowMobileSidebar}
         setMobileSidebarContent={(content) => setMobileSidebarContent(content as 'cart' | 'language' | 'profile' | 'search')}
+        totalItems={totalItems}
       />
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
@@ -1797,15 +2144,15 @@ const Catalogo: NextPage = () => {
         </div>
 
         {/* Contenido principal del catálogo */}
-        <div className="flex-1 w-full px-2 sm:px-4 md:px-6 py-8 overflow-x-hidden max-w-full">
-          <div className="mb-8">
+        <div className="flex-1 w-full max-w-full py-8 overflow-x-hidden">
+          <div className="mb-8 px-4">
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Catálogo</h1>
             <div className="h-1 w-32 bg-gradient-to-r from-green-500 to-green-300 rounded"></div>
           </div>
           
           {/* Barra de búsqueda y filtros */}
           <div className="mb-8">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-[350px] md:max-w-4xl mx-auto px-2">
               {/* Controles de búsqueda y filtro */}
               <div className="flex flex-col gap-4 mb-6">
                 {/* Barra de búsqueda */}
@@ -1830,13 +2177,52 @@ const Catalogo: NextPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {/* Filtro de categorías */}
                   <div className="w-full">
-                    <CategoryFilter
-                      className="w-full"
-                      t={t}
-                      onFilterChange={handleCategoryFilter}
-                      showProductCount={true}
-                      initialCategory={categoria as string || 'todas'}
-                    />
+                    <div className="relative">
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => {
+                          const newCategory = e.target.value;
+                          console.log('🎯🎯 Category dropdown changed to:', newCategory);
+                          console.log('🎯🎯 Previous selectedCategory was:', selectedCategory);
+                          console.log('🎯🎯 Current router.query:', router.query);
+                          
+                          setSelectedCategory(newCategory);
+                          setCurrentPage(1);
+                          
+                          // Actualizar la URL para mantener consistencia
+                          if (newCategory === 'todas') {
+                            console.log('🎯🎯 Setting categoria to undefined (todas)');
+                            // Si es "todas", remover categoria de la URL
+                            const newQuery = { ...router.query };
+                            delete newQuery.categoria;
+                            router.push({
+                              pathname: '/catalogo',
+                              query: newQuery
+                            }, undefined, { shallow: true });
+                          } else {
+                            console.log('🎯🎯 Setting categoria to:', newCategory);
+                            // Si es una categoría específica, actualizar la URL
+                            router.push({
+                              pathname: '/catalogo',
+                              query: { ...router.query, categoria: newCategory }
+                            }, undefined, { shallow: true });
+                          }
+                        }}
+                        className="w-full box-border bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg px-3 py-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1A6B1A] focus:border-transparent appearance-none cursor-pointer hover:bg-white/30 transition-all duration-200"
+                      >
+                        <option value="todas" className="bg-gray-800 text-white">{t('Todas las categorías')}</option>
+                        {!categoriesLoading && !categoriesError && activeCategories.map((category) => (
+                          <option key={category.id} value={category.slug} className="bg-gray-800 text-white">
+                            {t(category.name)}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                   
                   {/* Dropdown de ordenamiento */}
@@ -1873,7 +2259,7 @@ const Catalogo: NextPage = () => {
                 </p>
                 {searchQuery && (
                   <span className="bg-blue-600/20 px-2 py-1 rounded-full text-xs text-blue-300 max-w-[140px] truncate">
-                    {t('Buscando')}: <strong>"{searchQuery.length > 8 ? searchQuery.substring(0, 8) + '...' : searchQuery}"</strong>
+                    {t('Buscando')}: <strong>&quot;{searchQuery.length > 8 ? searchQuery.substring(0, 8) + '...' : searchQuery}&quot;</strong>
                   </span>
                 )}
                 {selectedCategory !== 'todas' && (
@@ -1902,56 +2288,66 @@ const Catalogo: NextPage = () => {
             
             if (productsToShow.length > 0 && !loading && !isLoadingProducts) {
               return (
-                <div className="w-full bg-transparent flex flex-col items-center justify-start py-8">
-                  <div className="max-w-6xl mx-auto px-6 sm:px-6 md:px-8 w-full">
+                <div className="w-full max-w-full bg-transparent flex flex-col justify-start py-8 overflow-hidden">
+                  <div className="w-full max-w-full min-w-0 overflow-hidden">
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-6 md:gap-8 auto-rows-fr justify-items-center">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-[350px] md:max-w-full mx-auto min-w-0 overflow-hidden">
                       {productsToShow.slice(0, 500).map((product: any) => (
-                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline p-2 sm:p-3 md:p-4 w-full max-w-[160px] sm:max-w-xs">
-                      <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300 group w-full h-full flex flex-col">
-                        <div className="relative mb-4 flex-1 min-h-[200px] sm:min-h-[220px] md:min-h-[240px] lg:min-h-[260px] p-3 sm:p-4">
-                          <Image
-                            className="w-full h-full object-contain rounded-lg"
-                            width={300}
-                            height={256}
-                            src={product.image}
-                            alt={product.name}
+                    <Link key={product.id} href={`/producto/${product.id}`} className="no-underline block min-w-0 max-w-full">
+                      <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300 group flex flex-col min-w-0 max-w-full overflow-hidden">
+                        {/* Imagen con altura fija pero proporcionada */}
+                        <div className="relative p-2 sm:p-3">
+                          <div className="w-full max-w-full h-40 md:h-48 relative bg-white/5 rounded-lg overflow-hidden">
+                            <Image
+                              className="w-full max-w-full h-full object-contain"
+                              width={300}
+                              height={256}
+                              src={product.image}
+                              alt={product.name}
                             onError={(e) => {
                               // Fallback a logo si la imagen falla
                               (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
                             }}
                             placeholder="blur"
                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDMwMCAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjU2IiBmaWxsPSIjMUE2QjFBIiBmaWxsLW9wYWNpdHk9IjAuMyIvPgo8L3N2Zz4K"
-                          />
-                          {!product.inStock && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                              <span className="text-white font-bold text-lg">{t('Agotado')}</span>
+                            />
+                            {!product.inStock && (
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                                <span className="text-white font-bold text-sm">{t('Agotado')}</span>
+                              </div>
+                            )}
+                            {/* Mostrar promociones */}
+                            <div className="absolute top-2 right-2">
+                              {renderPromotions(product.id)}
                             </div>
-                          )}
-                          {/* Mostrar promociones */}
-                          {renderPromotions(product.id)}
+                          </div>
                         </div>
                         
-                        {/* Contenido de la card - altura fija */}
-                        <div className="flex flex-col flex-shrink-0 p-3 sm:p-4 md:p-6">
-                          <h3 className="text-white font-semibold text-base sm:text-lg mb-2 line-clamp-2">{t(product.name)}</h3>
-                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Categoría')}: {t(product.category)}</p>
-                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Marca')}: {product.brand}</p>
-                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{t('Color')}: {t(product.color)}</p>
-                          <p className="text-gray-300 text-xs sm:text-sm mb-3">{t('Talla')}: {product.size}</p>
+                        {/* Contenido de la card - ultra compacto */}
+                        <div className="flex flex-col px-2 sm:px-3 pb-2 sm:pb-3">
+                          <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2 leading-tight">{t(product.name)}</h3>
                           
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-white font-bold text-sm sm:text-base md:text-lg">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
+                          {/* Información en grid ultra compacto */}
+                          <div className="grid grid-cols-2 gap-x-1 sm:gap-x-2 gap-y-0.5 mb-2 text-xs text-gray-300 min-w-0">
+                            <span className="truncate">{t(product.category)}</span>
+                            <span className="truncate">{product.brand}</span>
+                            <span className="truncate">{t(product.color)}</span>
+                            <span className="truncate">{product.size}</span>
+                          </div>
+                          
+                          {/* Precio y botón */}
+                          <div className="mb-2">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-white font-bold text-sm truncate">{formatPrice(product.price, currentCurrency, 'MXN')}</span>
                               {product.originalPrice > product.price && (
-                                <span className="text-gray-400 line-through text-xs sm:text-sm">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
+                                <span className="text-gray-400 line-through text-xs truncate">{formatPrice(product.originalPrice, currentCurrency, 'MXN')}</span>
                               )}
                             </div>
                           </div>
                           
                           <button
                             disabled={!product.inStock}
-                            className={`w-full py-2 sm:py-3 rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base mt-auto ${
+                            className={`w-full py-1.5 rounded text-xs font-medium transition-colors duration-200 ${
                               product.inStock 
                                 ? 'bg-white text-black hover:bg-gray-100' 
                                 : 'bg-gray-600 text-gray-400 cursor-not-allowed'
@@ -1963,7 +2359,7 @@ const Catalogo: NextPage = () => {
                               }
                             }}
                           >
-                            {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                            {product.inStock ? t('Añadir') : t('Agotado')}
                           </button>
                         </div>
                       </div>
@@ -2141,26 +2537,53 @@ const Catalogo: NextPage = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-white text-sm truncate">{item.name}</h4>
-                            <p className="text-gray-300 text-xs">ID: {item.variantId}</p>
+                            <p className="text-gray-300 text-xs">{t('Talla')}: {item.tallaName}, {item.variantName}</p>
                             <div className="flex items-center justify-between mt-2">
+                              {item.hasDiscount ? (
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-red-400 line-through">
+                                    {formatPrice(item.price, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-white font-bold text-sm">
+                                    {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-xs text-yellow-400">
+                                    -{item.discountPercentage}% OFF
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white font-bold text-sm">
+                                  {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                </span>
+                              )}
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
-                                  className="w-6 h-6 bg-gray-600 rounded text-white flex items-center justify-center"
+                                  className="w-6 h-6 bg-white/20 rounded text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
                                 >
                                   -
                                 </button>
-                                <span className="text-white text-sm">{item.quantity}</span>
+                                <span className="text-white text-sm w-8 text-center">{item.quantity}</span>
                                 <button
                                   onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
-                                  className="w-6 h-6 bg-green-600 rounded text-white flex items-center justify-center"
+                                  className="w-6 h-6 bg-white/20 rounded text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
                                 >
                                   +
                                 </button>
                               </div>
-                              <span className="text-white font-medium text-sm">{formatPrice(item.price, currentCurrency, 'MXN')}</span>
                             </div>
                           </div>
+                          <button 
+                            onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                            className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0 bg-transparent p-1 rounded"
+                            disabled={isLoading}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     ))
@@ -2177,7 +2600,7 @@ const Catalogo: NextPage = () => {
                     <div className="space-y-2">
                       <Link 
                         href="/carrito" 
-                        className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-3 px-4 rounded-lg font-medium text-center block hover:from-green-700 hover:to-green-900 transition-colors"
+                        className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-2 px-1 rounded-lg font-medium text-center block hover:from-green-700 hover:to-green-900 transition-colors"
                         onClick={() => setShowMobileSidebar(false)}
                       >
                         {t('Ver Carrito Completo')}
@@ -2231,11 +2654,25 @@ const Catalogo: NextPage = () => {
                         {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
+                    <button 
+                      onClick={() => changeLanguage('fr')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇫🇷</span>
+                          <span>Français</span>
+                        </div>
+                        {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
                   </div>
                 </div>
-
+                
                 {/* Currency Section */}
-                <div>
+                <div className="mb-8">
                   <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
                   <div className="space-y-1">
                     <button 
@@ -2246,8 +2683,8 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">$</span>
-                          <span>MXN (Pesos Mexicanos)</span>
+                          <span className="font-bold text-white">$</span>
+                          <span>MXN - Peso Mexicano</span>
                         </div>
                         {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
                       </div>
@@ -2260,8 +2697,8 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">$</span>
-                          <span>USD (Dólares)</span>
+                          <span className="font-bold text-white">$</span>
+                          <span>USD - Dólar</span>
                         </div>
                         {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
                       </div>
@@ -2274,13 +2711,20 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">€</span>
-                          <span>EUR (Euros)</span>
+                          <span className="font-bold text-white">€</span>
+                          <span>EUR - Euro</span>
                         </div>
                         {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
                       </div>
                     </button>
                   </div>
+                </div>
+                
+                {/* Información adicional */}
+                <div className="text-center border-t border-white/20 pt-6">
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    {t('Los cambios se aplicarán automáticamente a todos los precios mostrados en la tienda.')}
+                  </p>
                 </div>
               </div>
             )}
@@ -2291,85 +2735,435 @@ const Catalogo: NextPage = () => {
                 {isAuthenticated && user ? (
                   <>
                     {/* Usuario autenticado */}
-                    <div className="text-center border-b border-white/20 pb-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-green-800 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">
-                          {user.nombres ? user.nombres.charAt(0).toUpperCase() : 'U'}
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span className="text-white text-xl font-bold">
+                          {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
                         </span>
                       </div>
-                      <h3 className="text-white text-xl font-bold">
-                        {user.nombres || t('Usuario')}
-                      </h3>
-                      <p className="text-gray-300 text-sm">{user.correo}</p>
+                      <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                      <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
                     </div>
-                    
-                    <div className="space-y-3">
-                      <Link 
-                        href="/perfil" 
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
-                      >
+
+                    {/* Información de Envío */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-4">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        {t('Mi Perfil')}
-                      </Link>
-                      
-                      <Link 
-                        href="/pedidos" 
-                        onClick={() => setShowMobileSidebar(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
-                      >
+                        {t('Información de Envío')}
+                      </h4>
+                      <div className="space-y-2 text-sm text-gray-300">
+                        <div className="flex justify-between">
+                          <span>{t('Envíos salen:')}</span>
+                          <span className="text-green-400">{t('Al día siguiente')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega estándar:')}</span>
+                          <span>{t('3-5 días')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega express:')}</span>
+                          <span>{t('24-48 horas')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recomendación de Producto */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-6">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
-                        {t('Mis Pedidos')}
-                      </Link>
-                      
-                      <button 
-                        onClick={() => {
-                          logout();
+                        {t('Producto Recomendado')}
+                      </h4>
+                      {loadingRecommendation ? (
+                        <div className="animate-pulse">
+                          <div className="bg-white/20 h-20 rounded mb-2"></div>
+                          <div className="bg-white/20 h-4 rounded mb-1"></div>
+                          <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                        </div>
+                      ) : recommendedProduct ? (
+                        <div 
+                          className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                          onClick={() => {
+                            const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                            console.log('🔗 Navegando al producto con ID:', productId);
+                            if (productId) {
+                              router.push(`/producto/${productId}`);
+                              setShowMobileSidebar(false);
+                            } else {
+                              console.error('❌ No se puede navegar: ID de producto no válido');
+                            }
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                              {(() => {
+                                // Buscar imagen en diferentes estructuras
+                                let imageUrl = null;
+                                
+                                console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                
+                                // Intentar diferentes propiedades de imagen
+                                if (recommendedProduct.imagen_principal) {
+                                  imageUrl = recommendedProduct.imagen_principal;
+                                } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                  imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                  imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                  // Buscar imagen en las variantes
+                                  const firstVariant = recommendedProduct.variantes[0];
+                                  if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                    imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                  } else if (firstVariant.imagen_url) {
+                                    imageUrl = firstVariant.imagen_url;
+                                  }
+                                } else if (recommendedProduct.imagen_url) {
+                                  imageUrl = recommendedProduct.imagen_url;
+                                } else if (recommendedProduct.image) {
+                                  imageUrl = recommendedProduct.image;
+                                } else if (recommendedProduct.foto) {
+                                  imageUrl = recommendedProduct.foto;
+                                }
+                                
+                                console.log('🖼️ URL de imagen detectada:', imageUrl);
+                                
+                                return imageUrl ? (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      console.log('❌ Error cargando imagen:', imageUrl);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              })()}
+                              {/* Fallback icon (hidden by default, shown when image fails) */}
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="text-white text-sm font-medium truncate">
+                                {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                              </h5>
+                              <p className="text-gray-300 text-xs line-clamp-2">
+                                {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  // Obtener el precio base del producto
+                                  let basePrice = 0;
+                                  
+                                  // Buscar precio en diferentes estructuras
+                                  if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                    const firstVariant = recommendedProduct.variantes[0];
+                                    basePrice = firstVariant.precio || basePrice;
+                                  }
+                                  
+                                  // Si aún no hay precio, buscar en otros campos
+                                  if (basePrice === 0) {
+                                    basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                  }
+                                  
+                                  // Verificar si tiene descuento real
+                                  const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                        recommendedProduct.price && 
+                                                        recommendedProduct.originalPrice && 
+                                                        recommendedProduct.price < recommendedProduct.originalPrice;
+                                  
+                                  if (hasRealDiscount) {
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-400 text-sm font-medium">
+                                          {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                          -{recommendedProduct.discountPercentage}%
+                                        </span>
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-green-400 text-sm font-medium">
+                                        {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                      </span>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          <p className="text-gray-400 text-sm">
+                            {Object.keys(promotions).length === 0 
+                              ? t('Cargando productos...')
+                              : t('No hay productos en promoción disponibles')
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await logout();
                           setShowMobileSidebar(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/20 rounded-md transition-colors text-left"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        {t('Cerrar Sesión')}
-                      </button>
-                    </div>
+                        } catch (error) {
+                          console.error('Error al cerrar sesión:', error);
+                        }
+                      }}
+                      className="w-full bg-transparent border-2 border-red-400 text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-400 hover:text-white transition-colors duration-200"
+                    >
+                      {t('Cerrar sesión')}
+                    </button>
                   </>
                 ) : (
                   <>
-                    {/* Usuario no autenticado */}
-                    <div className="text-center py-8">
-                      <div className="w-20 h-20 bg-gray-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+                    {/* Usuario no logueado */}
+                    <div className="text-center">
+                      <div className="mb-6">
+                        <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
+                        <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu cuenta')}</p>
                       </div>
-                      <h3 className="text-white text-lg font-semibold mb-2">{t('¡Hola!')}</h3>
-                      <p className="text-gray-300 text-sm mb-6">{t('Inicia sesión para acceder a tu cuenta')}</p>
                       
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <Link 
-                          href="/login" 
+                          href="/login"
+                          className="bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
-                          className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-900 transition-colors block text-center"
                         >
-                          {t('Iniciar Sesión')}
+                          {t('Iniciar sesión')}
                         </Link>
                         <Link 
-                          href="/register" 
+                          href="/register"
+                          className="bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
-                          className="w-full border border-white/30 text-white py-3 px-4 rounded-lg font-medium hover:bg-white/10 transition-colors block text-center"
                         >
-                          {t('Crear Cuenta')}
+                          {t('Registrarse')}
                         </Link>
+                      </div>
+                      
+                      <div className="mt-8 pt-6 border-t border-white/20">
+                        <p className="text-gray-300 text-xs text-center">
+                          {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
+                        </p>
                       </div>
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Contenido del panel de búsqueda */}
+            {mobileSidebarContent === 'search' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                
+                {/* Barra de búsqueda */}
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    placeholder={t('¿Qué estás buscando?')}
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                  />
+                  <button 
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    {t('Buscar')}
+                  </button>
+                </div>
+
+                {/* Resultados de búsqueda */}
+                {searchTerm && (
+                  <div className="mt-4">
+                    {searchLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-white/20 rounded mb-2"></div>
+                              <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-hidden">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                            onClick={() => {
+                              router.push(`/producto/${product.id}`);
+                              setShowMobileSidebar(false);
+                              setSearchTerm('');
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                {(() => {
+                                  // Buscar imagen en diferentes estructuras
+                                  let imageUrl = null;
+                                  
+                                  // Intentar diferentes propiedades de imagen
+                                  if (product.imagen_principal) {
+                                    imageUrl = product.imagen_principal;
+                                  } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                    imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                  } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                                    imageUrl = product.images[0].url || product.images[0];
+                                  } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                    // Buscar imagen en las variantes
+                                    const firstVariant = product.variantes[0];
+                                    if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                      imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                    } else if (firstVariant.imagen_url) {
+                                      imageUrl = firstVariant.imagen_url;
+                                    }
+                                  } else if (product.imagen_url) {
+                                    imageUrl = product.imagen_url;
+                                  } else if (product.image) {
+                                    imageUrl = product.image;
+                                  } else if (product.foto) {
+                                    imageUrl = product.foto;
+                                  }
+                                  
+                                  return imageUrl ? (
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={product.nombre || product.name || 'Producto'}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                      <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  );
+                                })()}
+                                {/* Fallback icon (hidden by default, shown when image fails) */}
+                                <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                  <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-white text-sm font-medium truncate">
+                                  {product.nombre || product.name || 'Producto sin nombre'}
+                                </h5>
+                                <p className="text-gray-300 text-xs truncate">
+                                  {product.descripcion || product.description || 'Sin descripción disponible'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-white/20">
+                          <button
+                            onClick={() => {
+                              handleSearch();
+                              setShowMobileSidebar(false);
+                            }}
+                            className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200 bg-transparent"
+                          >
+                            {t('Ver todos los resultados')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!searchTerm && (
+                  <div className="mt-4">
+                    <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Camisas');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Camisas')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Pantalones');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Pantalones')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Vestidos');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Vestidos')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Zapatos');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Zapatos')}
+                      </button>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-white/20">
+                      <p className="text-gray-300 text-sm">
+                        {t('Encuentra exactamente lo que buscas en nuestra colección.')}
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

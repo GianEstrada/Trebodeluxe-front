@@ -274,7 +274,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
           <h3 className="text-xl font-bold text-white truncate">{product.nombre}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors p-1"
+            className="text-red-400 hover:text-white transition-colors bg-transparent p-1"
           >
             <X size={20} />
           </button>
@@ -555,7 +555,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
         <div className="flex gap-3 p-6 border-t border-white/20">
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-colors"
+            className="flex-1 py-3 px-4 border border-white/30 text-black rounded-lg hover:bg-white/10 transition-colors"
           >
             {t('Cancelar')}
           </button>

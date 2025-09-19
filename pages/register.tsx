@@ -5,6 +5,8 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import MobileHeaderSimple from "../components/MobileHeaderSimple";
+import Footer from "../components/Footer";
 
 const RegisterScreen: NextPage = () => {
   const router = useRouter();
@@ -41,6 +43,7 @@ const RegisterScreen: NextPage = () => {
   // Estados para códigos postales y colonias
   const [colonias, setColonias] = useState<Array<{nombre: string, tipo: string}>>([]);
   const [loadingColonias, setLoadingColonias] = useState(false);
+  const [cpError, setCpError] = useState('');
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,37 +55,69 @@ const RegisterScreen: NextPage = () => {
   
   const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setShippingData(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
-    // Si es el código postal, cargar colonias
-    if (name === 'codigo_postal' && value.length === 5) {
-      loadColoniasByCP(value);
+    // Manejar código postal con lógica especial
+    if (name === 'codigo_postal') {
+      setShippingData(prev => ({
+        ...prev,
+        [name]: value,
+        colonia: '' // Limpiar colonia al cambiar CP
+      }));
+      
+      // Cargar colonias si el CP tiene 5 dígitos
+      if (value.length === 5) {
+        loadColoniasByCP(value);
+      } else {
+        setColonias([]);
+        setCpError('');
+      }
+    } else {
+      setShippingData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
   
-  // Función para cargar colonias por código postal
-  const loadColoniasByCP = async (cp: string) => {
-    if (!cp || cp.length !== 5) {
+  // Función mejorada para cargar colonias por código postal
+  const loadColoniasByCP = async (codigoPostal: string) => {
+    if (!codigoPostal || codigoPostal.length !== 5) {
       setColonias([]);
+      setCpError('');
       return;
     }
     
     setLoadingColonias(true);
+    setCpError('');
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-codes/colonias/${cp}`);
-      const data = await response.json();
+      console.log('🔍 [REGISTER-COLONIAS] Buscando colonias para CP:', codigoPostal);
       
-      if (data.success && data.colonias && data.colonias.length > 0) {
-        setColonias(data.colonias);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-codes/colonias/${codigoPostal}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ [REGISTER-COLONIAS] Colonias encontradas:', data.colonias?.length || 0);
+        setColonias(data.colonias || []);
+        
+        // Auto-llenar ciudad y estado si están disponibles
+        if (data.success && data.estado && data.ciudad) {
+          setShippingData(prev => ({
+            ...prev,
+            estado: data.estado || prev.estado,
+            ciudad: data.ciudad || prev.ciudad
+          }));
+        }
       } else {
+        const errorData = await response.json();
+        console.log('❌ [REGISTER-COLONIAS] CP no encontrado:', errorData.error);
         setColonias([]);
+        setCpError(errorData.error || t('Código postal no encontrado'));
       }
     } catch (error) {
-      console.error('Error cargando colonias:', error);
+      console.error('❌ [REGISTER-COLONIAS] Error:', error);
       setColonias([]);
+      setCpError(t('Error al buscar colonias'));
     } finally {
       setLoadingColonias(false);
     }
@@ -167,8 +202,11 @@ const RegisterScreen: NextPage = () => {
         </div>
       )}
 
-      {/* Header simplificado */}
-      <div className="w-full bg-[#1a6b1a] py-4 px-8">
+      {/* Header móvil simple */}
+      <MobileHeaderSimple />
+
+      {/* Header desktop - oculto en móvil */}
+      <div className="hidden md:block w-full bg-[#1a6b1a] py-4 px-8">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <Link href="/" className="flex items-center">
             <Image
@@ -202,11 +240,11 @@ const RegisterScreen: NextPage = () => {
       </div>
 
       {/* Contenido principal */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <div className="flex-1 flex items-center justify-center px-4 py-6 md:py-12">
         <div 
           className={`
             transition-all duration-500 ease-in-out 
-            ${isExpanded ? 'w-full max-w-5xl' : 'w-full max-w-md'} 
+            ${isExpanded ? 'max-w-5xl' : 'max-w-md'} 
             ${isExpanded ? 'animate-expand' : showShippingForm ? 'animate-contract' : ''}
           `}
           style={{
@@ -215,41 +253,41 @@ const RegisterScreen: NextPage = () => {
           } as React.CSSProperties}
         >
           {/* Contenedor único para ambos formularios */}
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-10 shadow-2xl w-full transition-all duration-500 max-w-6xl mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 tracking-[2px]">
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 md:p-10 shadow-2xl transition-all duration-500 max-w-6xl mx-auto">
+            <div className="text-center mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-[2px]">
                 {t('CREAR CUENTA')}
               </h1>
-              <p className="text-gray-300">
+              <p className="text-gray-300 text-sm md:text-base">
                 {t('Únete a Treboluxe')}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex justify-center mb-6">
+            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+              <div className="flex justify-center mb-4 md:mb-6">
                 {error && (
-                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 w-full max-w-lg">
+                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 w-fit max-w-lg">
                     <p className="text-red-200 text-sm">{error}</p>
                   </div>
                 )}
               </div>
 
               {/* Contenedor flexible para ambos formularios lado a lado */}
-              <div className="flex flex-col md:flex-row gap-10">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-10">
                 {/* Formulario principal de registro - Lado izquierdo */}
                 <div className={`flex-1 ${!isExpanded ? 'mx-auto max-w-xs' : ''}`}>
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-bold text-white mb-1">
+                  <div className="text-center mb-4 md:mb-6">
+                    <h2 className="text-lg md:text-xl font-bold text-white mb-1">
                       {t('DATOS DEL USUARIO')}
                     </h2>
-                    <p className="text-gray-300 text-sm">
+                    <p className="text-gray-300 text-xs md:text-sm">
                       {t('Información personal')}
                     </p>
                   </div>
                   
-                  <div className="space-y-6">
-                    <div className="flex flex-col mb-4">
-                      <label htmlFor="nombres" className="block text-white font-medium mb-2 text-left">
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="flex flex-col mb-3 md:mb-4">
+                      <label htmlFor="nombres" className="block text-white font-medium mb-2 text-left text-sm md:text-base">
                         {t('Nombres')}
                       </label>
                       <input
@@ -258,15 +296,15 @@ const RegisterScreen: NextPage = () => {
                         name="nombres"
                         value={formData.nombres}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-3 md:px-4 py-2 md:py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200 text-sm md:text-base"
                         placeholder={t('Ingresa tus nombres')}
                         required
                         disabled={isLoading}
                       />
                     </div>
 
-                    <div className="flex flex-col mb-4">
-                      <label htmlFor="apellidos" className="block text-white font-medium mb-2 text-left">
+                    <div className="flex flex-col mb-3 md:mb-4">
+                      <label htmlFor="apellidos" className="block text-white font-medium mb-2 text-left text-sm md:text-base">
                         {t('Apellidos')}
                       </label>
                       <input
@@ -275,7 +313,7 @@ const RegisterScreen: NextPage = () => {
                         name="apellidos"
                         value={formData.apellidos}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-3 md:px-4 py-2 md:py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200 text-sm md:text-base"
                         placeholder={t('Ingresa tus apellidos')}
                         required
                         disabled={isLoading}
@@ -292,7 +330,7 @@ const RegisterScreen: NextPage = () => {
                         name="usuario"
                         value={formData.usuario}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                         placeholder={t('Ingresa tu nombre de usuario')}
                         required
                         disabled={isLoading}
@@ -309,7 +347,7 @@ const RegisterScreen: NextPage = () => {
                         name="correo"
                         value={formData.correo}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                         placeholder={t('Ingresa tu correo electrónico')}
                         required
                         disabled={isLoading}
@@ -326,7 +364,7 @@ const RegisterScreen: NextPage = () => {
                         name="contrasena"
                         value={formData.contrasena}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                         placeholder={t('Crea tu contraseña')}
                         required
                         disabled={isLoading}
@@ -343,7 +381,7 @@ const RegisterScreen: NextPage = () => {
                         name="confirmarContrasena"
                         value={formData.confirmarContrasena}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                        className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                         placeholder={t('Confirma tu contraseña')}
                         required
                         disabled={isLoading}
@@ -376,7 +414,7 @@ const RegisterScreen: NextPage = () => {
                             name="nombre_completo"
                             value={shippingData.nombre_completo}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Nombre para el envío')}
                             disabled={isLoading}
                           />
@@ -392,7 +430,7 @@ const RegisterScreen: NextPage = () => {
                             name="telefono"
                             value={shippingData.telefono}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Número de contacto')}
                             disabled={isLoading}
                           />
@@ -408,7 +446,7 @@ const RegisterScreen: NextPage = () => {
                             name="direccion"
                             value={shippingData.direccion}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Dirección completa')}
                             disabled={isLoading}
                           />
@@ -424,7 +462,7 @@ const RegisterScreen: NextPage = () => {
                             name="ciudad"
                             value={shippingData.ciudad}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Ciudad')}
                             disabled={isLoading}
                           />
@@ -440,7 +478,7 @@ const RegisterScreen: NextPage = () => {
                             name="estado"
                             value={shippingData.estado}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Estado o provincia')}
                             disabled={isLoading}
                           />
@@ -456,12 +494,17 @@ const RegisterScreen: NextPage = () => {
                             name="codigo_postal"
                             value={shippingData.codigo_postal}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Código postal')}
                             maxLength={5}
                             disabled={isLoading}
                             required
                           />
+                          {cpError && (
+                            <div className="mt-2 text-red-400 text-sm">
+                              {cpError}
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex flex-col mb-4">
@@ -469,7 +512,7 @@ const RegisterScreen: NextPage = () => {
                             {t('Colonia')} *
                           </label>
                           {loadingColonias ? (
-                            <div className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-lg text-gray-400 flex items-center">
+                            <div className="px-4 py-3 bg-black/50 border border-white/20 rounded-lg text-gray-400 flex items-center">
                               <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -482,7 +525,7 @@ const RegisterScreen: NextPage = () => {
                               name="colonia"
                               value={shippingData.colonia}
                               onChange={handleShippingChange}
-                              className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                              className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                               disabled={isLoading}
                               required
                             >
@@ -500,7 +543,7 @@ const RegisterScreen: NextPage = () => {
                               name="colonia"
                               value={shippingData.colonia}
                               onChange={handleShippingChange}
-                              className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                              className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                               placeholder={t('Ingresa la colonia manualmente')}
                               disabled={isLoading}
                               required
@@ -518,7 +561,7 @@ const RegisterScreen: NextPage = () => {
                             name="referencias"
                             value={shippingData.referencias}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('Ej: Entre calle A y B, edificio azul')}
                             disabled={isLoading}
                           />
@@ -534,7 +577,7 @@ const RegisterScreen: NextPage = () => {
                             name="pais"
                             value={shippingData.pais}
                             onChange={handleShippingChange}
-                            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                            className="px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                             placeholder={t('País')}
                             disabled={isLoading}
                             required
@@ -589,8 +632,11 @@ const RegisterScreen: NextPage = () => {
         </div>
       </div>
 
-      {/* Footer reducido */}
-      <footer className="bg-black/30 border-t border-white/20 py-6">
+      {/* Footer móvil */}
+      <Footer />
+
+      {/* Footer desktop hardcodeado - oculto en móvil */}
+      <footer className="hidden md:block bg-black/30 border-t border-white/20 py-6">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-gray-300 text-sm mb-4 md:mb-0">

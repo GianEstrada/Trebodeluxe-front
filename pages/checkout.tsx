@@ -10,7 +10,6 @@ import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
 import { productsApi, productUtils } from '../utils/productsApi';
-import { categoriesApi } from '../utils/categoriesApi';
 import { promotionsApi } from '../utils/promotionsApi';
 import { useCategories } from '../hooks/useCategories';
 import StripePayment from '../components/StripePayment';
@@ -32,17 +31,6 @@ const CheckoutPage: NextPage = () => {
   // Hook de categorías para la navbar
   const { categories: activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
-  // Estados para productos recomendados
-  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
-  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
-  
-  // Estados para búsqueda
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  
-  // Estados para promociones
-  const [promotions, setPromotions] = useState<any>({});
-  
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
@@ -59,7 +47,7 @@ const CheckoutPage: NextPage = () => {
   // Estados para el móvil
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [mobileSidebarContent, setMobileSidebarContent] = useState('cart');
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
 
   // Refs para los dropdowns
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -81,10 +69,10 @@ const CheckoutPage: NextPage = () => {
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   
   // Usar tasas de cambio dinámicas desde Open Exchange Rates
-  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
+  const { formatPrice } = useExchangeRates();
 
   // Usar el carrito integrado con la base de datos
-  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, clearCart, isLoading, cartId } = useCart();
+  const { items: cartItems, totalItems, totalFinal: totalPrice, removeFromCart, updateQuantity, isLoading, cartId } = useCart();
 
   // Información personal
   const [personalInfo, setPersonalInfo] = useState({
@@ -149,6 +137,18 @@ const CheckoutPage: NextPage = () => {
   const [quotesError, setQuotesError] = useState('');
   const [formsCompleted, setFormsCompleted] = useState(false);
 
+  // Estados para el producto recomendado
+  const [recommendedProduct, setRecommendedProduct] = useState<any>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+
+  // Estados para búsqueda
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Estados para promociones (como en carrito e index)
+  const [promotions, setPromotions] = useState<Record<number, any[]>>({});
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
+
   // Helper function para detectar país México de forma robusta
   const isMexico = (country: string) => {
     if (!country) return true; // Default a México si no hay país
@@ -177,6 +177,123 @@ const CheckoutPage: NextPage = () => {
     setShowLanguageDropdown(false);
   };
 
+  // Función para manejar la búsqueda en tiempo real (igual que carrito)
+  // UseEffect para búsqueda automática en tiempo real
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const isSearchActive = showMobileSidebar && mobileSidebarContent === 'search';
+      
+      if (searchTerm && isSearchActive) {
+        searchProducts(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, showMobileSidebar, mobileSidebarContent]);
+
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      console.log('🔍 [CHECKOUT] Iniciando búsqueda con query:', query);
+      
+      // Usar productsApi.getAll() como en el carrito
+      const response = await productsApi.getAll() as any;
+      let allProducts: any[] = [];
+      
+      if (response.success && response.products && response.products.length > 0) {
+        allProducts = response.products;
+        console.log('📦 [CHECKOUT] Productos de API:', allProducts.length);
+
+        // Enriquecer con precios de variants
+        try {
+          const stockResponse = await fetch('/api/products/variants');
+          if (stockResponse.ok) {
+            const stockData = await stockResponse.json();
+            
+            allProducts = allProducts.map(product => {
+              const productId = product.id || product.id_producto || product.producto_id || product.productId || product._id;
+              const productVariants = stockData.variants.filter((v: any) => {
+                const variantProductId = v.id_producto || v.producto_id || v.productId || v._id || v.id;
+                return variantProductId === productId;
+              });
+              
+              if (productVariants.length > 0) {
+                const variant = productVariants[0];
+                const precioRaw = variant.precio_base || variant.precio || variant.price || variant.precio_unitario || variant.precio_venta || variant.precio_minimo || 0;
+                const precio = typeof precioRaw === 'string' ? parseFloat(precioRaw) : Number(precioRaw) || 0;
+                
+                return {
+                  ...product,
+                  precio_base: precio,
+                  precio: precio,
+                  precio_referencia: precio
+                };
+              }
+              return product;
+            });
+            
+            console.log('💰 [CHECKOUT] Productos enriquecidos con precios:', allProducts.length);
+            
+            // Aplicar promociones si están disponibles
+            if (Object.keys(promotions).length > 0) {
+              allProducts = productUtils.applyPromotionDiscounts(allProducts, promotions);
+              console.log('✅ [CHECKOUT] Promociones aplicadas a productos de búsqueda');
+            }
+          }
+        } catch (error) {
+          console.warn('[CHECKOUT] Error fetching variants for pricing:', error);
+        }
+      }
+
+      // Filtrar productos
+      const filtered = allProducts.filter((product: any) => {
+        const searchTerm = query.toLowerCase();
+        const matches = [
+          product.nombre?.toLowerCase().includes(searchTerm),
+          product.name?.toLowerCase().includes(searchTerm),
+          product.descripcion?.toLowerCase().includes(searchTerm),
+          product.description?.toLowerCase().includes(searchTerm),
+          product.categoria?.toLowerCase().includes(searchTerm),
+          product.category?.toLowerCase().includes(searchTerm),
+          product.marca?.toLowerCase().includes(searchTerm),
+          product.brand?.toLowerCase().includes(searchTerm)
+        ];
+        
+        return matches.some(match => match === true);
+      });
+      
+      console.log('🎯 [CHECKOUT] Productos filtrados:', filtered.length, 'de', allProducts.length);
+      setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+    } catch (error) {
+      console.error('[CHECKOUT] Error buscando productos:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchInputChange = async (value: string) => {
+    setSearchTerm(value);
+    
+    if (value.trim().length >= 2) {
+      // Usar debounce
+      setTimeout(() => {
+        if (value === searchTerm) { // Solo ejecutar si el valor no ha cambiado
+          searchProducts(value);
+        }
+      }, 300);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
   // Función para manejar la búsqueda
   const handleSearch = () => {
     if (searchTerm.trim()) {
@@ -189,6 +306,21 @@ const CheckoutPage: NextPage = () => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  // Funciones para menú móvil (como en carrito e index)
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(!showMobileMenu);
+  };
+
+  const openMobileSidebar = (content: 'cart' | 'language' | 'profile' | 'search') => {
+    setMobileSidebarContent(content);
+    setShowMobileSidebar(true);
+    setShowMobileMenu(false);
+  };
+
+  const closeMobileSidebar = () => {
+    setShowMobileSidebar(false);
   };
 
   // Función para cambiar manualmente el texto del carrusel
@@ -312,7 +444,7 @@ const CheckoutPage: NextPage = () => {
         iva: calculateTax(),
         total: calculateTotal(),
         moneda: currentCurrency.toUpperCase(),
-        tasaCambio: exchangeRates[currentCurrency] || 1.0,
+        tasaCambio: 1.0,
         
         // Datos de envío
         metodoEnvio: selectedShippingMethod,
@@ -729,6 +861,49 @@ Pronto recibirás una confirmación por email.`));
     if (savedCurrency) setCurrentCurrency(savedCurrency);
   }, []);
 
+  // Cargar promociones activas al inicializar (igual que en carrito)
+  useEffect(() => {
+    const loadPromotions = async () => {
+      try {
+        setLoadingPromotions(true);
+        console.log('🎯 [CHECKOUT] Cargando promociones activas...');
+        const promotionsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/promociones/activas');
+        
+        if (promotionsResponse.ok) {
+          const promotionsData = await promotionsResponse.json();
+          console.log('📊 [CHECKOUT] Promociones activas encontradas:', promotionsData);
+          
+          if (promotionsData.promociones && Array.isArray(promotionsData.promociones)) {
+            // Organizar promociones por producto
+            const promotionsByProduct: Record<number, any[]> = {};
+            promotionsData.promociones.forEach((promo: any) => {
+              if (promo.id_producto) {
+                if (!promotionsByProduct[promo.id_producto]) {
+                  promotionsByProduct[promo.id_producto] = [];
+                }
+                promotionsByProduct[promo.id_producto].push(promo);
+              }
+            });
+            setPromotions(promotionsByProduct);
+            console.log('✅ [CHECKOUT] Promociones organizadas por producto:', Object.keys(promotionsByProduct).length, 'productos con promociones');
+          }
+        }
+      } catch (error) {
+        console.warn('[CHECKOUT] Error cargando promociones:', error);
+      } finally {
+        setLoadingPromotions(false);
+      }
+    };
+
+    loadPromotions();
+  }, []);
+
+  // Forzar actualización de traducciones cuando cambia el idioma
+  useEffect(() => {
+    console.log('🌐 [CHECKOUT] Idioma cambiado a:', currentLanguage);
+    // Forzar re-render del hook de traducción
+  }, [currentLanguage]);
+
   // Cargar información de envío del usuario logueado
   useEffect(() => {
     if (user && !userShippingLoaded) {
@@ -828,6 +1003,7 @@ Pronto recibirás una confirmación por email.`));
         showMobileSidebar={showMobileSidebar}
         setShowMobileSidebar={setShowMobileSidebar}
         setMobileSidebarContent={setMobileSidebarContent}
+        totalItems={totalItems}
       />
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
@@ -1839,6 +2015,96 @@ Pronto recibirás una confirmación por email.`));
               </div>
             )}
 
+            {/* Resumen del pedido en móvil */}
+            <div className="lg:hidden bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+              <h2 className="text-xl font-bold text-white mb-6">{t('Resumen del Pedido')}</h2>
+              
+              {/* Lista de productos */}
+              <div className="space-y-4 mb-6">
+                {cartItems.map((item) => (
+                  <div key={`${item.variantId}-${item.tallaId}`} className="flex items-center space-x-3">
+                    <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
+                      {item.image && (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white text-sm font-medium truncate">{item.name}</h3>
+                      <p className="text-gray-400 text-xs">
+                        {item.tallaName} | {item.variantName} | {t('Cantidad')}: {item.quantity}
+                      </p>
+                      <div className="text-sm">
+                        {item.hasDiscount ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-red-400 line-through">
+                              {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
+                            </p>
+                            <p className="text-green-400 font-bold">
+                              {formatPrice(item.finalPrice * item.quantity, currentCurrency, 'MXN')}
+                            </p>
+                            <p className="text-xs text-yellow-400">
+                              -{item.discountPercentage}% OFF
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-green-400 font-bold">
+                            {formatPrice(item.finalPrice * item.quantity, currentCurrency, 'MXN')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="space-y-3 mb-6 border-t border-white/20 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">{t('Subtotal')}</span>
+                  <span className="text-white font-medium">{formatPrice(calculateSubtotal(), currentCurrency, 'MXN')}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">{t('Envío')}</span>
+                  <span className={`font-medium ${
+                    !selectedShippingMethod ? 'text-orange-400' :
+                    calculateShipping() === 0 ? 'text-green-400' : 'text-white'
+                  }`}>
+                    {!selectedShippingMethod 
+                      ? t('Seleccione un método de envío')
+                      : calculateShipping() === 0 
+                        ? t('Gratis') 
+                        : formatPrice(calculateShipping(), currentCurrency, 'MXN')
+                    }
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">{t('IVA (16%)')}</span>
+                  <span className="text-white font-medium">{formatPrice(calculateTax(), currentCurrency, 'MXN')}</span>
+                </div>
+                
+                {packageInsurance && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">{t('Seguro del paquete (10%)')}</span>
+                    <span className="text-white font-medium">{formatPrice(calculateInsurance(), currentCurrency, 'MXN')}</span>
+                  </div>
+                )}
+                
+                <div className="border-t border-white/20 pt-3">
+                  <div className="flex justify-between items-center text-lg">
+                    <span className="text-white font-bold">{t('Total')}</span>
+                    <span className="text-white font-bold">{formatPrice(calculateTotal(), currentCurrency, 'MXN')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Información Personal */}
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-6">{t('Información Personal')}</h2>
@@ -2069,6 +2335,84 @@ Pronto recibirás una confirmación por email.`));
                       <p className="text-xs text-blue-200 mt-1">
                         {t('Llena todos los campos de información personal y dirección de envío para calcular opciones de envío automáticamente.')}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Resumen del carrito en móvil - ya no necesario */}
+              {false && (
+                <div className="lg:hidden bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 mb-6">
+                  <h2 className="text-xl font-bold text-white mb-6">{t('Tu Pedido')}</h2>
+                  
+                  {/* Lista de productos */}
+                  <div className="space-y-4 mb-6">
+                    {cartItems.map((item) => (
+                      <div key={`${item.variantId}-${item.tallaId}`} className="flex items-center space-x-3">
+                        <div className="w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.image && (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white text-sm font-medium truncate">{item.name}</h3>
+                          <p className="text-gray-400 text-xs">
+                            {item.tallaName} | {item.variantName} | {t('Cantidad')}: {item.quantity}
+                          </p>
+                          <div className="text-sm">
+                            {item.hasDiscount ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-red-400 line-through">
+                                  {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
+                                </p>
+                                <p className="text-white font-medium">
+                                  {formatPrice(item.finalPrice * item.quantity, currentCurrency, 'MXN')}
+                                  <span className="text-green-400 text-xs ml-2">
+                                    -{Math.round(((item.price - item.finalPrice) / item.price) * 100)}%
+                                  </span>
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-white font-medium">
+                                {formatPrice(item.price * item.quantity, currentCurrency, 'MXN')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Resumen de precios */}
+                  <div className="border-t border-white/20 pt-4 space-y-3">
+                    <div className="flex justify-between text-gray-400">
+                      <span>{t('Subtotal')}</span>
+                      <span>{formatPrice(calculateSubtotal(), currentCurrency)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-gray-400">
+                      <span>{t('Envío')}</span>
+                      <span>
+                        {selectedShippingMethod ? formatPrice(calculateShipping(), currentCurrency) : t('Calculando...')}
+                      </span>
+                    </div>
+                    
+                    {packageInsurance && (
+                      <div className="flex justify-between text-gray-400">
+                        <span>{t('Seguro del paquete')}</span>
+                        <span>{formatPrice(calculateTotal() * 0.02, currentCurrency)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-white text-lg font-bold pt-3 border-t border-white/20">
+                      <span>{t('Total')}</span>
+                      <span>{formatPrice(calculateTotal(), currentCurrency)}</span>
                     </div>
                   </div>
                 </div>
@@ -2478,6 +2822,757 @@ Pronto recibirás una confirmación por email.`));
           </div>
         </div>
       </div>
+
+      {/* Panel lateral móvil */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileSidebar ? 'translate-x-0' : 'translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del panel */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-lg font-semibold">
+              {mobileSidebarContent === 'cart' && t('Carrito')}
+              {mobileSidebarContent === 'language' && t('Idioma & Moneda')}
+              {mobileSidebarContent === 'profile' && t('Perfil')}
+              {mobileSidebarContent === 'search' && t('Buscar')}
+            </div>
+            <button
+              onClick={() => setShowMobileSidebar(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Contenido del panel */}
+          <div className="flex-1 overflow-y-auto p-4">
+            
+            {/* Contenido del carrito */}
+            {mobileSidebarContent === 'cart' && (
+              <div className="space-y-4">
+                {cartItems.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-4">🛒</div>
+                    <p className="text-white mb-4">{t('Tu carrito está vacío')}</p>
+                    <Link href="/catalogo" className="inline-block bg-white text-black py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors">
+                      {t('Explorar Productos')}
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cartItems.map((item) => (
+                      <div key={`${item.productId}-${item.variantId}-${item.tallaId}`} className="border border-white/20 rounded-lg p-3 bg-white/10">
+                        <div className="flex gap-3">
+                          <div className="w-16 h-16 bg-gray-400 rounded overflow-hidden">
+                            {item.image && (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-medium text-sm truncate">{item.name}</h4>
+                            {item.variantName && <p className="text-gray-300 text-xs">{item.variantName}</p>}
+                            {item.tallaName && <p className="text-gray-300 text-xs">Talla: {item.tallaName}</p>}
+                            <p className="text-white font-bold text-sm">{formatPrice(item.finalPrice, currentCurrency)}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 bg-white/20 text-white rounded text-xs flex items-center justify-center"
+                                >
+                                  -
+                                </button>
+                                <span className="text-white text-sm">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                  className="w-6 h-6 bg-white/20 text-white rounded text-xs flex items-center justify-center"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                                className="text-red-400 hover:text-red-300 text-xs bg-transparent hover:bg-red-500/20 px-2 py-1 rounded transition-colors"
+                              >
+                                {t('Eliminar')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="mt-4 p-4 bg-white/10 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-white font-bold">{t('Total')}</span>
+                        <span className="text-white font-bold text-lg">{formatPrice(totalPrice, currentCurrency)}</span>
+                      </div>
+                      <div className="text-gray-300 text-sm text-center">
+                        {t('Ya estás en el proceso de checkout')}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contenido del panel de búsqueda */}
+            {mobileSidebarContent === 'search' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                
+                {/* Barra de búsqueda */}
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    placeholder={t('¿Qué estás buscando?')}
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                  />
+                  <button 
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    {t('Buscar')}
+                  </button>
+                </div>
+
+                {/* Resultados de búsqueda */}
+                {searchTerm && (
+                  <div className="mt-4">
+                    {searchLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-white/20 rounded mb-2"></div>
+                              <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                            onClick={() => {
+                              router.push(`/producto/${product.id}`);
+                              setShowMobileSidebar(false);
+                              setSearchTerm('');
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                {(() => {
+                                  // Buscar imagen en diferentes estructuras
+                                  let imageUrl = null;
+                                  
+                                  // Intentar diferentes propiedades de imagen
+                                  if (product.imagen_principal) {
+                                    imageUrl = product.imagen_principal;
+                                  } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                    imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                  } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+                                    imageUrl = product.images[0].url || product.images[0];
+                                  } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                    // Buscar imagen en las variantes
+                                    const firstVariant = product.variantes[0];
+                                    if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                      imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                    } else if (firstVariant.imagen_url) {
+                                      imageUrl = firstVariant.imagen_url;
+                                    }
+                                  } else if (product.imagen_url) {
+                                    imageUrl = product.imagen_url;
+                                  } else if (product.image) {
+                                    imageUrl = product.image;
+                                  } else if (product.foto) {
+                                    imageUrl = product.foto;
+                                  }
+                                  
+                                  return imageUrl ? (
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={product.nombre || product.name || 'Producto'}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                      <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  );
+                                })()}
+                                {/* Fallback icon (hidden by default, shown when image fails) */}
+                                <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                  <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-white text-sm font-medium truncate">
+                                  {product.nombre || product.name || 'Producto sin nombre'}
+                                </h5>
+                                <p className="text-gray-300 text-xs truncate">
+                                  {product.descripcion || product.description || 'Sin descripción disponible'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-white/20">
+                          <button
+                            onClick={() => {
+                              handleSearch();
+                              setShowMobileSidebar(false);
+                            }}
+                            className="w-full text-center text-blue-400 text-sm hover:text-blue-300 transition-colors duration-200"
+                          >
+                            {t('Ver todos los resultados')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm">{t('No se encontraron productos')}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!searchTerm && (
+                  <div className="mt-4">
+                    <h4 className="text-white font-semibold mb-3">{t('Búsquedas populares:')}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Camisas');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Camisas')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Pantalones');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Pantalones')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push('/catalogo?busqueda=Vestidos');
+                          setShowMobileSidebar(false);
+                        }}
+                        className="bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors duration-200"
+                      >
+                        {t('Vestidos')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contenido del panel de idioma */}
+            {mobileSidebarContent === 'language' && (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                  <div className="space-y-2">
+                    <button 
+                      onClick={() => changeLanguage('es')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇸</span>
+                          <span>Español</span>
+                        </div>
+                        {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('en')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>English</span>
+                        </div>
+                        {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('fr')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇫🇷</span>
+                          <span>Français</span>
+                        </div>
+                        {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                  <div className="space-y-2">
+                    <button 
+                      onClick={() => changeCurrency('MXN')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇲🇽</span>
+                          <span>Peso Mexicano (MXN)</span>
+                        </div>
+                        {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('USD')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>Dólar Americano (USD)</span>
+                        </div>
+                        {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('EUR')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇺</span>
+                          <span>Euro (EUR)</span>
+                        </div>
+                        {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contenido del panel de perfil */}
+            {mobileSidebarContent === 'profile' && (
+              <div className="space-y-6">
+                {isAuthenticated && user ? (
+                  <>
+                    {/* Usuario autenticado */}
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span className="text-white text-xl font-bold">
+                          {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                      <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                      <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
+                    </div>
+
+                    {/* Información de Envío */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-4">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        {t('Información de Envío')}
+                      </h4>
+                      <div className="space-y-2 text-sm text-gray-300">
+                        <div className="flex justify-between">
+                          <span>{t('Envíos salen:')}</span>
+                          <span className="text-green-400">{t('Al día siguiente')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega estándar:')}</span>
+                          <span>{t('3-5 días')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega express:')}</span>
+                          <span>{t('24-48 horas')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recomendación de Producto */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-6">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        {t('Producto Recomendado')}
+                      </h4>
+                      {loadingRecommendation ? (
+                        <div className="animate-pulse">
+                          <div className="bg-white/20 h-20 rounded mb-2"></div>
+                          <div className="bg-white/20 h-4 rounded mb-1"></div>
+                          <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                        </div>
+                      ) : recommendedProduct ? (
+                        <div 
+                          className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                          onClick={() => {
+                            const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                            console.log('🔗 Navegando al producto con ID:', productId);
+                            if (productId) {
+                              router.push(`/producto/${productId}`);
+                              setShowMobileSidebar(false);
+                            } else {
+                              console.error('❌ No se puede navegar: ID de producto no válido');
+                            }
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                              {(() => {
+                                // Buscar imagen en diferentes estructuras
+                                let imageUrl = null;
+                                
+                                console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                
+                                // Intentar diferentes propiedades de imagen
+                                if (recommendedProduct.imagen_principal) {
+                                  imageUrl = recommendedProduct.imagen_principal;
+                                } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                  imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                  imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                  // Buscar imagen en las variantes
+                                  const firstVariant = recommendedProduct.variantes[0];
+                                  if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                    imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                  } else if (firstVariant.imagen_url) {
+                                    imageUrl = firstVariant.imagen_url;
+                                  }
+                                } else if (recommendedProduct.imagen_url) {
+                                  imageUrl = recommendedProduct.imagen_url;
+                                } else if (recommendedProduct.image) {
+                                  imageUrl = recommendedProduct.image;
+                                } else if (recommendedProduct.foto) {
+                                  imageUrl = recommendedProduct.foto;
+                                }
+                                
+                                console.log('🖼️ URL de imagen detectada:', imageUrl);
+                                
+                                return imageUrl ? (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      console.log('❌ Error cargando imagen:', imageUrl);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              })()}
+                              {/* Fallback icon (hidden by default, shown when image fails) */}
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="text-white text-sm font-medium truncate">
+                                {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                              </h5>
+                              <p className="text-gray-300 text-xs line-clamp-2">
+                                {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  // Obtener el precio base del producto
+                                  let basePrice = 0;
+                                  
+                                  // Buscar precio en diferentes estructuras
+                                  if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                    const firstVariant = recommendedProduct.variantes[0];
+                                    basePrice = firstVariant.precio || basePrice;
+                                  }
+                                  
+                                  // Si aún no hay precio, buscar en otros campos
+                                  if (basePrice === 0) {
+                                    basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                  }
+                                  
+                                  // Verificar si tiene descuento real
+                                  const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                        recommendedProduct.price && 
+                                                        recommendedProduct.originalPrice && 
+                                                        recommendedProduct.price < recommendedProduct.originalPrice;
+                                  
+                                  if (hasRealDiscount) {
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-400 text-sm font-medium">
+                                          {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="bg-red-500 text-white text-xs px-1 rounded">
+                                          -{recommendedProduct.discountPercentage}%
+                                        </span>
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-green-400 text-sm font-medium">
+                                        {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                      </span>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          <p className="text-gray-400 text-sm">
+                            {Object.keys(promotions).length === 0 
+                              ? t('Cargando productos...')
+                              : t('No hay productos en promoción disponibles')
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await logout();
+                          setShowMobileSidebar(false);
+                        } catch (error) {
+                          console.error('Error al cerrar sesión:', error);
+                        }
+                      }}
+                      className="w-full bg-transparent border-2 border-red-400 text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-400 hover:text-white transition-colors duration-200"
+                    >
+                      {t('Cerrar sesión')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Usuario no logueado */}
+                    <div className="text-center">
+                      <div className="mb-6">
+                        <h3 className="text-xl text-white mb-2">{t('¡Bienvenido!')}</h3>
+                        <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu cuenta')}</p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <Link 
+                          href="/login"
+                          className="bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
+                          onClick={() => setShowMobileSidebar(false)}
+                        >
+                          {t('Iniciar sesión')}
+                        </Link>
+                        <Link 
+                          href="/register"
+                          className=" bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
+                          onClick={() => setShowMobileSidebar(false)}
+                        >
+                          {t('Registrarse')}
+                        </Link>
+                      </div>
+                      
+                      <div className="mt-8 pt-6 border-t border-white/20">
+                        <p className="text-gray-300 text-xs text-center">
+                          {t('Al continuar, aceptas nuestros términos de servicio y política de privacidad.')}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+          </div>
+          
+          {/* Botones de navegación inferior */}
+          <div className="border-t border-white/20 p-4">
+            <div className="grid grid-cols-3 gap-2">
+              {mobileSidebarContent !== 'language' && (
+                <button
+                  onClick={() => setMobileSidebarContent('language')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                  </svg>
+                  <span className="text-xs">{t('Idioma')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'profile' && (
+                <button
+                  onClick={() => setMobileSidebarContent('profile')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-xs">{t('Perfil')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'search' && (
+                <button
+                  onClick={() => setMobileSidebarContent('search')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-xs">{t('Buscar')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'cart' && (
+                <button
+                  onClick={() => setMobileSidebarContent('cart')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                  </svg>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                  <span className="text-xs">{t('Carrito')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Menú Móvil Izquierdo (Categorías) */}
+      <div className={`fixed inset-y-0 left-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileMenu ? 'translate-x-0' : '-translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del menú con logo */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-xl font-bold tracking-[4px]">
+              {t('TREBOLUXE')}
+            </div>
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Categorías */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <h3 className="text-white text-lg font-semibold mb-4 tracking-[2px]">
+              {t('CATEGORÍAS')}
+            </h3>
+            <div className="space-y-2">
+              {/* Todas las categorías */}
+              <Link 
+                href="/catalogo?categoria=todas" 
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors border-b border-gray-600/30"
+              >
+                <span className="font-semibold">{t('Todas las categorías')}</span>
+              </Link>
+              
+              {/* Categorías dinámicas */}
+              {activeCategories.map((category) => (
+                <Link 
+                  key={category.id} 
+                  href={`/catalogo?categoria=${category.slug}`} 
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  {t(category.name)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay para cerrar menú móvil izquierdo */}
+      {showMobileMenu && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
+      {/* Overlay para cerrar sidebar móvil derecho */}
+      {showMobileSidebar && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
 
       {/* Footer */}
       <Footer />

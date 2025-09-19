@@ -28,10 +28,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
   // Usar textos promocionales desde la base de datos, con fallback
-  const promoTexts = headerSettings?.promoTexts || [
-    "Agrega 4 productos y paga 2",
-    "2x1 en gorras"
-  ];
+  const promoTexts = headerSettings?.promoTexts;
 
   // Efecto para el carrusel de texto
   useEffect(() => {

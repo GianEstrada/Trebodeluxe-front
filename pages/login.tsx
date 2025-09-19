@@ -6,6 +6,8 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useTokenManager } from "../src/hooks/useTokenManager";
+import MobileHeaderSimple from "../components/MobileHeaderSimple";
+import Footer from "../components/Footer";
 
 const LoginScreen: NextPage = () => {
   const [usuario, setUsuario] = useState("");
@@ -47,8 +49,11 @@ const LoginScreen: NextPage = () => {
         </div>
       )}
 
-      {/* Header simplificado */}
-      <div className="w-full bg-[#1a6b1a] py-4 px-8">
+      {/* Header móvil simple */}
+      <MobileHeaderSimple />
+
+      {/* Header desktop - oculto en móvil */}
+      <div className="hidden md:block w-full bg-[#1a6b1a] py-4 px-8">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <Link href="/" className="flex items-center">
             <Image
@@ -82,30 +87,30 @@ const LoginScreen: NextPage = () => {
       </div>
 
       {/* Contenido principal */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 md:py-12">
+        <div className="max-w-md">
           {/* Contenedor del formulario */}
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 tracking-[2px]">
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 md:p-8 shadow-2xl">
+            <div className="text-center mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-[2px]">
                 {t('INICIAR SESIÓN')}
               </h1>
-              <p className="text-gray-300">
+              <p className="text-gray-300 text-sm md:text-base">
                 {t('Bienvenido de vuelta')}
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6 max-w-sm mx-auto">
-              <div className="flex justify-center">
-                {error && (
-                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 w-72">
-                    <p className="text-red-200 text-sm">{error}</p>
-                  </div>
-                )}
-              </div>
+            <form onSubmit={handleLogin} className="space-y-4 md:space-y-6 flex flex-col items-center">
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 w-fit max-w-sm">
+                  <p className="text-red-200 text-sm">{error}</p>
+                </div>
+              )}
 
+              {/* Usuario field */}
               <div className="flex flex-col items-center">
-                <label htmlFor="usuario" className="block text-white font-medium mb-2 w-72 text-left">
+                <label htmlFor="usuario" className="block text-white font-medium mb-2 max-w-xs text-left">
                   {t('Usuario o Correo')}
                 </label>
                 <input
@@ -113,15 +118,16 @@ const LoginScreen: NextPage = () => {
                   id="usuario"
                   value={usuario}
                   onChange={(e) => setUsuario(e.target.value)}
-                  className="w-72 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                  className="max-w-xs px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                   placeholder={t('Ingresa tu usuario o correo electrónico')}
                   required
                   disabled={isLoading}
                 />
               </div>
 
+              {/* Contraseña field */}
               <div className="flex flex-col items-center">
-                <label htmlFor="password" className="block text-white font-medium mb-2 w-72 text-left">
+                <label htmlFor="password" className="block text-white font-medium mb-2 max-w-xs text-left">
                   {t('Contraseña')}
                 </label>
                 <input
@@ -129,13 +135,14 @@ const LoginScreen: NextPage = () => {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-72 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
+                  className="max-w-xs px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                   placeholder={t('Ingresa tu contraseña')}
                   required
                   disabled={isLoading}
                 />
               </div>
 
+              {/* Forgot password link */}
               <div className="flex justify-center">
                 <Link 
                   href="/forgot-password" 
@@ -145,25 +152,27 @@ const LoginScreen: NextPage = () => {
                 </Link>
               </div>
 
+              {/* Submit button */}
               <div className="flex justify-center">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-72 bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="max-w-xs bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? t('Iniciando sesión...') : t('Iniciar Sesión')}
                 </button>
               </div>
             </form>
 
-            <div className="mt-8 text-center">
-              <p className="text-gray-300 mb-4">
+            {/* Register link */}
+            <div className="mt-6 md:mt-8 text-center">
+              <p className="text-gray-300 mb-4 text-sm md:text-base">
                 {t('¿No tienes una cuenta?')}
               </p>
               <div className="flex justify-center">
                 <Link
                   href="/register"
-                  className="w-72 text-center bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block"
+                  className="w-fit max-w-xs text-center bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block"
                 >
                   {t('Registrarse')}
                 </Link>
@@ -173,8 +182,11 @@ const LoginScreen: NextPage = () => {
         </div>
       </div>
 
-      {/* Footer reducido */}
-      <footer className="bg-black/30 border-t border-white/20 py-6">
+      {/* Footer móvil */}
+      <Footer />
+
+      {/* Footer desktop hardcodeado - oculto en móvil */}
+      <footer className="hidden md:block bg-black/30 border-t border-white/20 py-6">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-gray-300 text-sm mb-4 md:mb-0">

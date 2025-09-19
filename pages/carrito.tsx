@@ -10,7 +10,6 @@ import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import { canAccessAdminPanel } from '../utils/roles';
 import { productsApi, productUtils } from '../utils/productsApi';
-import { categoriesApi } from '../utils/categoriesApi';
 import { promotionsApi } from '../utils/promotionsApi';
 import { useCategories } from '../hooks/useCategories';
 import MobileHeader from '../components/MobileHeader';
@@ -51,8 +50,9 @@ const CarritoPage: NextPage = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   
-  // Estados para promociones
-  const [promotions, setPromotions] = useState<any>({});
+  // Estados para promociones (como en el index)
+  const [promotions, setPromotions] = useState<Record<number, any[]>>({});
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
   
   // Estados para dropdowns del header
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
@@ -70,7 +70,7 @@ const CarritoPage: NextPage = () => {
   // Estados para el móvil
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [mobileSidebarContent, setMobileSidebarContent] = useState('cart');
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
 
   // Estados para cotizaciones de envío
   const [postalCode, setPostalCode] = useState('');
@@ -122,19 +122,21 @@ const CarritoPage: NextPage = () => {
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
   
   // Usar tasas de cambio dinámicas desde Open Exchange Rates
-  const { formatPrice, exchangeRates, loading: ratesLoading, error: ratesError, refreshRates } = useExchangeRates();
+  const { formatPrice } = useExchangeRates();
 
   // Funciones para cambiar idioma y moneda
   const changeLanguage = (newLanguage: string) => {
     setCurrentLanguage(newLanguage);
     localStorage.setItem('preferred-language', newLanguage);
     setShowLanguageDropdown(false);
+    setShowMobileSidebar(false); // Cerrar sidebar móvil también
   };
 
   const changeCurrency = (newCurrency: string) => {
     setCurrentCurrency(newCurrency);
     localStorage.setItem('preferred-currency', newCurrency);
     setShowLanguageDropdown(false);
+    setShowMobileSidebar(false); // Cerrar sidebar móvil también
   };
 
   // Función para manejar la búsqueda
@@ -142,6 +144,166 @@ const CarritoPage: NextPage = () => {
     if (searchTerm.trim()) {
       router.push(`/catalogo?busqueda=${encodeURIComponent(searchTerm.trim())}`);
     }
+  };
+
+  // UseEffect para búsqueda automática en tiempo real
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const isSearchActive = showMobileSidebar && mobileSidebarContent === 'search';
+      
+      if (searchTerm && isSearchActive) {
+        searchProducts(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, showMobileSidebar, mobileSidebarContent]);
+
+  // Función para búsqueda en tiempo real
+  // Función para buscar productos en tiempo real (igual que el index)
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      console.log('🔍 Iniciando búsqueda con query:', query);
+      
+      // Por ahora usar una búsqueda básica con productsApi similar al index
+      // Si no hay productos locales, usar la API
+      const response = await productsApi.getAll() as any;
+      let allProducts: any[] = [];
+      
+      if (response.success && response.products && response.products.length > 0) {
+        allProducts = response.products;
+        console.log('📦 Productos de API:', allProducts.length);
+        
+        // Enriquecer productos con precios desde variants (igual que useProductosConCategorias)
+        try {
+          const stockResponse = await fetch(`https://trebodeluxe-backend.onrender.com/api/products/variants`);
+          if (stockResponse.ok) {
+            const stockData = await stockResponse.json();
+            
+            // Enriquecer cada producto con su precio base
+            console.log('🔍 Ejemplo de variant para debugging:', stockData.variants[0]);
+            console.log('🔍 Variant completa:', JSON.stringify(stockData.variants[0], null, 2));
+            console.log('🔍 Campos disponibles en variant:', Object.keys(stockData.variants[0]));
+            console.log('🔍 Total variants disponibles:', stockData.variants.length);
+            
+            allProducts = allProducts.map(product => {
+              // Obtener el ID del producto usando múltiples posibilidades
+              const productId = product.id || product.id_producto || product.producto_id || product.productId || product._id;
+              console.log('🔍 Buscando variants para producto:', productId, 'nombre:', product.nombre || product.name);
+              
+              const productVariants = stockData.variants.filter((v: any) => {
+                const variantProductId = v.id_producto || v.producto_id || v.productId || v._id || v.id;
+                return variantProductId === productId;
+              });
+              
+              console.log('🔍 Variants encontradas:', productVariants.length, 'para producto:', productId);
+              
+              if (productVariants.length > 0) {
+                const variant = productVariants[0];
+                console.log('🔍 Variant seleccionada:', JSON.stringify(variant, null, 2));
+                console.log('💰 Campos de precio disponibles en variant:', {
+                  precio_base: variant.precio_base,
+                  precio: variant.precio,
+                  price: variant.price,
+                  precio_unitario: variant.precio_unitario,
+                  precio_venta: variant.precio_venta,
+                  precio_minimo: variant.precio_minimo,
+                  cost: variant.cost,
+                  costo: variant.costo
+                });
+                
+                // Intentar múltiples campos de precio y convertir a número
+                const precioRaw = variant.precio_base || variant.precio || variant.price || variant.precio_unitario || variant.precio_venta || variant.precio_minimo || 0;
+                const precio = typeof precioRaw === 'string' ? parseFloat(precioRaw) : Number(precioRaw) || 0;
+                console.log('💰 Precio final seleccionado:', precio, '(convertido de:', precioRaw, ') para producto:', product.nombre || product.name);
+                
+                return {
+                  ...product,
+                  precio_base: precio,
+                  precio: precio,
+                  precio_referencia: precio
+                };
+              }
+              console.log('⚠️ No se encontraron variants para producto:', productId);
+              return product;
+            });
+            
+            console.log('💰 Productos enriquecidos con precios:', allProducts.length);
+            
+            // Aplicar promociones a los productos (igual que en el index)
+            if (Object.keys(promotions).length > 0) {
+              console.log('🎯 Aplicando promociones a productos de búsqueda...');
+              allProducts = productUtils.applyPromotionDiscounts(allProducts, promotions);
+              console.log('✅ Promociones aplicadas a productos de búsqueda');
+            } else {
+              console.log('⚠️ No hay promociones cargadas para aplicar');
+            }
+          }
+        } catch (error) {
+          console.warn('Error fetching variants for pricing:', error);
+        }
+      }
+
+      // Mostrar estructura del primer producto para debugging
+      if (allProducts.length > 0) {
+        console.log('🔍 Ejemplo de producto para debugging:', {
+          id: allProducts[0].id,
+          id_producto: allProducts[0].id_producto,
+          producto_id: allProducts[0].producto_id,
+          productId: allProducts[0].productId,
+          _id: allProducts[0]._id,
+          nombre: allProducts[0].nombre,
+          name: allProducts[0].name,
+          descripcion: allProducts[0].descripcion,
+          description: allProducts[0].description,
+          categoria: allProducts[0].categoria,
+          category: allProducts[0].category,
+          precio_base: allProducts[0].precio_base,
+          precio: allProducts[0].precio,
+          precio_referencia: allProducts[0].precio_referencia,
+          availableFields: Object.keys(allProducts[0])
+        });
+        
+        console.log('🔍 Producto completo para debugging:', allProducts[0]);
+      }
+
+      // Filtrar productos por el término de búsqueda con más campos
+      const filtered = allProducts.filter((product: any) => {
+        const searchTerm = query.toLowerCase();
+        const matches = [
+          product.nombre?.toLowerCase().includes(searchTerm),
+          product.name?.toLowerCase().includes(searchTerm),
+          product.descripcion?.toLowerCase().includes(searchTerm),
+          product.description?.toLowerCase().includes(searchTerm),
+          product.categoria?.toLowerCase().includes(searchTerm),
+          product.category?.toLowerCase().includes(searchTerm),
+          product.marca?.toLowerCase().includes(searchTerm),
+          product.brand?.toLowerCase().includes(searchTerm)
+        ];
+        
+        return matches.some(match => match === true);
+      });
+      
+      console.log('🎯 Productos filtrados:', filtered.length, 'de', allProducts.length);
+      setSearchResults(filtered.slice(0, 5)); // Limitar a 5 resultados
+    } catch (error) {
+      console.error('Error buscando productos:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchTerm(value);
   };
 
   // Función para manejar Enter en el input
@@ -192,14 +354,8 @@ const CarritoPage: NextPage = () => {
     return totalPrice >= 500 ? 0 : 50; // Envío gratis arriba de $500
   };
 
-  const calculateTotal = () => {
-    return totalPrice + calculateShipping();
-  };
-
   // Función para obtener cotizaciones de envío
   const handleGetShippingQuotes = async () => {
-    // Validar código postal según el país seleccionado
-    const minLength = selectedCountry.postalCodeLength || 5;
     if (!postalCode || postalCode.length < 3) {
       setQuotesError(`Por favor ingresa un código postal válido para ${selectedCountry.name}`);
       return;
@@ -292,6 +448,7 @@ const CarritoPage: NextPage = () => {
 
   // Función para formatear precio de cotización
   const formatQuotePrice = (price: string | number, currency: string = 'MXN') => {
+    if (price === null || price === undefined) return '$0.00';
     const numPrice = parseFloat(price.toString()) || 0;
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -305,6 +462,43 @@ const CarritoPage: NextPage = () => {
     const savedCurrency = localStorage.getItem('preferred-currency');
     if (savedLanguage) setCurrentLanguage(savedLanguage);
     if (savedCurrency) setCurrentCurrency(savedCurrency);
+  }, []);
+
+  // Cargar promociones activas al inicializar
+  useEffect(() => {
+    const loadPromotions = async () => {
+      try {
+        setLoadingPromotions(true);
+        console.log('🎯 Cargando promociones activas...');
+        const promotionsResponse = await fetch('https://trebodeluxe-backend.onrender.com/api/promociones/activas');
+        
+        if (promotionsResponse.ok) {
+          const promotionsData = await promotionsResponse.json();
+          console.log('📊 Promociones activas encontradas:', promotionsData);
+          
+          if (promotionsData.promociones && Array.isArray(promotionsData.promociones)) {
+            // Organizar promociones por producto
+            const promotionsByProduct: Record<number, any[]> = {};
+            promotionsData.promociones.forEach((promo: any) => {
+              if (promo.id_producto) {
+                if (!promotionsByProduct[promo.id_producto]) {
+                  promotionsByProduct[promo.id_producto] = [];
+                }
+                promotionsByProduct[promo.id_producto].push(promo);
+              }
+            });
+            setPromotions(promotionsByProduct);
+            console.log('✅ Promociones organizadas por producto:', Object.keys(promotionsByProduct).length, 'productos con promociones');
+          }
+        }
+      } catch (error) {
+        console.warn('Error cargando promociones:', error);
+      } finally {
+        setLoadingPromotions(false);
+      }
+    };
+
+    loadPromotions();
   }, []);
 
   // Efecto para el carrusel de texto
@@ -367,6 +561,68 @@ const CarritoPage: NextPage = () => {
     };
   }, []);
 
+  // Cargar producto recomendado
+  useEffect(() => {
+    const loadRecommendedProduct = async () => {
+      if (isAuthenticated && user) {
+        setLoadingRecommendation(true);
+        try {
+          // Intentar obtener productos en promoción primero
+          let response = await fetch('https://trebodeluxe-backend.onrender.com/api/promociones/activas');
+          if (response.ok) {
+            const promotionsData = await response.json();
+            if (promotionsData.promociones && promotionsData.promociones.length > 0) {
+              // Obtener un producto aleatorio de las promociones
+              const randomPromotion = promotionsData.promociones[Math.floor(Math.random() * promotionsData.promociones.length)];
+              if (randomPromotion.productos && randomPromotion.productos.length > 0) {
+                const randomProduct = randomPromotion.productos[Math.floor(Math.random() * randomPromotion.productos.length)];
+                setRecommendedProduct({
+                  ...randomProduct,
+                  hasDiscount: true,
+                  originalPrice: randomProduct.precio,
+                  price: randomProduct.precio * (1 - randomPromotion.descuento / 100),
+                  discountPercentage: randomPromotion.descuento
+                });
+                setLoadingRecommendation(false);
+                return;
+              }
+            }
+          }
+          
+          // Si no hay promociones, obtener un producto aleatorio
+          response = await fetch('https://trebodeluxe-backend.onrender.com/api/productos?limit=10&random=true');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.productos && data.productos.length > 0) {
+              const randomProduct = data.productos[Math.floor(Math.random() * data.productos.length)];
+              setRecommendedProduct(randomProduct);
+            }
+          }
+        } catch (error) {
+          console.error('Error cargando producto recomendado:', error);
+        } finally {
+          setLoadingRecommendation(false);
+        }
+      }
+    };
+
+    loadRecommendedProduct();
+  }, [isAuthenticated, user]);
+
+  // Búsqueda en tiempo real (igual que el index)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const isSearchActive = showSearchDropdown || (showMobileSidebar && mobileSidebarContent === 'search');
+      if (searchTerm && isSearchActive) {
+        searchProducts(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, showSearchDropdown, showMobileSidebar, mobileSidebarContent]);
+
   return (
     <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa overflow-x-hidden"
          style={{
@@ -387,6 +643,7 @@ const CarritoPage: NextPage = () => {
         showMobileSidebar={showMobileSidebar}
         setShowMobileSidebar={setShowMobileSidebar}
         setMobileSidebarContent={setMobileSidebarContent}
+        totalItems={totalItems}
       />
       
       <div className="self-stretch flex flex-col items-start justify-start text-Schemes-On-Surface font-Static-Body-Large-Font flex-shrink-0">
@@ -430,7 +687,7 @@ const CarritoPage: NextPage = () => {
           <div className="self-stretch hidden md:flex flex-row items-center justify-between !pt-[15px] !pb-[15px] !pl-8 !pr-8 text-M3-white relative">
             <div className="flex flex-row items-center justify-start gap-[33px]">
               <div 
-                className="w-full max-w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
+                className="w-[177.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer"
                 ref={dropdownRef}
                 onMouseEnter={() => setShowCategoriesDropdown(true)}
                 onMouseLeave={() => setShowCategoriesDropdown(false)}
@@ -552,15 +809,15 @@ const CarritoPage: NextPage = () => {
                 </div>
               </div>
               <Link href="/catalogo?filter=promociones" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-green-600/30 bg-green-700/20 transition-colors duration-200 rounded cursor-pointer border border-green-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('PROMOCIONES')}
                   </div>
                 </div>
               </Link>
               <Link href="/catalogo?filter=nuevos" className="text-white no-underline hover:text-white visited:text-white focus:text-white active:text-white">
-                <div className="w-[161.8px] relative h-[34px] hover:bg-gray-700 transition-colors duration-200 rounded cursor-pointer">
-                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white">
+                <div className="w-[161.8px] relative h-[34px] hover:bg-blue-600/30 bg-blue-700/20 transition-colors duration-200 rounded cursor-pointer border border-blue-500/30">
+                  <div className="absolute h-full w-full top-[0%] left-[0%] tracking-[4px] leading-6 flex items-center justify-center text-white font-semibold">
                     {t('NUEVOS')}
                   </div>
                 </div>
@@ -996,10 +1253,7 @@ const CarritoPage: NextPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                               </svg>
                               <p className="text-gray-400 text-sm">
-                                {Object.keys(promotions).length === 0 
-                                  ? t('Cargando productos...')
-                                  : t('No hay productos en promoción disponibles')
-                                }
+                                {t('No hay productos en promoción disponibles')}
                               </p>
                             </div>
                           )}
@@ -1078,7 +1332,7 @@ const CarritoPage: NextPage = () => {
                         <input
                           type="text"
                           value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onChange={(e) => handleSearchInputChange(e.target.value)}
                           onKeyPress={handleSearchKeyPress}
                           placeholder={t('¿Qué estás buscando?')}
                           className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
@@ -1361,15 +1615,16 @@ const CarritoPage: NextPage = () => {
         </div>
 
       {/* Contenido principal del carrito */}
-      <div className="flex-1 container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
+      <div className="container mx-auto px-2 sm:px-4 md:px-8 py-4 md:py-8 overflow-x-hidden">
+        {/* Breadcrumb - Solo visible en desktop */}
+        <div className="hidden md:flex items-center space-x-2 text-sm text-gray-400 mb-6">
           <Link href="/" className="hover:text-white transition-colors no-underline text-gray-400">{t('Inicio')}</Link>
           <span>/</span>
           <span className="text-white">{t('Carrito de Compras')}</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="max-w-[350px] md:max-w-full mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Lista de productos */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between mb-6">
@@ -1377,7 +1632,7 @@ const CarritoPage: NextPage = () => {
               {cartItems.length > 0 && (
                 <button
                   onClick={handleClearCart}
-                  className="text-red-400 hover:text-red-300 transition-colors text-sm disabled:opacity-50"
+                  className="text-red-400 hover:text-red-300 transition-colors text-sm disabled:opacity-50 bg-transparent"
                   disabled={isLoading}
                 >
                   {t('Vaciar carrito')}
@@ -1431,10 +1686,10 @@ const CarritoPage: NextPage = () => {
                               {item.hasDiscount ? (
                                 <div className="flex flex-col">
                                   <span className="text-sm text-red-400 line-through">
-                                    ${item.price.toFixed(2)}
+                                    {formatPrice(item.price, currentCurrency, 'MXN')}
                                   </span>
                                   <span className="text-lg font-bold text-green-400">
-                                    ${item.finalPrice.toFixed(2)}
+                                    {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
                                   </span>
                                   <span className="text-xs text-yellow-400">
                                     -{item.discountPercentage}% OFF
@@ -1442,14 +1697,14 @@ const CarritoPage: NextPage = () => {
                                 </div>
                               ) : (
                                 <span className="text-lg font-bold text-green-400">
-                                  ${item.finalPrice.toFixed(2)}
+                                  {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
                                 </span>
                               )}
                             </div>
                           </div>
 
                           {/* Controles de cantidad */}
-                          <div className="flex items-center space-x-3">
+                          <div className="flex flex-col items-end space-y-3">
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => handleUpdateQuantity(item.productId, item.variantId, item.tallaId, item.quantity - 1)}
@@ -1471,12 +1726,10 @@ const CarritoPage: NextPage = () => {
                             </div>
                             <button
                               onClick={() => handleRemoveItem(item.productId, item.variantId, item.tallaId)}
-                              className="text-red-400 hover:text-red-300 transition-colors p-2 disabled:opacity-50"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-400/20 transition-colors py-1 px-3 rounded text-sm font-medium disabled:opacity-50 bg-gray-900/20"
                               disabled={isLoading}
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                              {t('Eliminar')}
                             </button>
                           </div>
                         </div>
@@ -1490,9 +1743,9 @@ const CarritoPage: NextPage = () => {
 
           {/* Resumen del pedido */}
           {cartItems.length > 0 && (
-            <div className="lg:col-span-1">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 sticky top-4 overflow-hidden">
-                <div className="p-6">
+            <div className="lg:col-span-1 max-w-full min-w-0">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 sticky top-4 overflow-hidden max-w-full w-fit">
+                <div className="p-4 sm:p-6">
                   <h2 className="text-xl font-bold text-white mb-6">{t('Resumen del Pedido')}</h2>
                   
                   <div className="space-y-4 mb-6">
@@ -1511,7 +1764,7 @@ const CarritoPage: NextPage = () => {
 
                   {/* Sección de Cotizaciones de Envío */}
                   {cartItems.length > 0 && cartId && (
-                    <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-6 mb-6">
+                    <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-4 sm:p-6 mb-6 max-w-full overflow-x-hidden">
                       <h3 className="text-white font-bold text-lg mb-4 flex items-center">
                         <svg className="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -1566,9 +1819,9 @@ const CarritoPage: NextPage = () => {
                         )}
                       </div>
 
-                      {/* Input de Código Postal */}
-                      <div className="flex space-x-3">
-                        <div className="flex-1">
+                      {/* Input de Código Postal y Botón Calcular */}
+                      <div className="space-y-3">
+                        <div className="w-full">
                           <input
                             type="text"
                             value={postalCode}
@@ -1593,27 +1846,29 @@ const CarritoPage: NextPage = () => {
                               setQuotesError('');
                             }}
                             placeholder={`${t('Código postal')} (${t('ej')}: ${selectedCountry.postalCodeFormat})`}
-                            className="w-full bg-black/50 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none transition-colors"
+                            className="bg-black/50 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none transition-colors"
                             maxLength={selectedCountry.postalCodeLength || 10}
                           />
                         </div>
-                        <button
-                          onClick={handleGetShippingQuotes}
-                          disabled={isLoadingQuotes || postalCode.length < 3}
-                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
-                        >
-                          {isLoadingQuotes ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              {quotesError.includes('espera') ? t('Reintentando...') : t('Calculando...')}
-                            </>
-                          ) : (
-                            <>{t('Calcular')}</>
-                          )}
-                        </button>
+                        <div className="w-full">
+                          <button
+                            onClick={handleGetShippingQuotes}
+                            disabled={isLoadingQuotes || postalCode.length < 3}
+                            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                          >
+                            {isLoadingQuotes ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {quotesError.includes('espera') ? t('Reintentando...') : t('Calculando...')}
+                              </>
+                            ) : (
+                              <>{t('Calcular')}</>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {quotesError && (
@@ -1623,39 +1878,48 @@ const CarritoPage: NextPage = () => {
                       )}
 
                       {showQuotes && shippingQuotes.length > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="text-white font-medium text-sm">{t('Opciones de envío disponibles:')}</h4>
-                          {shippingQuotes.map((quote, index) => (
-                            <div
-                              key={index}
-                              className="bg-black/50 border border-white/20 rounded-lg p-4 hover:border-green-400/50 transition-colors cursor-pointer"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center mb-1">
-                                    <span className="text-white font-medium text-sm uppercase">
-                                      {quote.carrier}
-                                    </span>
-                                    {quote.service && (
-                                      <span className="ml-2 text-gray-400 text-xs">
-                                        {quote.service}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {quote.estimatedDays && (
-                                    <div className="text-gray-400 text-xs">
-                                      {t('Entrega en')} {quote.estimatedDays} {t('días hábiles')}
+                        <div className="space-y-4">
+                          <h4 className="text-white font-medium">{t('Opciones de envío disponibles:')}</h4>
+                          {shippingQuotes.map((quote, index) => {
+                            // Verificar que el quote tenga las propiedades necesarias
+                            if (!quote || quote.price === null || quote.price === undefined) {
+                              return null; // Skip this quote if it's invalid
+                            }
+                            
+                            const quoteId = `${quote.carrier || 'unknown'}_${quote.service?.replace(/\s+/g, '_') || 'standard'}_${index}`;
+                            return (
+                              <div
+                                key={quoteId}
+                                className="p-4 rounded-lg border bg-black/40 border-white/20 hover:bg-black/60 hover:border-green-400/50 transition-all duration-300"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-4 h-4 rounded-full border-2 border-green-400 bg-green-400 flex items-center justify-center">
+                                      <div className="w-2 h-2 rounded-full bg-white"></div>
                                     </div>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-green-400 font-bold">
-                                    {formatQuotePrice(quote.price, quote.currency)}
+                                    <div>
+                                      <h3 className="text-white font-medium">
+                                        {quote.carrier || 'Transportadora'} - {quote.service || 'Servicio Estándar'}
+                                      </h3>
+                                      <p className="text-gray-400 text-sm">
+                                        {quote.description || `Envío por ${quote.carrier || 'transportadora'}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-white font-bold">
+                                      {formatQuotePrice(quote.price, quote.currency)}
+                                    </div>
+                                    {quote.estimatedDays && (
+                                      <div className="text-gray-400 text-sm">
+                                        {quote.estimatedDays} {t('días hábiles')}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          }).filter(Boolean)}
                         </div>
                       )}
 
@@ -1678,20 +1942,33 @@ const CarritoPage: NextPage = () => {
                   </div>
                   )}
 
-                  <div className="space-y-6 w-full">
-                    <Link
-                      href="/checkout"
-                      className="display-block w-full bg-black/60 backdrop-blur-md border border-green-400/40 text-white py-3 px-6 rounded-lg font-medium transition-colors hover:bg-black/80 hover:border-green-400/60 hover:text-green-300 text-center no-underline"
-                    >
-                      {t('Proceder al Checkout')}
-                    </Link>
-                    
-                    <Link
-                      href="/catalogo"
-                      className="display-block w-full bg-black/50 backdrop-blur-md border border-white/30 text-white py-3 px-6 rounded-lg font-medium transition-colors hover:bg-black/70 text-center no-underline"
-                    >
-                      {t('Continuar Comprando')}
-                    </Link>
+                  <div className="space-y-4 w-fit mx-auto">
+                    {/* Botones de acción para desktop - En el resumen del pedido */}
+                    <div className="hidden md:block space-y-4">
+                      <Link
+                        href="/checkout"
+                        className="block w-fit mx-auto bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 hover:from-green-700 hover:to-green-800 hover:shadow-lg text-center no-underline"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                          </svg>
+                          {t('Proceder al Checkout')}
+                        </div>
+                      </Link>
+                      
+                      <Link
+                        href="/catalogo"
+                        className="block w-fit mx-auto bg-transparent border-2 border-white/40 text-white py-3 px-6 rounded-xl font-medium transition-all duration-300 hover:bg-white/10 hover:border-white/60 text-center no-underline"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          {t('Continuar Comprando')}
+                        </div>
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
@@ -1720,7 +1997,773 @@ const CarritoPage: NextPage = () => {
             </div>
           )}
         </div>
+        
+        {/* Botones de acción móvil - Con el mismo ancho que las cards */}
+        {cartItems.length > 0 && (
+          <div className="block md:hidden mt-6 space-y-4">
+            <Link
+              href="/checkout"
+              className="block w-fit bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 hover:from-green-700 hover:to-green-800 hover:shadow-lg text-center no-underline mx-auto"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                </svg>
+                {t('Proceder al Checkout')}
+              </div>
+            </Link>
+            
+            <Link
+              href="/catalogo"
+              className="block w-fit bg-transparent border-2 border-white/40 text-white py-3 px-6 rounded-xl font-medium transition-all duration-300 hover:bg-white/10 hover:border-white/60 text-center no-underline mx-auto"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                {t('Continuar Comprando')}
+              </div>
+            </Link>
+          </div>
+        )}
+        </div>
       </div>
+
+      {/* Panel Lateral Móvil Derecho (Carrito/Opciones) */}
+      <div className={`fixed inset-y-0 right-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileSidebar ? 'translate-x-0' : 'translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del panel */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-lg font-semibold">
+              {mobileSidebarContent === 'cart' && t('Carrito')}
+              {mobileSidebarContent === 'language' && t('Idioma & Moneda')}
+              {mobileSidebarContent === 'profile' && t('Perfil')}
+              {mobileSidebarContent === 'search' && t('Buscar')}
+            </div>
+            <button 
+              onClick={() => setShowMobileSidebar(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Contenido del panel */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* Contenido del carrito */}
+            {mobileSidebarContent === 'cart' && (
+              <div className="space-y-4 flex-1 flex flex-col">
+          <div className="mb-4">
+            <h3 className="text-xl font-bold text-white mb-2 tracking-[2px]">{t('CARRITO')}</h3>
+            <p className="text-gray-300 text-sm">{totalItems} {t('productos en tu carrito')}</p>
+          </div>
+          
+          {/* Lista de productos */}
+          <div className="space-y-4 flex-1 overflow-y-auto">
+            {cartItems.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                      </svg>
+                      <p className="text-gray-300 mb-4">{t('Tu carrito está vacío')}</p>
+                      <p className="text-gray-400 text-sm">{t('Agrega algunos productos para continuar')}</p>
+                    </div>
+                  ) : (
+                    cartItems.map((item) => (
+                      <div key={`${item.variantId}-${item.tallaId}`} className="bg-white/10 rounded-lg p-3 border border-white/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-14 h-14 bg-gray-400 rounded-lg flex-shrink-0">
+                            {item.image && (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                width={56}
+                                height={56}
+                                className="w-full h-full object-cover rounded-lg"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/sin-ttulo1-2@2x.png';
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-medium text-sm truncate">{item.name}</h4>
+                            <p className="text-gray-300 text-xs">{t('Talla')}: {item.tallaName}</p>
+                            {item.variantName && (
+                              <p className="text-gray-300 text-xs">{item.variantName}</p>
+                            )}
+                            <div className="flex items-center justify-between mt-2">
+                              {item.hasDiscount ? (
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-red-400 line-through">
+                                    {formatPrice(item.price, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-white font-bold text-sm">
+                                    {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                  </span>
+                                  <span className="text-xs text-yellow-400">
+                                    -{item.discountPercentage}% OFF
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white font-bold text-sm">
+                                  {formatPrice(item.finalPrice, currentCurrency, 'MXN')}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  -
+                                </button>
+                                <span className="text-white text-sm w-6 text-center">{item.quantity}</span>
+                                <button 
+                                  onClick={() => updateQuantity(item.productId, item.variantId, item.tallaId, item.quantity + 1)}
+                                  className="w-6 h-6 bg-white/20 rounded text-white text-sm hover:bg-white/30 transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
+                            className="text-red-400 hover:text-red-300 transition-colors bg-transparent p-1 rounded disabled:opacity-50"
+                            disabled={isLoading}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Resumen del carrito */}
+                {cartItems.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/20">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-gray-300">{t('Subtotal:')}</span>
+                      <span className="text-white font-bold">{formatPrice(totalPrice, currentCurrency, 'MXN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-gray-300">{t('Envío:')}</span>
+                      <span className="text-blue-400 font-medium">{t('Calculado al final')}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Link href="/checkout" className="block">
+                        <button 
+                          onClick={() => setShowMobileSidebar(false)}
+                          className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200"
+                        >
+                          {t('Finalizar Compra')}
+                        </button>
+                      </Link>
+                      <button 
+                        onClick={() => setShowMobileSidebar(false)}
+                        className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200"
+                      >
+                        {t('Ver Carrito Completo')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Contenido del panel de idioma/moneda */}
+            {mobileSidebarContent === 'language' && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-white mb-6 tracking-[2px]">{t('IDIOMA Y MONEDA')}</h3>
+                
+                {/* Language Section */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Idioma')}</h4>
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => changeLanguage('es')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'es' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇪🇸</span>
+                          <span>Español</span>
+                        </div>
+                        {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('en')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'en' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇺🇸</span>
+                          <span>English</span>
+                        </div>
+                        {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeLanguage('fr')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentLanguage === 'fr' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🇫🇷</span>
+                          <span>Français</span>
+                        </div>
+                        {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Currency Section */}
+                <div className="mb-8">
+                  <h4 className="text-lg font-semibold text-white mb-4 tracking-[1px]">{t('Moneda')}</h4>
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => changeCurrency('MXN')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'MXN' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white">$</span>
+                          <span>MXN - Peso Mexicano</span>
+                        </div>
+                        {currentCurrency === 'MXN' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('USD')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'USD' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white">$</span>
+                          <span>USD - Dólar</span>
+                        </div>
+                        {currentCurrency === 'USD' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => changeCurrency('EUR')}
+                      className={`w-full text-left px-4 py-3 text-white hover:bg-white hover:text-black transition-colors duration-200 rounded-md ${
+                        currentCurrency === 'EUR' ? 'bg-gray-800' : 'bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white">€</span>
+                          <span>EUR - Euro</span>
+                        </div>
+                        {currentCurrency === 'EUR' && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="mt-auto pt-6 border-t border-gray-600">
+                  <p className="text-gray-300 text-sm">
+                    {t('Selecciona tu idioma preferido y la moneda para ver los precios actualizados.')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Contenido del panel de búsqueda */}
+            {mobileSidebarContent === 'search' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-white mb-4">{t('Buscar productos')}</h3>
+                
+                {/* Barra de búsqueda */}
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchInputChange(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    placeholder={t('¿Qué estás buscando?')}
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white"
+                  />
+                  <button 
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    {t('Buscar')}
+                  </button>
+                </div>
+
+                {/* Resultados de búsqueda */}
+                {searchTerm && (
+                  <div className="mt-4">
+                    {searchLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-white/20 rounded mb-2"></div>
+                              <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-2 max-h-60">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            className="cursor-pointer hover:bg-white/20 rounded-lg p-3 transition-colors duration-200"
+                            onClick={() => {
+                              router.push(`/producto/${product.id}`);
+                              setShowMobileSidebar(false);
+                              setSearchTerm('');
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 bg-gray-400 rounded overflow-hidden flex-shrink-0">
+                                {(() => {
+                                  // Buscar imagen en diferentes estructuras posibles
+                                  let imageUrl = null;
+                                  
+                                  if (product.imagen_principal) {
+                                    imageUrl = product.imagen_principal;
+                                  } else if (product.imagenes && Array.isArray(product.imagenes) && product.imagenes.length > 0) {
+                                    imageUrl = product.imagenes[0].url || product.imagenes[0];
+                                  } else if (product.variantes && Array.isArray(product.variantes) && product.variantes.length > 0) {
+                                    const firstVariant = product.variantes[0];
+                                    if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                      imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                    }
+                                  }
+                                  
+                                  return imageUrl ? (
+                                    <Image
+                                      src={imageUrl}
+                                      alt={product.nombre}
+                                      width={48}
+                                      height={48}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                      }}
+                                    />
+                                  ) : null;
+                                })()}
+                                {/* Fallback icon cuando no hay imagen */}
+                                <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                  <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-medium text-sm truncate">{product.nombre}</h4>
+                                <p className="text-gray-300 text-xs">{product.categoria}</p>
+                                <p className="text-white font-bold text-sm">
+                                  {formatPrice(
+                                    product.precio_referencia || product.precio || 0, 
+                                    currentCurrency, 
+                                    'MXN'
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-center py-4">{t('No se encontraron resultados')}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contenido del panel de perfil */}
+            {mobileSidebarContent === 'profile' && (
+              <div className="space-y-6">
+                {isAuthenticated && user ? (
+                  <>
+                    {/* Usuario autenticado */}
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span className="text-white text-xl font-bold">
+                          {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                      <h3 className="text-xl text-white mb-1">{t('¡Hola, {{name}}!').replace('{{name}}', `${user?.nombres || ''} ${user?.apellidos || ''}`.trim() || 'Usuario')}</h3>
+                      <p className="text-gray-300 text-sm">{user?.correo || ''}</p>
+                    </div>
+
+                    {/* Información de Envío */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-4">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        {t('Información de Envío')}
+                      </h4>
+                      <div className="space-y-2 text-sm text-gray-300">
+                        <div className="flex justify-between">
+                          <span>{t('Envíos salen:')}</span>
+                          <span className="text-green-400">{t('Al día siguiente')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega estándar:')}</span>
+                          <span>{t('3-5 días')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t('Entrega express:')}</span>
+                          <span>{t('24-48 horas')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recomendación de Producto */}
+                    <div className="bg-white/10 rounded-lg p-4 mb-6">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        {t('Producto Recomendado')}
+                      </h4>
+                      {loadingRecommendation ? (
+                        <div className="animate-pulse">
+                          <div className="bg-white/20 h-20 rounded mb-2"></div>
+                          <div className="bg-white/20 h-4 rounded mb-1"></div>
+                          <div className="bg-white/20 h-4 rounded w-2/3"></div>
+                        </div>
+                      ) : recommendedProduct ? (
+                        <div 
+                          className="cursor-pointer hover:bg-white/20 rounded-lg p-2 transition-colors duration-200"
+                          onClick={() => {
+                            const productId = recommendedProduct.id || recommendedProduct.producto_id || recommendedProduct.id_producto || recommendedProduct.productId || recommendedProduct._id;
+                            console.log('🔗 Navegando al producto con ID:', productId);
+                            if (productId) {
+                              router.push(`/producto/${productId}`);
+                              setShowMobileSidebar(false);
+                            } else {
+                              console.error('❌ No se puede navegar: ID de producto no válido');
+                            }
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-16 h-16 bg-gray-400 rounded-lg overflow-hidden flex-shrink-0">
+                              {(() => {
+                                // Buscar imagen en diferentes estructuras
+                                let imageUrl = null;
+                                
+                                console.log('🔍 Producto completo para imagen:', recommendedProduct);
+                                
+                                // Intentar diferentes propiedades de imagen
+                                if (recommendedProduct.imagen_principal) {
+                                  imageUrl = recommendedProduct.imagen_principal;
+                                } else if (recommendedProduct.imagenes && Array.isArray(recommendedProduct.imagenes) && recommendedProduct.imagenes.length > 0) {
+                                  imageUrl = recommendedProduct.imagenes[0].url || recommendedProduct.imagenes[0];
+                                } else if (recommendedProduct.images && Array.isArray(recommendedProduct.images) && recommendedProduct.images.length > 0) {
+                                  imageUrl = recommendedProduct.images[0].url || recommendedProduct.images[0];
+                                } else if (recommendedProduct.variantes && Array.isArray(recommendedProduct.variantes) && recommendedProduct.variantes.length > 0) {
+                                  // Buscar imagen en las variantes
+                                  const firstVariant = recommendedProduct.variantes[0];
+                                  if (firstVariant.imagenes && Array.isArray(firstVariant.imagenes) && firstVariant.imagenes.length > 0) {
+                                    imageUrl = firstVariant.imagenes[0].url || firstVariant.imagenes[0];
+                                  } else if (firstVariant.imagen_url) {
+                                    imageUrl = firstVariant.imagen_url;
+                                  }
+                                } else if (recommendedProduct.imagen_url) {
+                                  imageUrl = recommendedProduct.imagen_url;
+                                } else if (recommendedProduct.image) {
+                                  imageUrl = recommendedProduct.image;
+                                } else if (recommendedProduct.foto) {
+                                  imageUrl = recommendedProduct.foto;
+                                }
+                                
+                                console.log('🖼️ URL de imagen detectada:', imageUrl);
+                                
+                                return imageUrl ? (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={recommendedProduct.nombre || recommendedProduct.name || 'Producto'}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      console.log('❌ Error cargando imagen:', imageUrl);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.nextElementSibling?.setAttribute('style', 'display: flex');
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                );
+                              })()}
+                              {/* Fallback icon (hidden by default, shown when image fails) */}
+                              <div className="w-full h-full bg-gray-500 flex items-center justify-center" style={{display: 'none'}}>
+                                <svg className="w-6 h-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="text-white text-sm font-medium truncate">
+                                {recommendedProduct.nombre || recommendedProduct.name || recommendedProduct.titulo || 'Producto sin nombre'}
+                              </h5>
+                              <p className="text-gray-300 text-xs line-clamp-2">
+                                {recommendedProduct.descripcion || recommendedProduct.description || recommendedProduct.resumen || 'Sin descripción disponible'}
+                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  // Obtener el precio base del producto
+                                  let basePrice = 0;
+                                  
+                                  // Buscar precio en diferentes estructuras
+                                  if (recommendedProduct.variantes && recommendedProduct.variantes.length > 0) {
+                                    const firstVariant = recommendedProduct.variantes[0];
+                                    basePrice = firstVariant.precio || basePrice;
+                                  }
+                                  
+                                  // Si aún no hay precio, buscar en otros campos
+                                  if (basePrice === 0) {
+                                    basePrice = recommendedProduct.precio || recommendedProduct.price || 0;
+                                  }
+                                  
+                                  // Verificar si tiene descuento real
+                                  const hasRealDiscount = recommendedProduct.hasDiscount && 
+                                                        recommendedProduct.price && 
+                                                        recommendedProduct.originalPrice && 
+                                                        recommendedProduct.price < recommendedProduct.originalPrice;
+                                  
+                                  if (hasRealDiscount) {
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-400 text-sm font-medium">
+                                          {formatPrice(recommendedProduct.price, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {formatPrice(recommendedProduct.originalPrice, currentCurrency, 'MXN')}
+                                        </span>
+                                        <span className="text-xs text-yellow-400">
+                                          -{Math.round(((recommendedProduct.originalPrice - recommendedProduct.price) / recommendedProduct.originalPrice) * 100)}% OFF
+                                        </span>
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-green-400 text-sm font-medium">
+                                        {formatPrice(basePrice, currentCurrency, 'MXN')}
+                                      </span>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-gray-300 text-sm">{t('No hay recomendaciones disponibles')}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Opciones del perfil */}
+                    <div className="space-y-2">
+                      {canAccessAdminPanel && canAccessAdminPanel(user.rol) && (
+                        <Link
+                          href="/admin"
+                          className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                          onClick={() => setShowMobileSidebar(false)}
+                        >
+                          {t('Panel de Administración')}
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => {
+                          logout();
+                          setShowMobileSidebar(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-red-400 hover:bg-red-400 hover:text-white rounded-md transition-colors"
+                      >
+                        {t('Cerrar Sesión')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-white mb-4">{t('Inicia sesión para acceder a tu cuenta')}</p>
+                    <Link
+                      href="/login"
+                      className="block w-full bg-white text-black text-center py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+                      onClick={() => setShowMobileSidebar(false)}
+                    >
+                      {t('Iniciar Sesión')}
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="block w-full bg-transparent border border-white text-white text-center py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-colors"
+                      onClick={() => setShowMobileSidebar(false)}
+                    >
+                      {t('Registrarse')}
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+          
+          {/* Botones de navegación inferior */}
+          <div className="border-t border-white/20 p-4">
+            <div className="grid grid-cols-3 gap-2">
+              {mobileSidebarContent !== 'language' && (
+                <button
+                  onClick={() => setMobileSidebarContent('language')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                  </svg>
+                  <span className="text-xs">{t('Idioma')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'profile' && (
+                <button
+                  onClick={() => setMobileSidebarContent('profile')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-xs">{t('Perfil')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'search' && (
+                <button
+                  onClick={() => setMobileSidebarContent('search')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-xs">{t('Buscar')}</span>
+                </button>
+              )}
+              {mobileSidebarContent !== 'cart' && (
+                <button
+                  onClick={() => setMobileSidebarContent('cart')}
+                  className="flex flex-col items-center py-3 px-2 text-white bg-gradient-to-br from-green-600 to-green-800 rounded-md relative"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5-6M7 13l-2.5 6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"/>
+                  </svg>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                  <span className="text-xs">{t('Carrito')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+      {/* Menú Móvil Izquierdo (Categorías) */}
+      <div className={`fixed inset-y-0 left-0 w-80 bg-black/95 backdrop-blur-lg z-50 transform transition-transform duration-300 ease-out ${
+        showMobileMenu ? 'translate-x-0' : '-translate-x-full'
+      } md:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Header del menú con logo */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="text-white text-xl font-bold tracking-[4px]">
+              {t('TREBOLUXE')}
+            </div>
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="p-2 text-white bg-gradient-to-br from-red-500 to-red-700 rounded-md transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Categorías */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <h3 className="text-white text-lg font-semibold mb-4 tracking-[2px]">
+              {t('CATEGORÍAS')}
+            </h3>
+            <div className="space-y-2">
+              {/* Todas las categorías */}
+              <Link 
+                href="/catalogo?categoria=todas" 
+                onClick={() => setShowMobileMenu(false)}
+                className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors border-b border-gray-600/30"
+              >
+                <span className="font-semibold">{t('Todas las categorías')}</span>
+              </Link>
+              
+              {/* Categorías dinámicas */}
+              {activeCategories.map((category) => (
+                <Link 
+                  key={category.id} 
+                  href={`/catalogo?categoria=${category.slug}`} 
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block px-4 py-3 text-white hover:bg-white/20 rounded-md transition-colors"
+                >
+                  {t(category.name)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay para cerrar menú móvil izquierdo */}
+      {showMobileMenu && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
+      {/* Overlay para cerrar sidebar móvil derecho */}
+      {showMobileSidebar && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
 
       {/* Footer */}
       <Footer />
@@ -1729,3 +2772,4 @@ const CarritoPage: NextPage = () => {
 };
 
 export default CarritoPage;
+

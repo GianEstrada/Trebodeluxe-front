@@ -15,6 +15,7 @@ import { categoriesApi } from "../utils/categoriesApi";
 import { promotionsApi } from "../utils/promotionsApi";
 import { useCategories } from "../hooks/useCategories";
 import VariantSizeSelector from "../components/VariantSizeSelector";
+import Footer from "../components/Footer";
 
 // Definir el tipo para los productos
 interface Product {
@@ -123,8 +124,7 @@ const HomeScreen: NextPage = () => {
   
   // Usar textos promocionales desde la base de datos, con fallback
   const promoTexts = headerSettings?.promoTexts || [
-    "Agrega 4 productos y paga 2",
-    "2x1 en gorras"
+    ""
   ];
 
   // Obtener imágenes específicas desde la base de datos
@@ -973,7 +973,7 @@ const HomeScreen: NextPage = () => {
                           </div>
                           <button 
                             onClick={() => removeFromCart(item.productId, item.variantId, item.tallaId)}
-                            className="text-red-400 hover:text-red-300 transition-colors"
+                            className="text-red-400 hover:text-red-300 transition-colors bg-transparent"
                             disabled={isLoading}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1356,14 +1356,14 @@ const HomeScreen: NextPage = () => {
                       <div className="space-y-4">
                         <Link 
                           href="/login"
-                          className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
+                          className="bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
                         >
                           {t('Iniciar sesión')}
                         </Link>
                         <Link 
                           href="/register"
-                          className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
+                          className="bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           onClick={() => setShowMobileSidebar(false)}
                         >
                           {t('Registrarse')}
@@ -2278,16 +2278,16 @@ const HomeScreen: NextPage = () => {
                           <p className="text-gray-300 text-sm">{t('Inicia sesión para acceder a tu cuenta')}</p>
                         </div>
                         
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                           <Link 
                             href="/login"
-                            className="w-full bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
+                            className="bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-200 inline-block text-center"
                           >
                             {t('Iniciar sesión')}
                           </Link>
                           <Link 
                             href="/register"
-                            className="w-full bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
+                            className="bg-transparent border-2 border-white text-white py-3 px-6 rounded-lg font-medium hover:bg-white hover:text-black transition-colors duration-200 inline-block text-center"
                           >
                             {t('Registrarse')}
                           </Link>
@@ -2726,12 +2726,38 @@ const HomeScreen: NextPage = () => {
             <div className="absolute inset-0 bg-black/40 rounded-[46px] group-hover:bg-black/30 transition-all duration-300"></div>
             
             {/* Contenido de texto con descripción en hover */}
-            <div className="relative z-10 tracking-[5px] leading-[100px] [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300">
-              {t('Promociones Especiales').split(' ')[0]}
-            </div>
-            <div className="w-[485px] relative z-10 tracking-[5px] leading-[100px] inline-block [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300">
-              {t('Promociones Especiales').split(' ')[1]}
-            </div>
+<div className="relative z-10 w-full max-w-full flex flex-col items-start justify-start">
+  <div 
+    className="w-full [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300"
+    style={{
+      fontSize: 'clamp(2rem, 15vw, 6rem)',
+      lineHeight: 'clamp(2.2rem, 15.5vw, 6.5rem)',
+      letterSpacing: 'clamp(1px, 1vw, 8px)',
+      width: '100%',
+      textAlign: 'left',
+      wordSpacing: 'normal',
+      overflow: 'visible',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    {t('Promociones Especiales').split(' ')[0]}
+  </div>
+  <div 
+    className="w-full [text-shadow:2px_2px_8px_rgba(0,_0,_0,_0.9)] text-white group-hover:text-white transition-colors duration-300"
+    style={{
+      fontSize: 'clamp(2rem, 15vw, 6rem)',
+      lineHeight: 'clamp(2.2rem, 15.5vw, 6.5rem)',
+      letterSpacing: 'clamp(1px, 1vw, 8px)',
+      width: '100%',
+      textAlign: 'left',
+      wordSpacing: 'normal',
+      overflow: 'visible',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    {t('Promociones Especiales').split(' ')[1]}
+  </div>
+</div>
             
             {/* Descripción que aparece en hover */}
             {bannerImage?.descripcion && (
@@ -3041,324 +3067,7 @@ const HomeScreen: NextPage = () => {
         </div>
       </div>
 
-      {/* Footer con versiones responsive */}
-      <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start text-Text-Default-Tertiary font-Body-Font-Family">
-        
-        {/* Footer Minimalista - Solo Móvil */}
-        <div className="md:hidden w-full px-4 py-8">
-          <div className="text-center space-y-6">
-            {/* Logo */}
-            <div className="flex justify-center">
-              <Image
-                className="w-12 h-12"
-                width={48}
-                height={48}
-                sizes="100vw"
-                alt="Logo Treboluxe"
-                src="/sin-ttulo1-2@2x.png"
-              />
-            </div>
-            
-            {/* Redes Sociales */}
-            <div className="flex justify-center items-center gap-6">
-              <a 
-                href="https://www.facebook.com/profile.php?id=61576338298512"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  className="w-6 h-6"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Facebook"
-                  src="/facebook-icon.svg"
-                />
-              </a>
-              <a 
-                href="https://www.instagram.com/treboluxe"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  className="w-6 h-6"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Instagram"
-                  src="/logo-instagram.svg"
-                />
-              </a>
-              <a 
-                href="https://www.tiktok.com/@treboluxe5"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  className="w-6 h-6"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="TikTok"
-                  src="/tiktok-icon.svg"
-                />
-              </a>
-              <a 
-                href="https://twitter.com/treboluxe?s=21"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  className="w-6 h-6"
-                  width={24}
-                  height={24}
-                  sizes="100vw"
-                  alt="Twitter/X"
-                  src="/x-logo.svg"
-                />
-              </a>
-            </div>
-            
-            {/* Enlaces principales */}
-            <div className="flex justify-center items-center gap-4 text-sm">
-              <Link href="/catalogo" className="text-gray-300 hover:text-white transition-colors">
-                {t('Catálogo')}
-              </Link>
-              <span className="text-gray-500">•</span>
-              <Link href="/carrito" className="text-gray-300 hover:text-white transition-colors">
-                {t('Carrito')}
-              </Link>
-              <span className="text-gray-500">•</span>
-              <Link href="/checkout" className="text-gray-300 hover:text-white transition-colors">
-                {t('Checkout')}
-              </Link>
-            </div>
-            
-            {/* Copyright */}
-            <div className="text-center text-gray-400 text-xs">
-              <p>© {new Date().getFullYear()} Treboluxe. {t('Todos los derechos reservados.')}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Completo - Desktop/Tablet */}
-        <div className="hidden md:flex w-full flex-col pt-16 pb-8 px-8">
-        <div className="w-full flex flex-row items-start justify-start gap-8 mb-12">
-          {/* Logo y redes sociales */}
-          <div className="w-60 flex flex-col items-start justify-start gap-6 min-w-[240px]">
-            <Image
-              className="w-[50px] h-[50px]"
-              width={50}
-              height={50}
-              sizes="100vw"
-              alt="Logo Treboluxe"
-              src="/sin-ttulo1-2@2x.png"
-            />
-            <div className="flex flex-col items-start justify-start gap-4">
-              <p className="text-white text-sm leading-relaxed">
-                {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
-              </p>
-              <div className="flex flex-row items-center justify-start gap-4">
-                <a 
-                  href="https://www.facebook.com/profile.php?id=61576338298512"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <Image
-                    className="w-6 relative h-6"
-                    width={24}
-                    height={24}
-                    sizes="100vw"
-                    alt="Facebook"
-                    src="/facebook-icon.svg"
-                  />
-                </a>
-                <a 
-                  href="https://www.instagram.com/treboluxe"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <Image
-                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                    width={24}
-                    height={24}
-                    sizes="100vw"
-                    alt="Instagram"
-                    src="/logo-instagram.svg"
-                  />
-                </a>
-                <a 
-                  href="https://www.tiktok.com/@treboluxe5"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <Image
-                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                    width={24}
-                    height={24}
-                    sizes="100vw"
-                    alt="TikTok"
-                    src="/tiktok-icon.svg"
-                  />
-                </a>
-                <a 
-                  href="https://twitter.com/treboluxe?s=21"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <Image
-                    className="w-6 relative h-6 overflow-hidden shrink-0"
-                    width={24}
-                    height={24}
-                    sizes="100vw"
-                    alt="Twitter/X"
-                    src="/x-logo.svg"
-                  />
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Compras */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Compras')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Cómo comprar')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Métodos de pago')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Tabla de tallas')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Categorías */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Categorías')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Mujer')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Hombre')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Niños')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Accesorios')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Calzado')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Nueva colección')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Ofertas especiales')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Atención al cliente */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Atención al cliente')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Contacto')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Preguntas frecuentes')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Reportar un problema')}
-              </div>
-            </div>
-          </div>
-          
-          {/* Columna Legal */}
-          <div className="w-[262px] flex flex-col items-start justify-start gap-3">
-            <div className="self-stretch flex flex-col items-start justify-start pb-4">
-              <h3 className="relative leading-[140%] font-semibold text-white text-lg">
-                {t('Legal')}
-              </h3>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Términos y condiciones')}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="text-gray-300 leading-[140%] hover:text-white transition-colors cursor-pointer">
-                {t('Sobre nosotros')}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Copyright section */}
-        <div className="w-full pt-8 border-t border-white/20">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-gray-400 text-sm">
-              {t('© 2024 Treboluxe. Todos los derechos reservados.')}
-            </div>
-            <div className="flex items-center gap-6 text-gray-400 text-sm">
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Mapa del sitio')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Accesibilidad')}</span>
-              <span className="hover:text-white transition-colors cursor-pointer">{t('Configurar cookies')}</span>
-            </div>
-          </div>
-          <div className="mt-4 text-gray-400 text-xs">
-            {t('Treboluxe es una marca registrada. Todos los precios incluyen IVA. Los gastos de envío se calculan durante el proceso de compra.')}
-          </div>
-        </div>
-        </div>
-      </footer>
-
-      {/* Selector de Variantes y Tallas */}
+      <Footer />      {/* Selector de Variantes y Tallas */}
       {selectedProduct && (
         <VariantSizeSelector
           isOpen={showVariantSelector}

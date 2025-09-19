@@ -61,30 +61,57 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     
     case 'SET_CART':
       const { cart } = action.payload;
+      console.log('🛒 [DEBUG] SET_CART reducer - Raw cart data:', cart);
+      console.log('🛒 [DEBUG] SET_CART reducer - Cart items:', cart.items);
+      
+      if (cart.items && cart.items.length > 0) {
+        console.log('🛒 [DEBUG] SET_CART reducer - First item raw:', cart.items[0]);
+        console.log('🛒 [DEBUG] SET_CART reducer - First item discount fields:', {
+          tiene_descuento: cart.items[0].tiene_descuento,
+          descuento_porcentaje: cart.items[0].descuento_porcentaje,
+          precio_final_item: cart.items[0].precio_final_item,
+          precio_total_item: cart.items[0].precio_total_item,
+          precio: cart.items[0].precio
+        });
+      }
+      
       return {
         ...state,
-        items: cart.items.map(item => ({
-          id: item.id_contenido.toString(),
-          id_contenido: item.id_contenido,
-          id_carrito: item.id_carrito,
-          productId: item.id_producto,
-          variantId: item.id_variante,
-          tallaId: item.id_talla,
-          quantity: item.cantidad,
-          name: item.nombre_producto,
-          description: item.descripcion_producto,
-          variantName: item.nombre_variante,
-          tallaName: item.nombre_talla,
-          sistematalla: item.sistema_talla,
-          price: item.precio,
-          stock: item.stock_disponible,
-          image: item.imagen_variante,
-          totalItemPrice: item.tiene_descuento ? item.precio_final_item : item.precio_total_item,
-          finalPrice: item.tiene_descuento ? (item.precio_final_item / item.cantidad) : item.precio,
-          hasDiscount: item.tiene_descuento,
-          discountPercentage: item.descuento_porcentaje,
-          fechaAgregado: item.fecha_agregado,
-        })),
+        items: cart.items.map(item => {
+          const mappedItem = {
+            id: item.id_contenido.toString(),
+            id_contenido: item.id_contenido,
+            id_carrito: item.id_carrito,
+            productId: item.id_producto,
+            variantId: item.id_variante,
+            tallaId: item.id_talla,
+            quantity: item.cantidad,
+            name: item.nombre_producto,
+            description: item.descripcion_producto,
+            variantName: item.nombre_variante,
+            tallaName: item.nombre_talla,
+            sistematalla: item.sistema_talla,
+            price: item.precio,
+            stock: item.stock_disponible,
+            image: item.imagen_variante,
+            totalItemPrice: item.tiene_descuento ? item.precio_final_item : item.precio_total_item,
+            finalPrice: item.tiene_descuento ? (item.precio_final_item / item.cantidad) : item.precio,
+            hasDiscount: item.tiene_descuento,
+            discountPercentage: item.descuento_porcentaje,
+            fechaAgregado: item.fecha_agregado,
+          };
+          
+          console.log('🛒 [DEBUG] SET_CART reducer - Mapped item:', {
+            name: mappedItem.name,
+            hasDiscount: mappedItem.hasDiscount,
+            discountPercentage: mappedItem.discountPercentage,
+            price: mappedItem.price,
+            finalPrice: mappedItem.finalPrice,
+            totalItemPrice: mappedItem.totalItemPrice
+          });
+          
+          return mappedItem;
+        }),
         totalItems: cart.totalItems,
         totalOriginal: cart.totalOriginal,
         totalFinal: cart.totalFinal,
@@ -208,18 +235,37 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   ) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      console.log('🛒 [DEBUG] Adding to cart:', { productId, variantId, tallaId, quantity });
+      console.log('🛒 [DEBUG] Current page:', window.location.pathname);
+      
       const response = await newCartApi.addToCart({
         productId,
         variantId,
         tallaId,
         cantidad: quantity,
       });
+      
+      console.log('🛒 [DEBUG] Add to cart response:', response);
+      console.log('🛒 [DEBUG] Cart items after add:', response.cart?.items);
+      console.log('🛒 [DEBUG] Page:', window.location.pathname);
+      
+      if (response.cart?.items && response.cart.items.length > 0) {
+        console.log('🛒 [DEBUG] First item promotion data (' + window.location.pathname + '):', {
+          tiene_descuento: response.cart.items[0].tiene_descuento,
+          descuento_porcentaje: response.cart.items[0].descuento_porcentaje,
+          precio_final_item: response.cart.items[0].precio_final_item,
+          precio_total_item: response.cart.items[0].precio_total_item,
+          precio: response.cart.items[0].precio
+        });
+      }
+      
       dispatch({ type: 'SET_CART', payload: response });
       
       // Mostrar notificación de éxito
       showSuccess(`¡Producto agregado al carrito! (${quantity} unidad${quantity > 1 ? 'es' : ''})`, 3000);
       
     } catch (error: any) {
+      console.error('🛒 [ERROR] Add to cart failed:', error);
       handleError(error);
       showError(error.message || 'Error al agregar producto al carrito', 4000);
     }
