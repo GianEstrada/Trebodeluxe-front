@@ -2372,7 +2372,7 @@ const HomeScreen: NextPage = () => {
                                 >
                                   <div className="flex flex-col gap-2">
                                     {/* Imagen que ocupa TODO el ancho sin márgenes */}
-                                    <div className="w-fill h-fill overflow-hidden flex items-center justify-center">
+                                    <div className="w-full h-32 relative overflow-hidden flex items-center justify-center">
                                       {(() => {
                                         // Buscar imagen en diferentes estructuras
                                         let imageUrl = null;
@@ -2401,12 +2401,14 @@ const HomeScreen: NextPage = () => {
                                         }
                                         
                                         return imageUrl ? (
-                                          <img 
+                                          <Image 
                                             src={imageUrl} 
                                             alt={product.nombre || product.name || 'Producto'}
-                                            className="w-full h-full object-contain"
+                                            fill
+                                            className="object-contain"
+                                            sizes="(max-width: 768px) 100vw, 50vw"
                                             onError={(e) => {
-                                              const target = e.target as HTMLImageElement;
+                                              const target = e.currentTarget;
                                               target.style.display = 'none';
                                               target.nextElementSibling?.setAttribute('style', 'display: flex');
                                             }}
