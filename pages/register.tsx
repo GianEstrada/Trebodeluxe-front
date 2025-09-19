@@ -5,6 +5,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
+import { useCart } from "../contexts/NewCartContext";
 import MobileHeaderSimple from "../components/MobileHeaderSimple";
 import Footer from "../components/Footer";
 
@@ -13,6 +14,12 @@ const RegisterScreen: NextPage = () => {
   const { register } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState("es");
   const { t, isTranslating } = useUniversalTranslate(currentLanguage);
+  const { totalItems } = useCart();
+  
+  // Mobile header states
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
   
   const [formData, setFormData] = useState({
     nombres: '',
@@ -203,7 +210,14 @@ const RegisterScreen: NextPage = () => {
       )}
 
       {/* Header móvil simple */}
-      <MobileHeaderSimple />
+      <MobileHeaderSimple
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        showMobileSidebar={showMobileSidebar}
+        setShowMobileSidebar={setShowMobileSidebar}
+        setMobileSidebarContent={setMobileSidebarContent}
+        totalItems={totalItems}
+      />
 
       {/* Header desktop - oculto en móvil */}
       <div className="hidden md:block w-full bg-[#1a6b1a] py-4 px-8">

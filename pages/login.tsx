@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useUniversalTranslate } from "../hooks/useUniversalTranslate";
 import { useAuth } from "../contexts/AuthContext";
 import { useTokenManager } from "../src/hooks/useTokenManager";
+import { useCart } from "../contexts/NewCartContext";
 import MobileHeaderSimple from "../components/MobileHeaderSimple";
 import Footer from "../components/Footer";
 
@@ -19,6 +20,13 @@ const LoginScreen: NextPage = () => {
   const { login } = useAuth();
   const { setToken } = useTokenManager();
   const router = useRouter();
+
+  // Estados para el header móvil
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [mobileSidebarContent, setMobileSidebarContent] = useState<'cart' | 'language' | 'profile' | 'search'>('cart');
+  
+  const { totalItems } = useCart();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +58,14 @@ const LoginScreen: NextPage = () => {
       )}
 
       {/* Header móvil simple */}
-      <MobileHeaderSimple />
+      <MobileHeaderSimple
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        showMobileSidebar={showMobileSidebar}
+        setShowMobileSidebar={setShowMobileSidebar}
+        setMobileSidebarContent={setMobileSidebarContent}
+        totalItems={totalItems}
+      />
 
       {/* Header desktop - oculto en móvil */}
       <div className="hidden md:block w-full bg-[#1a6b1a] py-4 px-8">
