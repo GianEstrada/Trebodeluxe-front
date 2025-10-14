@@ -542,11 +542,19 @@ const AdminPage: NextPage = () => {
         console.error('❌ Error loading notes stats:', error);
       }
 
-      // Cargar recent high priority notes
+      // Cargar recent high priority notes (urgentes y altas)
       try {
-        const notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
+        // Primero intentar obtener notas urgentes
+        let notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=urgente&limit=1&sort_order=desc`);
         recentNotesData = await notesResponse.json();
-        console.log('📝 Recent notes:', recentNotesData);
+        
+        // Si no hay notas urgentes, buscar notas de alta prioridad
+        if (!recentNotesData.success || !recentNotesData.data || recentNotesData.data.length === 0) {
+          notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
+          recentNotesData = await notesResponse.json();
+        }
+        
+        console.log('📝 Recent high priority notes:', recentNotesData);
       } catch (error) {
         console.error('❌ Error loading recent notes:', error);
       }
@@ -3166,13 +3174,13 @@ const AdminPage: NextPage = () => {
 
         {/* Nota de alta prioridad más reciente */}
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4">🔥 Nota de Alta Prioridad</h3>
+          <h3 className="text-xl font-semibold text-white mb-4">🔥 Nota Prioritaria Reciente</h3>
           {dashboardStats.recentHighPriorityNote ? (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+            <div className={`${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600/20 border-red-500/30' : 'bg-orange-500/20 border-orange-500/30'} border rounded-lg p-4`}>
               <div className="flex items-start justify-between mb-3">
                 <h4 className="text-white font-semibold text-lg">{dashboardStats.recentHighPriorityNote.titulo}</h4>
-                <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                  {dashboardStats.recentHighPriorityNote.prioridad.toUpperCase()}
+                <span className={`${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600' : 'bg-orange-500'} text-white px-2 py-1 rounded-full text-xs font-bold`}>
+                  {dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? '🚨 URGENTE' : '⚠️ ALTA'}
                 </span>
               </div>
               <p className="text-gray-300 mb-3 overflow-hidden text-ellipsis"
@@ -3193,7 +3201,7 @@ const AdminPage: NextPage = () => {
               </div>
               <button
                 onClick={() => setActiveSection('notes')}
-                className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"
+                className={`w-full mt-4 ${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'} text-white py-2 rounded-lg transition-colors`}
               >
                 Ver Todas las Notas
               </button>
