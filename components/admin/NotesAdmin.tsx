@@ -1,6 +1,7 @@
 // NotesAdmin.tsx - Componente para gestión de notas generales
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Note {
   id_nota: number;
@@ -52,6 +53,7 @@ const COLORES = [
 ];
 
 const NotesAdmin: React.FC = () => {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [stats, setStats] = useState<NoteStats | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -187,7 +189,13 @@ const NotesAdmin: React.FC = () => {
       
       const payload = {
         ...noteForm,
-        fecha_vencimiento: noteForm.fecha_vencimiento || null
+        fecha_vencimiento: noteForm.fecha_vencimiento || null,
+        // Agregar información del usuario para crear notas
+        ...(modalMode === 'create' && user && {
+          id_usuario_creador: parseInt(user.id_usuario),
+          nombre_usuario_creador: `${user.nombres} ${user.apellidos}`.trim(),
+          rol_usuario_creador: user.rol
+        })
       };
       
       const url = modalMode === 'create' 
