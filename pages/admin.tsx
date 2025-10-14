@@ -544,19 +544,37 @@ const AdminPage: NextPage = () => {
 
       // Cargar recent high priority notes (urgentes y altas)
       try {
-        // Primero intentar obtener notas urgentes
-        let notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=urgente&limit=1&sort_order=desc`);
-        recentNotesData = await notesResponse.json();
+        // Buscar todas las notas de alta prioridad y urgentes, ordenadas por prioridad y fecha
+        const notesResponse = await fetch(`${API_BASE_URL}/api/notes?limit=10&sort_by=fecha_creacion&sort_order=desc`);
+        const allNotesData = await notesResponse.json();
         
-        // Si no hay notas urgentes, buscar notas de alta prioridad
-        if (!recentNotesData.success || !recentNotesData.data || recentNotesData.data.length === 0) {
-          notesResponse = await fetch(`${API_BASE_URL}/api/notes?prioridad=alta&limit=1&sort_order=desc`);
-          recentNotesData = await notesResponse.json();
+        console.log('📝 All notes response:', allNotesData);
+        
+        // Filtrar solo las notas urgentes y altas, priorizando urgentes
+        if (allNotesData.success && allNotesData.data && allNotesData.data.length > 0) {
+          const highPriorityNotes = allNotesData.data.filter((note: any) => 
+            note.prioridad === 'urgente' || note.prioridad === 'alta'
+          );
+          
+          // Ordenar poniendo urgentes primero, luego altas, luego por fecha
+          const sortedNotes = highPriorityNotes.sort((a: any, b: any) => {
+            if (a.prioridad === 'urgente' && b.prioridad !== 'urgente') return -1;
+            if (b.prioridad === 'urgente' && a.prioridad !== 'urgente') return 1;
+            return new Date(b.fecha_creacion).getTime() - new Date(a.fecha_creacion).getTime();
+          });
+          
+          recentNotesData = {
+            success: true,
+            data: sortedNotes.length > 0 ? [sortedNotes[0]] : []
+          };
+        } else {
+          recentNotesData = { success: false, data: [] };
         }
         
-        console.log('📝 Recent high priority notes:', recentNotesData);
+        console.log('📝 Filtered high priority notes:', recentNotesData);
       } catch (error) {
         console.error('❌ Error loading recent notes:', error);
+        recentNotesData = { success: false, data: [] };
       }
 
       // Calcular estadísticas
@@ -2805,7 +2823,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'dashboard'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📊 {t('Dashboard')}
@@ -2815,7 +2833,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'header'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📝 {t('Textos del Header')}
@@ -2825,7 +2843,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'images'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             🖼️ {t('Imágenes Index')}
@@ -2835,7 +2853,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'products'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📦 {t('Productos y Variantes')}
@@ -2845,7 +2863,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'categorias'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📁 {t('Categorías')}
@@ -2855,7 +2873,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'promotions'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             🎯 {t('Promociones')}
@@ -2865,7 +2883,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'orders'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             � {t('Pedidos')}
@@ -2875,7 +2893,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'notes'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📝 {t('Notas')}
@@ -2885,36 +2903,12 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'sizes'
                 ? 'bg-green-600 text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
             📏 {t('Sistemas de Tallas')}
           </button>
-          
-          {/* Sección SkyDropX */}
-          <div className="border-t border-gray-600 pt-2 mt-4">
-            <p className="px-4 py-2 text-xs uppercase text-gray-400 font-semibold">SkyDropX</p>
-            <button
-              onClick={() => setActiveSection('skydropx-config')}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                activeSection === 'skydropx-config'
-                  ? 'bg-green-600 text-white'
-                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              ⚙️ {t('Configuración SkyDropX')}
-            </button>
-            <button
-              onClick={() => setActiveSection('calculadora-envios')}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                activeSection === 'calculadora-envios'
-                  ? 'bg-green-600 text-white'
-                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              🧮 {t('Calculadora de Envíos')}
-            </button>
-          </div>
+
         </nav>
       </div>
       <div className="absolute bottom-6 left-6">
