@@ -296,7 +296,6 @@ const AdminPage: NextPage = () => {
     totalOrders: 0,
     totalNotes: 0,
     highPriorityNotes: 0,
-    recentHighPriorityNote: null as any,
     loading: false
   });
 
@@ -498,7 +497,6 @@ const AdminPage: NextPage = () => {
       let promotionsData: any = { success: false, data: [] };
       let ordersData: any = { success: false, data: [] };
       let notesStatsData: any = { success: false, data: { total_notas: 0, urgentes: 0, altas: 0 } };
-      let recentNotesData: any = { success: false, data: [] };
 
       // Cargar variants
       try {
@@ -542,40 +540,7 @@ const AdminPage: NextPage = () => {
         console.error('❌ Error loading notes stats:', error);
       }
 
-      // Cargar recent high priority notes (urgentes y altas)
-      try {
-        // Buscar todas las notas de alta prioridad y urgentes, ordenadas por prioridad y fecha
-        const notesResponse = await fetch(`${API_BASE_URL}/api/notes?limit=10&sort_by=fecha_creacion&sort_order=desc`);
-        const allNotesData = await notesResponse.json();
-        
-        console.log('📝 All notes response:', allNotesData);
-        
-        // Filtrar solo las notas urgentes y altas, priorizando urgentes
-        if (allNotesData.success && allNotesData.data && allNotesData.data.length > 0) {
-          const highPriorityNotes = allNotesData.data.filter((note: any) => 
-            note.prioridad === 'urgente' || note.prioridad === 'alta'
-          );
-          
-          // Ordenar poniendo urgentes primero, luego altas, luego por fecha
-          const sortedNotes = highPriorityNotes.sort((a: any, b: any) => {
-            if (a.prioridad === 'urgente' && b.prioridad !== 'urgente') return -1;
-            if (b.prioridad === 'urgente' && a.prioridad !== 'urgente') return 1;
-            return new Date(b.fecha_creacion).getTime() - new Date(a.fecha_creacion).getTime();
-          });
-          
-          recentNotesData = {
-            success: true,
-            data: sortedNotes.length > 0 ? [sortedNotes[0]] : []
-          };
-        } else {
-          recentNotesData = { success: false, data: [] };
-        }
-        
-        console.log('📝 Filtered high priority notes:', recentNotesData);
-      } catch (error) {
-        console.error('❌ Error loading recent notes:', error);
-        recentNotesData = { success: false, data: [] };
-      }
+
 
       // Calcular estadísticas
       const stats = {
@@ -586,7 +551,6 @@ const AdminPage: NextPage = () => {
         totalOrders: ordersData.success && ordersData.data ? ordersData.data.length : 0,
         totalNotes: notesStatsData.success && notesStatsData.data ? notesStatsData.data.total_notas : 0,
         highPriorityNotes: notesStatsData.success && notesStatsData.data ? (notesStatsData.data.urgentes + notesStatsData.data.altas) : 0,
-        recentHighPriorityNote: recentNotesData.success && recentNotesData.data && recentNotesData.data.length > 0 ? recentNotesData.data[0] : null,
         loading: false
       };
 
@@ -3123,95 +3087,44 @@ const AdminPage: NextPage = () => {
       </div>
 
       {/* Sección de accesos rápidos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Accesos rápidos */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4">🚀 Accesos Rápidos</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setActiveSection('products')}
-              className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg p-4 text-left transition-colors group"
-            >
-              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📦</div>
-              <div className="text-white font-medium">Productos</div>
-              <div className="text-green-200 text-sm">{dashboardStats.totalVariants} variantes</div>
-            </button>
-            
-            <button
-              onClick={() => setActiveSection('promotions')}
-              className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg p-4 text-left transition-colors group"
-            >
-              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏷️</div>
-              <div className="text-white font-medium">Promociones</div>
-              <div className="text-blue-200 text-sm">{dashboardStats.activePromotions} activas</div>
-            </button>
-            
-            <button
-              onClick={() => setActiveSection('orders')}
-              className="bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 rounded-lg p-4 text-left transition-colors group"
-            >
-              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</div>
-              <div className="text-white font-medium">Pedidos</div>
-              <div className="text-yellow-200 text-sm">{dashboardStats.pendingOrders} pendientes</div>
-            </button>
-            
-            <button
-              onClick={() => setActiveSection('notes')}
-              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg p-4 text-left transition-colors group"
-            >
-              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📝</div>
-              <div className="text-white font-medium">Notas</div>
-              <div className="text-purple-200 text-sm">{dashboardStats.highPriorityNotes} prioritarias</div>
-            </button>
-          </div>
-        </div>
-
-        {/* Nota de alta prioridad más reciente */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4">🔥 Nota Prioritaria Reciente</h3>
-          {dashboardStats.recentHighPriorityNote ? (
-            <div className={`${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600/20 border-red-500/30' : 'bg-orange-500/20 border-orange-500/30'} border rounded-lg p-4`}>
-              <div className="flex items-start justify-between mb-3">
-                <h4 className="text-white font-semibold text-lg">{dashboardStats.recentHighPriorityNote.titulo}</h4>
-                <span className={`${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600' : 'bg-orange-500'} text-white px-2 py-1 rounded-full text-xs font-bold`}>
-                  {dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? '🚨 URGENTE' : '⚠️ ALTA'}
-                </span>
-              </div>
-              <p className="text-gray-300 mb-3 overflow-hidden text-ellipsis"
-                 style={{
-                   display: '-webkit-box',
-                   WebkitLineClamp: 3,
-                   WebkitBoxOrient: 'vertical'
-                 }}>
-                {dashboardStats.recentHighPriorityNote.contenido}
-              </p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">
-                  👤 {dashboardStats.recentHighPriorityNote.nombre_usuario_creador}
-                </span>
-                <span className="text-gray-400">
-                  📅 {new Date(dashboardStats.recentHighPriorityNote.fecha_creacion).toLocaleDateString('es-MX')}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveSection('notes')}
-                className={`w-full mt-4 ${dashboardStats.recentHighPriorityNote.prioridad === 'urgente' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'} text-white py-2 rounded-lg transition-colors`}
-              >
-                Ver Todas las Notas
-              </button>
-            </div>
-          ) : (
-            <div className="bg-gray-500/20 border border-gray-500/30 rounded-lg p-4 text-center">
-              <div className="text-4xl mb-3">✅</div>
-              <p className="text-gray-300">No hay notas de alta prioridad</p>
-              <button
-                onClick={() => setActiveSection('notes')}
-                className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Crear Nueva Nota
-              </button>
-            </div>
-          )}
+      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+        <h3 className="text-xl font-semibold text-white mb-4">🚀 Accesos Rápidos</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button
+            onClick={() => setActiveSection('products')}
+            className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📦</div>
+            <div className="text-white font-medium">Productos</div>
+            <div className="text-green-200 text-sm">{dashboardStats.totalVariants} variantes</div>
+          </button>
+          
+          <button
+            onClick={() => setActiveSection('promotions')}
+            className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏷️</div>
+            <div className="text-white font-medium">Promociones</div>
+            <div className="text-blue-200 text-sm">{dashboardStats.activePromotions} activas</div>
+          </button>
+          
+          <button
+            onClick={() => setActiveSection('orders')}
+            className="bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</div>
+            <div className="text-white font-medium">Pedidos</div>
+            <div className="text-yellow-200 text-sm">{dashboardStats.pendingOrders} pendientes</div>
+          </button>
+          
+          <button
+            onClick={() => setActiveSection('notes')}
+            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg p-4 text-left transition-colors group"
+          >
+            <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📝</div>
+            <div className="text-white font-medium">Notas</div>
+            <div className="text-purple-200 text-sm">{dashboardStats.highPriorityNotes} prioritarias</div>
+          </button>
         </div>
       </div>
 
