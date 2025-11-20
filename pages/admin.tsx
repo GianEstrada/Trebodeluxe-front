@@ -2842,7 +2842,7 @@ const AdminPage: NextPage = () => {
           >
             🎯 {t('Promociones')}
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveSection('orders')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'orders'
@@ -2850,8 +2850,8 @@ const AdminPage: NextPage = () => {
                 : 'text-black bg-white/80 hover:bg-white hover:text-black'
             }`}
           >
-            � {t('Pedidos')}
-          </button>
+            📦 {t('Pedidos')}
+          </button> */}
           <button
             onClick={() => setActiveSection('notes')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
