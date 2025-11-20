@@ -1496,7 +1496,7 @@ const ProductPage: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-8 relative h-8" ref={searchDropdownRef}>
+              <div className="w-8 relative h-8 hidden" ref={searchDropdownRef}>
                 <button 
                   onClick={() => setShowSearchDropdown(!showSearchDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
@@ -1706,7 +1706,7 @@ const ProductPage: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-8 relative h-8" ref={cartDropdownRef}>
+              <div className="w-8 relative h-8 hidden" ref={cartDropdownRef}>
                 <button 
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
                   className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
