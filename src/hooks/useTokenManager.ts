@@ -61,7 +61,7 @@ export const useTokenManager = (): TokenManager & {
     if (!token || isTokenExpired(token)) {
       console.log('🔍 Token expirado o inexistente, redirigiendo al login');
       clearToken();
-      router.push('/admin/login');
+      router.push('/login');
       throw new Error('Token expirado');
     }
 
@@ -86,7 +86,7 @@ export const useTokenManager = (): TokenManager & {
         if (data.shouldRedirectToLogin) {
           console.log('🔍 Sesión expirada, redirigiendo al login');
           clearToken();
-          router.push('/admin/login');
+          router.push('/login');
           throw new Error('Sesión expirada');
         }
       }
@@ -156,8 +156,8 @@ export const useTokenManager = (): TokenManager & {
     if (token && isTokenExpired(token)) {
       console.log('🔍 Token expirado al cargar, limpiando...');
       clearToken();
-      if (router.pathname.startsWith('/admin') && router.pathname !== '/admin/login') {
-        router.push('/admin/login');
+      if (router.pathname.startsWith('/admin') && router.pathname !== '/login') {
+        router.push('/login');
       }
     }
   }, [getToken, isTokenExpired, clearToken, router]);

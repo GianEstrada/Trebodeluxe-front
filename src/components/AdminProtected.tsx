@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTokenManager } from '../hooks/useTokenManager';
+import { getApiUrl } from '../utils/apiConfig';
 
 interface AdminProtectedProps {
   children: React.ReactNode;
@@ -25,12 +26,14 @@ export const AdminProtected: React.FC<AdminProtectedProps> = ({
         if (!token || isTokenExpired(token)) {
           console.log('🔍 No hay token válido, redirigiendo al login');
           clearToken();
-          router.push('/admin/login');
+          router.push('/login');
           return;
         }
 
         // Verificar token con el servidor
-        const response = await makeAuthenticatedRequest('https://trebodeluxe-backend.onrender.com/api/auth/verify');
+        const apiUrl = getApiUrl();
+        console.log('🌐 Usando API URL:', apiUrl);
+        const response = await makeAuthenticatedRequest(`${apiUrl}/api/auth/verify`);
         
         if (response.ok) {
           const data = await response.json();
@@ -40,24 +43,24 @@ export const AdminProtected: React.FC<AdminProtectedProps> = ({
           } else {
             console.log('🔍 Usuario no tiene permisos de admin');
             clearToken();
-            router.push('/admin/login');
+            router.push('/login');
           }
         } else {
           console.log('🔍 Token no válido en servidor');
           clearToken();
-          router.push('/admin/login');
+          router.push('/login');
         }
       } catch (error) {
         console.error('Error verificando autenticación:', error);
         clearToken();
-        router.push('/admin/login');
+        router.push('/login');
       } finally {
         setIsLoading(false);
       }
     };
 
     // Solo verificar si estamos en una ruta de admin
-    if (router.pathname.startsWith('/admin') && router.pathname !== '/admin/login') {
+    if (router.pathname.startsWith('/admin') && router.pathname !== '/login') {
       checkAuth();
     } else {
       setIsLoading(false);

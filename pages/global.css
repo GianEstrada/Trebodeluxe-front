@@ -8,6 +8,8 @@
 
 body {
   @apply leading-[normal] m-0;
+  background: linear-gradient(180deg, #0a2f0a 0%, #000 100%);
+  color: #ffffff;
 }
 
 @layer base {

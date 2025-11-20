@@ -1,0 +1,72 @@
+/* Tema verde oscuro - Estilos globales para contraste óptimo */
+
+/* Fondo principal verde oscuro a negro */
+html, body {
+  background: linear-gradient(180deg, #0a2f0a 0%, #000 100%) !important;
+  color: #ffffff !important;
+}
+
+/* Navegación - sin fondos en iconos */
+nav {
+  background: transparent;
+  color: #ffffff;
+}
+
+nav a {
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+nav a:hover {
+  color: #00ff6a;
+}
+
+/* Botones de navegación sin fondo */
+nav button {
+  background: transparent !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+nav button:hover {
+  background: transparent !important;
+  opacity: 0.8;
+}
+
+/* Modales y cards con overlay claro */
+.modal,
+[role="dialog"],
+.card,
+.panel {
+  background-color: rgba(255, 255, 255, 0.98);
+  color: #1a1a1a;
+}
+
+.modal h1, .modal h2, .modal h3,
+.modal h4, .modal h5, .modal h6,
+[role="dialog"] h1, [role="dialog"] h2,
+[role="dialog"] h3, [role="dialog"] h4,
+[role="dialog"] h5, [role="dialog"] h6 {
+  color: #1a1a1a;
+  text-shadow: none;
+}
+
+.modal p, .modal span, .modal div,
+[role="dialog"] p, [role="dialog"] span,
+[role="dialog"] div {
+  color: #1a1a1a;
+}
+
+/* Footer */
+footer {
+  background: linear-gradient(180deg, #0a2f0a, #1a6b1a);
+  color: #ffffff;
+}
+
+footer a {
+  color: #e8e8e8;
+}
+
+footer a:hover {
+  color: #ffffff;
+}

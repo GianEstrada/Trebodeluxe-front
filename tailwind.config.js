@@ -7,23 +7,40 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        "Schemes-Surface": "#fef7ff",
-        "Schemes-Surface-Container": "#f3edf7",
-        "Schemes-On-Surface": "#1d1b20",
-        "Schemes-Outline": "#79747e",
+        // Colores de fondo verde oscuro
+        "dark-green-primary": "#0a2f0a",
+        "dark-green-secondary": "#0d3d0d",
+        "dark-green-tertiary": "#1a6b1a",
+        "dark-green-accent": "#289c28",
+        
+        // Colores de texto con alto contraste
+        "text-primary-light": "#ffffff",
+        "text-secondary-light": "#e8e8e8",
+        "text-tertiary-light": "#c8c8c8",
+        
+        // Overlays claros para fondos alternativos
+        "overlay-light": "rgba(255, 255, 255, 0.95)",
+        "overlay-medium": "rgba(255, 255, 255, 0.85)",
+        "overlay-dark": "rgba(0, 0, 0, 0.7)",
+        
+        // Colores originales mantenidos para compatibilidad
+        "Schemes-Surface": "#0a2f0a",
+        "Schemes-Surface-Container": "#0d3d0d",
+        "Schemes-On-Surface": "#ffffff",
+        "Schemes-Outline": "#c8c8c8",
         "Icon-Neutral-On-Neutral": "#f3f3f3",
-        "Background-Brand-Default": "#2c2c2c",
-        "Slate-200": "#e3e3e3",
-        "Border-Default-Default": "#d9d9d9",
-        "Text-Default-Tertiary": "#b3b3b3",
+        "Background-Brand-Default": "#0a2f0a",
+        "Slate-200": "#e8e8e8",
+        "Border-Default-Default": "#289c28",
+        "Text-Default-Tertiary": "#c8c8c8",
         "M3-white": "#fff",
         yellow: "#ffff00",
         olive: "#9e990c",
         gold: "#dcdc27",
         springgreen: "#00ff6a",
         gray: {
-          100: "#787878",
-          200: "rgba(0, 0, 0, 0)",
+          100: "#c8c8c8",
+          200: "rgba(255, 255, 255, 0.1)",
         },
         forestgreen: "#289c28",
         black: "#000",

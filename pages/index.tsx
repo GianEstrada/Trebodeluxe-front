@@ -2839,12 +2839,12 @@ const HomeScreen: NextPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       if (product.inStock) {
-                        // Usar la función handleAddToCart
+                        // Abrir el selector de variantes
                         handleAddToCart(product);
                       }
                     }}
                   >
-                    {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                    {product.inStock ? t('Ver producto') : t('Agotado')}
                   </button>
                 </div>
               </Link>
@@ -2960,12 +2960,12 @@ const HomeScreen: NextPage = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       if (product.inStock) {
-                        // Usar la función handleAddToCart  
+                        // Abrir el selector de variantes
                         handleAddToCart(product);
                       }
                     }}
                   >
-                    {product.inStock ? t('Añadir al carrito') : t('Agotado')}
+                    {product.inStock ? t('Ver producto') : t('Agotado')}
                   </button>
                 </div>
               </Link>
@@ -3078,6 +3078,7 @@ const HomeScreen: NextPage = () => {
           product={selectedProduct}
           onAddToCart={handleAddToCartFromSelector}
           currentLanguage={currentLanguage}
+          showActions={false}
         />
       )}
       

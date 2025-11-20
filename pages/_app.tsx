@@ -2,11 +2,13 @@ import { Fragment, useState } from "react";
 import Head from "next/head";
 import type { AppProps } from "next/app";
 import "./global.css";
+import "../styles/dark-green-theme.css";
 import { AuthProvider } from "../contexts/AuthContext";
 import { LoadingProvider, useLoading } from "../contexts/LoadingContext";
 import { SiteSettingsProvider } from "../contexts/SiteSettingsContext";
 import { MainImagesProvider } from "../contexts/MainImagesContext";
 import { CartProvider } from "../contexts/NewCartContext";
+import { CartConfigProvider } from "../contexts/CartConfigContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 // Componente unificado para manejo de carga

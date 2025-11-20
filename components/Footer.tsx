@@ -11,7 +11,7 @@ const Footer: React.FC = () => {
   const { activeCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
 
   return (
-    <footer className="self-stretch [background:linear-gradient(180deg,_#000,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start text-Text-Default-Tertiary font-Body-Font-Family">
+    <footer className="self-stretch [background:linear-gradient(180deg,_#0a2f0a,_#1a6b1a)] overflow-hidden shrink-0 flex flex-col items-start justify-start text-text-tertiary-light font-Body-Font-Family">
       
       {/* Footer Minimalista - Solo Móvil */}
       <div className="block md:hidden w-full px-4 py-8">
@@ -94,21 +94,21 @@ const Footer: React.FC = () => {
           
           {/* Enlaces principales */}
           <div className="flex justify-center items-center gap-4 text-sm">
-            <Link href="/catalogo" className="text-gray-300 hover:text-white transition-colors">
+            <Link href="/catalogo" className="text-text-secondary-light hover:text-text-primary-light transition-colors">
               {t('Catálogo')}
             </Link>
-            <span className="text-gray-500">•</span>
-            <Link href="/carrito" className="text-gray-300 hover:text-white transition-colors">
+            <span className="text-text-tertiary-light">•</span>
+            <Link href="/carrito" className="text-text-secondary-light hover:text-text-primary-light transition-colors">
               {t('Carrito')}
             </Link>
-            <span className="text-gray-500">•</span>
-            <Link href="/checkout" className="text-gray-300 hover:text-white transition-colors">
+            <span className="text-text-tertiary-light">•</span>
+            <Link href="/checkout" className="text-text-secondary-light hover:text-text-primary-light transition-colors">
               {t('Checkout')}
             </Link>
           </div>
           
           {/* Copyright */}
-          <div className="text-center text-gray-400 text-xs">
+          <div className="text-center text-text-tertiary-light text-xs">
             <p>© {new Date().getFullYear()} Treboluxe. {t('Todos los derechos reservados.')}</p>
           </div>
         </div>
@@ -128,7 +128,7 @@ const Footer: React.FC = () => {
               src="/sin-ttulo1-2@2x.png"
             />
             <div className="flex flex-col items-start justify-start gap-4">
-              <p className="text-white text-sm leading-relaxed">
+              <p className="text-text-primary-light text-sm leading-relaxed">
                 {t('Tu tienda de moda online de confianza. Descubre las últimas tendencias y encuentra tu estilo único con nuestra amplia selección de ropa y accesorios.')}
               </p>
               <div className="flex flex-row items-center justify-start gap-4">

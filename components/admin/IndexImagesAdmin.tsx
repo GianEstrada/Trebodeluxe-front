@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useUniversalTranslate } from '../../hooks/useUniversalTranslate';
+import { getApiUrl } from '../../src/utils/apiConfig';
 
 interface IndexImage {
   id_imagen: number;
@@ -72,7 +73,8 @@ const IndexImagesAdmin: React.FC<Props> = ({ currentLanguage }) => {
   const loadIndexImages = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/index-images');
+      const apiUrl = getApiUrl();
+      const response = await authenticatedFetch(`${apiUrl}/api/admin/index-images`);
       const data = await response.json();
       if (data.success) {
         setImages(data.images);
@@ -107,8 +109,9 @@ const IndexImagesAdmin: React.FC<Props> = ({ currentLanguage }) => {
   // Manejar cambio de estado
   const handleStatusChange = async (imageId: number, newStatus: string) => {
     try {
+      const apiUrl = getApiUrl();
       const response = await authenticatedFetch(
-        `https://trebodeluxe-backend.onrender.com/api/admin/index-images/${imageId}/status`,
+        `${apiUrl}/api/admin/index-images/${imageId}/status`,
         {
           method: 'PUT',
           body: JSON.stringify({ estado: newStatus }),
@@ -134,8 +137,9 @@ const IndexImagesAdmin: React.FC<Props> = ({ currentLanguage }) => {
     }
 
     try {
+      const apiUrl = getApiUrl();
       const response = await authenticatedFetch(
-        `https://trebodeluxe-backend.onrender.com/api/admin/index-images/${imageId}`,
+        `${apiUrl}/api/admin/index-images/${imageId}`,
         { method: 'DELETE' }
       );
 
@@ -173,8 +177,9 @@ const IndexImagesAdmin: React.FC<Props> = ({ currentLanguage }) => {
 
     const formDataUpload = new FormData();
     formDataUpload.append('image', file);
+    const apiUrl = getApiUrl();
 
-    const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/upload-image', {
+    const response = await fetch(`${apiUrl}/api/admin/upload-image`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -208,7 +213,8 @@ const IndexImagesAdmin: React.FC<Props> = ({ currentLanguage }) => {
       const cloudinaryResult = await uploadToCloudinary(formData.file);
       
       // Crear registro en la base de datos
-      const response = await authenticatedFetch('https://trebodeluxe-backend.onrender.com/api/admin/index-images', {
+      const apiUrl = getApiUrl();
+      const response = await authenticatedFetch(`${apiUrl}/api/admin/index-images`, {
         method: 'POST',
         body: JSON.stringify({
           nombre: formData.nombre,

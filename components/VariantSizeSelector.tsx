@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/router';
 import { useUniversalTranslate } from '../hooks/useUniversalTranslate';
 import { productsApi } from '../utils/productsApi';
 import { promotionsApi } from '../utils/promotionsApi';
@@ -53,6 +54,7 @@ interface VariantSizeSelectorProps {
   product: Product;
   onAddToCart: (productId: number, variantId: number, tallaId: number, quantity: number) => Promise<void>;
   currentLanguage?: string;
+  showActions?: boolean; // Nueva prop para controlar si se muestran botones de compra o solo ver detalles
 }
 
 const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
@@ -60,9 +62,11 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
   onClose,
   product,
   onAddToCart,
-  currentLanguage = 'es'
+  currentLanguage = 'es',
+  showActions = false // Por defecto, no mostrar acciones de compra
 }) => {
   const { t } = useUniversalTranslate(currentLanguage);
+  const router = useRouter();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [selectedTalla, setSelectedTalla] = useState<Talla | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -264,6 +268,17 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
     }
   };
 
+  const handleViewProductDetails = () => {
+    if (!selectedVariant || !selectedTalla) {
+      alert(t('Por favor selecciona una variante y talla'));
+      return;
+    }
+
+    // Redirigir a la página del producto con variante y talla preseleccionada
+    const url = `/producto/${product.id_producto}?variante=${selectedVariant.id_variante}&talla=${selectedTalla.id_talla}`;
+    router.push(url);
+  };
+
   if (!isOpen || !product) return null;
 
   return (
@@ -291,7 +306,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                   onClick={() => setSelectedVariant(variant)}
                   className={`p-3 rounded-lg border transition-all ${
                     selectedVariant?.id_variante === variant.id_variante
-                      ? 'border-blue-500 bg-blue-500/20'
+                      ? 'border-green-600 bg-green-800 text-white'
                       : 'border-white/20 bg-white/5 hover:bg-white/10'
                   }`}
                 >
@@ -419,7 +434,7 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
                     disabled={talla.cantidad === 0}
                     className={`p-3 rounded-lg border text-center transition-all ${
                       selectedTalla?.id_talla === talla.id_talla
-                        ? 'border-blue-500 bg-blue-500/20 text-white'
+                        ? 'border-green-600 bg-green-800 text-white'
                         : talla.cantidad === 0
                         ? 'border-red-500/30 bg-red-500/10 text-red-400 cursor-not-allowed'
                         : 'border-white/20 bg-white/5 hover:bg-white/10 text-white'
@@ -552,20 +567,47 @@ const VariantSizeSelector: React.FC<VariantSizeSelectorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-white/20">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 px-4 border border-white/30 text-black rounded-lg hover:bg-white/10 transition-colors"
-          >
-            {t('Cancelar')}
-          </button>
-          <button
-            onClick={handleAddToCart}
-            disabled={!selectedVariant || !selectedTalla || selectedTalla.cantidad === 0 || isLoading}
-            className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? t('Agregando...') : t('Agregar al Carrito')}
-          </button>
+        <div className="flex flex-col items-center space-y-2 sm:space-y-3 px-4 sm:px-6 py-6 border-t border-white/20">
+          {showActions ? (
+            // Mostrar botones de compra y agregar al carrito
+            <>
+              <button
+                onClick={handleAddToCart}
+                disabled={!selectedVariant || !selectedTalla || selectedTalla.cantidad === 0 || isLoading}
+                className="bg-green-600 text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                style={{ width: '384px', minWidth: '384px', maxWidth: '384px' }}
+              >
+                {isLoading ? t('Agregando...') : t('Comprar ahora')}
+              </button>
+              <button
+                onClick={handleAddToCart}
+                disabled={!selectedVariant || !selectedTalla || selectedTalla.cantidad === 0 || isLoading}
+                className="bg-white text-black py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-gray-100 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                style={{ width: '384px', minWidth: '384px', maxWidth: '384px' }}
+              >
+                {isLoading ? t('Agregando...') : t('Agregar al carrito')}
+              </button>
+            </>
+          ) : (
+            // Mostrar botones de cancelar y ver detalles
+            <>
+              <button
+                onClick={onClose}
+                className="bg-transparent border-2 border-white text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-white hover:text-black transition-colors text-sm sm:text-base"
+                style={{ width: '384px', minWidth: '384px', maxWidth: '384px' }}
+              >
+                {t('Cancelar')}
+              </button>
+              <button
+                onClick={handleViewProductDetails}
+                disabled={!selectedVariant || !selectedTalla || selectedTalla.cantidad === 0}
+                className="bg-green-600 text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                style={{ width: '384px', minWidth: '384px', maxWidth: '384px' }}
+              >
+                {t('Ver detalles del producto')}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

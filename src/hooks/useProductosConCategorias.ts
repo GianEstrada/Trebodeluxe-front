@@ -68,7 +68,7 @@ export const useProductosConCategorias = (): UseProductosConCategorias => {
 
           // Obtener precio base desde el primer stock disponible
           try {
-            const stockResponse = await fetch(`https://trebodeluxe-backend.onrender.com/api/products/variants`);
+            const stockResponse = await fetch(`${API_BASE_URL}/api/products/variants`);
             if (stockResponse.ok) {
               const stockData = await stockResponse.json();
               const productVariants = stockData.variants.filter((v: any) => v.id_producto === producto.id_producto);

@@ -2,6 +2,7 @@
 // Updated: 2025-08-15 - Fixed token authentication
 
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from '../../src/utils/apiConfig';
 
 // Función helper para obtener el token de administrador
 const getAdminToken = (): string | null => {
@@ -33,6 +34,11 @@ const getAdminToken = (): string | null => {
     console.error('❌ Error getting admin token:', error);
     return null;
   }
+};
+
+// Función helper para obtener la URL base del API
+const getBaseApiUrl = (): string => {
+  return getApiUrl();
 };
 
 interface OrderDetail {
@@ -150,7 +156,8 @@ const OrdersAdmin: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders?${queryParams}`, {
+      const baseUrl = getBaseApiUrl();
+      const response = await fetch(`${baseUrl}/api/admin/orders?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -177,7 +184,8 @@ const OrdersAdmin: React.FC = () => {
         return;
       }
 
-      const response = await fetch('https://trebodeluxe-backend.onrender.com/api/admin/orders/stats', {
+      const baseUrl = getBaseApiUrl();
+      const response = await fetch(`${baseUrl}/api/admin/orders/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -204,7 +212,8 @@ const OrdersAdmin: React.FC = () => {
       }
       console.log('✅ Token found, making request');
 
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`, {
+      const baseUrl = getBaseApiUrl();
+      const response = await fetch(`${baseUrl}/api/admin/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -244,7 +253,8 @@ const OrdersAdmin: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${selectedOrder.id_pedido}`, {
+      const baseUrl = getBaseApiUrl();
+      const response = await fetch(`${baseUrl}/api/admin/orders/${selectedOrder.id_pedido}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -317,7 +327,8 @@ const OrdersAdmin: React.FC = () => {
       const token = getAdminToken();
       if (!token) return;
 
-      const response = await fetch(`https://trebodeluxe-backend.onrender.com/api/admin/orders/${orderId}`, {
+      const baseUrl = getBaseApiUrl();
+      const response = await fetch(`${baseUrl}/api/admin/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

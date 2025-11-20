@@ -65,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="w-full relative min-h-screen flex flex-col text-left text-Static-Body-Large-Size text-M3-white font-salsa"
          style={{
-           background: 'linear-gradient(180deg, #000 0%, #1a6b1a 25%, #0d3d0d 35%, #000 75%, #000 100%)'
+           background: 'linear-gradient(180deg, #0a2f0a 0%, #000 100%)'
          }}>
       
       {/* Indicador de traducción */}

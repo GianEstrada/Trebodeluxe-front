@@ -2185,11 +2185,11 @@ const ProductPage: NextPage = () => {
             </div>
 
             {/* Botones de acción */}
-            <div className="space-y-2 sm:space-y-3 px-1 sm:px-2 md:px-0">
+            <div className="space-y-2 sm:space-y-3 px-1 sm:px-2 md:px-0 flex flex-col items-start">
               <button
                 onClick={handleBuyNow}
                 disabled={!selectedSize || selectedSize.cantidad === 0}
-                className="w-full bg-green-600 text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                className="w-96 bg-green-600 text-white py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
               >
                 {selectedSize && selectedSize.cantidad === 0 
                   ? t('Sin stock') 
@@ -2200,7 +2200,7 @@ const ProductPage: NextPage = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={!selectedSize || selectedSize.cantidad === 0}
-                className="w-full bg-white text-black py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-gray-100 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                className="w-96 bg-white text-black py-3 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-semibold hover:bg-gray-100 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
               >
                 {selectedSize && selectedSize.cantidad === 0 
                   ? t('Sin stock') 
