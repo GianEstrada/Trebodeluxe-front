@@ -2195,7 +2195,7 @@ const ProductPage: NextPage = () => {
             </div>
 
             {/* Información adicional */}
-            <div className="space-y-4 pt-4 border-t border-white/20 text-center md:text-left">
+            <div className="space-y-4 pt-4 border-t border-white/20 text-center md:text-left hidden">
               <div className="flex items-center justify-center md:justify-start space-x-2 text-sm text-gray-300">
                 <span>🔒</span>
                 <span>Compra 100% segura</span>
