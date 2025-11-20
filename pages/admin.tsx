@@ -2832,7 +2832,7 @@ const AdminPage: NextPage = () => {
           >
             📁 {t('Categorías')}
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveSection('promotions')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'promotions'
@@ -2841,7 +2841,7 @@ const AdminPage: NextPage = () => {
             }`}
           >
             🎯 {t('Promociones')}
-          </button>
+          </button> */}
           {/* <button
             onClick={() => setActiveSection('orders')}
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
@@ -3052,7 +3052,7 @@ const AdminPage: NextPage = () => {
           <p className="text-green-200 text-sm mt-2">{dashboardStats.totalVariants || '0'} variantes totales</p>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+        {/* <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-blue-200 mb-1">Promociones</h3>
@@ -3061,7 +3061,7 @@ const AdminPage: NextPage = () => {
             <div className="text-blue-400 text-3xl">🏷️</div>
           </div>
           <p className="text-blue-200 text-sm mt-2">Activas actualmente</p>
-        </div>
+        </div> */}
 
         {/* <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
           <div className="flex items-center justify-between">
@@ -3099,14 +3099,14 @@ const AdminPage: NextPage = () => {
             <div className="text-green-200 text-sm">{dashboardStats.totalVariants} variantes</div>
           </button>
           
-          <button
+          {/* <button
             onClick={() => setActiveSection('promotions')}
             className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg p-4 text-left transition-colors group"
           >
             <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏷️</div>
             <div className="text-white font-medium">Promociones</div>
             <div className="text-blue-200 text-sm">{dashboardStats.activePromotions} activas</div>
-          </button>
+          </button> */}
           
           {/* <button
             onClick={() => setActiveSection('orders')}
