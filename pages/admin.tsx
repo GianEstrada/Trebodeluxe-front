@@ -2787,7 +2787,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'dashboard'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📊 {t('Dashboard')}
@@ -2797,7 +2797,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'header'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📝 {t('Textos del Header')}
@@ -2807,7 +2807,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'images'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             🖼️ {t('Imágenes Index')}
@@ -2817,7 +2817,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'products'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📦 {t('Productos y Variantes')}
@@ -2827,7 +2827,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'categorias'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📁 {t('Categorías')}
@@ -2837,7 +2837,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'promotions'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             🎯 {t('Promociones')}
@@ -2847,7 +2847,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'orders'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📦 {t('Pedidos')}
@@ -2857,7 +2857,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'notes'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📝 {t('Notas')}
@@ -2867,7 +2867,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'sizes'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white hover:bg-white/90 hover:text-black'
+                : '!text-black !bg-white hover:!bg-white/90 hover:!text-black'
             }`}
           >
             📏 {t('Sistemas de Tallas')}
