@@ -1343,16 +1343,14 @@ Pronto recibirás una confirmación por email.`));
                     className="w-full h-full bg-transparent border-none p-0 cursor-pointer hover:opacity-80 transition-opacity duration-200"
                     title={t('Panel de Administración')}
                   >
-                    <svg 
-                      className="h-full w-full object-contain text-white" 
-                      width={16} 
-                      height={18} 
-                      fill="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
-                      <path d="M10 14l-3-3 1.41-1.41L10 11.17l5.59-5.58L17 7l-7 7z" fill="white"/>
-                    </svg>
+                    <Image
+                      className="h-full w-full object-contain"
+                      width={20}
+                      height={20}
+                      sizes="100vw"
+                      alt="Panel de Administración"
+                      src="/engranaje.svg"
+                    />
                   </button>
                   
                   {/* Admin Dropdown */}
