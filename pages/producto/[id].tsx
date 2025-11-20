@@ -507,6 +507,14 @@ const ProductPage: NextPage = () => {
     localStorage.setItem('preferred-currency', currency);
   };
 
+  // Cargar preferencias guardadas al iniciar
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('preferred-language');
+    const savedCurrency = localStorage.getItem('preferred-currency');
+    if (savedLanguage) setCurrentLanguage(savedLanguage);
+    if (savedCurrency) setCurrentCurrency(savedCurrency);
+  }, []);
+
   // Función para manejar la búsqueda (redirige al catálogo)
   const handleSearch = () => {
     if (searchTerm.trim()) {
