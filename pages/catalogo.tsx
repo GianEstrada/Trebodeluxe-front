@@ -1405,7 +1405,7 @@ const Catalogo: NextPage = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">🇪🇸</span>
+                              <span className="text-xs font-bold">ES</span>
                               <span>Español</span>
                             </div>
                             {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
@@ -1419,7 +1419,7 @@ const Catalogo: NextPage = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">🇺🇸</span>
+                              <span className="text-xs font-bold">EN</span>
                               <span>English</span>
                             </div>
                             {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
@@ -1433,7 +1433,7 @@ const Catalogo: NextPage = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">��</span>
+                              <span className="text-xs font-bold">FR</span>
                               <span>Français</span>
                             </div>
                             {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
@@ -2636,7 +2636,7 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇪🇸</span>
+                          <span className="text-xs font-bold">ES</span>
                           <span>Español</span>
                         </div>
                         {currentLanguage === 'es' && <span className="text-white font-bold">✓</span>}
@@ -2650,7 +2650,7 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇺🇸</span>
+                          <span className="text-xs font-bold">EN</span>
                           <span>English</span>
                         </div>
                         {currentLanguage === 'en' && <span className="text-white font-bold">✓</span>}
@@ -2664,7 +2664,7 @@ const Catalogo: NextPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">🇫🇷</span>
+                          <span className="text-xs font-bold">FR</span>
                           <span>Français</span>
                         </div>
                         {currentLanguage === 'fr' && <span className="text-white font-bold">✓</span>}
