@@ -2787,7 +2787,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'dashboard'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📊 {t('Dashboard')}
@@ -2797,7 +2797,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'header'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📝 {t('Textos del Header')}
@@ -2807,7 +2807,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'images'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             🖼️ {t('Imágenes Index')}
@@ -2817,7 +2817,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'products'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📦 {t('Productos y Variantes')}
@@ -2827,7 +2827,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'categorias'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📁 {t('Categorías')}
@@ -2837,7 +2837,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'promotions'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             🎯 {t('Promociones')}
@@ -2847,7 +2847,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'orders'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📦 {t('Pedidos')}
@@ -2857,7 +2857,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'notes'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📝 {t('Notas')}
@@ -2867,7 +2867,7 @@ const AdminPage: NextPage = () => {
             className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
               activeSection === 'sizes'
                 ? 'bg-green-600 text-white'
-                : 'text-black bg-white/80 hover:bg-white hover:text-black'
+                : 'text-black bg-white hover:bg-white/90 hover:text-black'
             }`}
           >
             📏 {t('Sistemas de Tallas')}
@@ -3063,7 +3063,7 @@ const AdminPage: NextPage = () => {
           <p className="text-blue-200 text-sm mt-2">Activas actualmente</p>
         </div>
 
-        <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
+        {/* <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-yellow-200 mb-1">Pedidos</h3>
@@ -3072,7 +3072,7 @@ const AdminPage: NextPage = () => {
             <div className="text-yellow-400 text-3xl">⏳</div>
           </div>
           <p className="text-yellow-200 text-sm mt-2">{dashboardStats.totalOrders || '0'} pedidos totales</p>
-        </div>
+        </div> */}
 
         <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
@@ -3108,14 +3108,14 @@ const AdminPage: NextPage = () => {
             <div className="text-blue-200 text-sm">{dashboardStats.activePromotions} activas</div>
           </button>
           
-          <button
+          {/* <button
             onClick={() => setActiveSection('orders')}
             className="bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 rounded-lg p-4 text-left transition-colors group"
           >
             <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</div>
             <div className="text-white font-medium">Pedidos</div>
             <div className="text-yellow-200 text-sm">{dashboardStats.pendingOrders} pendientes</div>
-          </button>
+          </button> */}
           
           <button
             onClick={() => setActiveSection('notes')}
@@ -4127,10 +4127,7 @@ const AdminPage: NextPage = () => {
         {/* Card de Usuario */}
         {renderUserCard()}
         
-        {/* Contenedor con fondo blanco para las secciones */}
-        <div className="bg-white rounded-xl p-6 shadow-xl">
-          {renderContent()}
-        </div>
+        {renderContent()}
       </div>
 
       {/* Formularios modales */}
