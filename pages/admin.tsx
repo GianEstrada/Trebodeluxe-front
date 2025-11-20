@@ -4127,7 +4127,10 @@ const AdminPage: NextPage = () => {
         {/* Card de Usuario */}
         {renderUserCard()}
         
-        {renderContent()}
+        {/* Contenedor con fondo blanco para las secciones */}
+        <div className="bg-white rounded-xl p-6 shadow-xl">
+          {renderContent()}
+        </div>
       </div>
 
       {/* Formularios modales */}
